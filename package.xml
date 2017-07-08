@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+<package>
+  <name>people_detector</name>
+  <version>0.0.0</version>
+  <description>The people_detector package</description>
+
+  <maintainer email="rayman747@hotmail.com">Ramon Wijnands</maintainer>
+
+  <license>MIT</license>
+
+  <author email="rayman747@hotmail.com">Ramon Wijnands</author>
+
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <run_depend>image_recognition_msgs</run_depend>
+  <run_depend>message_filters</run_depend>
+  <run_depend>numpy</run_depend>
+  <run_depend>people_msgs</run_depend>
+  <run_depend>rospy</run_depend>
+  
+</package>

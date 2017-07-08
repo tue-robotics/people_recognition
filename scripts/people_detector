@@ -1,0 +1,58 @@
+#!/usr/bin/env python
+from cv_bridge import CvBridge
+from itertools import groupby
+
+import message_filters
+import numpy
+import rospy
+from image_recognition_msgs.srv import Recognize
+from sensor_msgs.msg import Image
+
+
+class PeopleDetector(object):
+    padding = 5
+
+    def __init__(self):
+        self.bridge = CvBridge()
+
+        depth_sub = message_filters.Subscriber('depth/image', Image)
+        rgb_sub = message_filters.Subscriber('rgb/image', Image)
+
+        self._ts = message_filters.TimeSynchronizer([rgb_sub, depth_sub], 10)
+        self._ts.registerCallback(self.callback)
+
+        self.recognize = rospy.ServiceProxy('/recognize', Recognize)
+
+    def callback(self, rgb, depth):
+        rospy.loginfo('got image cb')
+        assert rgb.width == depth.width
+        assert rgb.height == depth.height
+        # print rgb.header, depth.header
+
+        cv_depth = self.bridge.imgmsg_to_cv2(depth)
+
+        data = self.recognize(image=rgb)
+        for group_id, recognitions in groupby(data.recognitions, lambda r: r.group_id):
+            recognitions = list(recognitions)
+            rospy.loginfo('found %s objects for group %s', len(recognitions), group_id)
+
+            for r in recognitions:
+                roi = r.roi
+                x_min = roi.x_offset - self.padding
+                x_max = roi.x_offset + roi.width + self.padding
+                y_min = roi.y_offset - self.padding
+                y_max = roi.y_offset + roi.height + self.padding
+
+                if x_min < 0 or y_min < 0 or x_max > depth.width or y_max > depth.height:
+                    continue  # outside of the image
+
+                region = cv_depth[x_min:x_max, y_min:y_max]
+                median = numpy.median(region)
+
+                rospy.loginfo('region min=%f, max=%f, median=%f', region.min(), region.max(), median)
+
+
+if __name__ == '__main__':
+    rospy.init_node('people_detector')
+    PeopleDetector()
+    rospy.spin()
