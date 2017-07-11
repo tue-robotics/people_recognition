@@ -8,6 +8,8 @@ import rospy
 from image_recognition_msgs.srv import Recognize
 from sensor_msgs.msg import Image, CameraInfo
 import image_geometry
+from people_msgs.msg import PersonStamped, Person
+from geometry_msgs.msg import Point
 
 
 class PeopleDetector(object):
@@ -20,6 +22,8 @@ class PeopleDetector(object):
         depth_info_sub = message_filters.Subscriber('depth/camera_info', CameraInfo)
         depth_sub = message_filters.Subscriber('depth/image', Image)
         rgb_sub = message_filters.Subscriber('rgb/image', Image)
+
+        self.person_pub = rospy.Publisher('persons', PersonStamped, queue_size=1)
 
         self._ts = message_filters.TimeSynchronizer([depth_info_sub, rgb_sub, depth_sub], 10)
         self._ts.registerCallback(self.callback)
@@ -64,6 +68,16 @@ class PeopleDetector(object):
                 point3d = ray * d
 
                 rospy.loginfo('3d point of pixel %d,%d: %s', u, v, point3d)
+
+                # create person
+                person = PersonStamped(header=rgb.header, person=Person(
+                    position=Point(point3d[0], point3d[1], point3d[2]),
+                ))
+
+                self.person_pub.publish(person)
+
+
+
 
 if __name__ == '__main__':
     rospy.init_node('people_detector')
