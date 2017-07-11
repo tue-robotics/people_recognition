@@ -12,6 +12,7 @@
 
   <buildtool_depend>catkin</buildtool_depend>
 
+  <run_depend>image_geometry</run_depend>
   <run_depend>image_recognition_msgs</run_depend>
   <run_depend>message_filters</run_depend>
   <run_depend>python-numpy</run_depend>

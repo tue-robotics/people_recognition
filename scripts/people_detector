@@ -6,24 +6,27 @@ import message_filters
 import numpy
 import rospy
 from image_recognition_msgs.srv import Recognize
-from sensor_msgs.msg import Image
+from sensor_msgs.msg import Image, CameraInfo
+import image_geometry
 
 
 class PeopleDetector(object):
     padding = 5
 
     def __init__(self):
+        rospy.loginfo('starting people_detector')
         self.bridge = CvBridge()
 
+        depth_info_sub = message_filters.Subscriber('depth/camera_info', CameraInfo)
         depth_sub = message_filters.Subscriber('depth/image', Image)
         rgb_sub = message_filters.Subscriber('rgb/image', Image)
 
-        self._ts = message_filters.TimeSynchronizer([rgb_sub, depth_sub], 10)
+        self._ts = message_filters.TimeSynchronizer([depth_info_sub, rgb_sub, depth_sub], 10)
         self._ts.registerCallback(self.callback)
 
         self.recognize = rospy.ServiceProxy('/recognize', Recognize)
 
-    def callback(self, rgb, depth):
+    def callback(self, depth_info, rgb, depth):
         rospy.loginfo('got image cb')
         assert rgb.width == depth.width
         assert rgb.height == depth.height
@@ -51,6 +54,16 @@ class PeopleDetector(object):
 
                 rospy.loginfo('region min=%f, max=%f, median=%f', region.min(), region.max(), median)
 
+                # project to 3d
+                u = roi.x_offset + roi.width // 2
+                v = roi.y_offset + roi.height // 2
+                d = median
+                cam_model = image_geometry.PinholeCameraModel()
+                cam_model.fromCameraInfo(depth_info)
+                ray = numpy.array(cam_model.projectPixelTo3dRay((u, v)))
+                point3d = ray * d
+
+                rospy.loginfo('3d point of pixel %d,%d: %s', u, v, point3d)
 
 if __name__ == '__main__':
     rospy.init_node('people_detector')
