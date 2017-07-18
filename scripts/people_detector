@@ -2,14 +2,36 @@
 from cv_bridge import CvBridge
 from itertools import groupby
 
-import message_filters
-import numpy
-import rospy
-from image_recognition_msgs.srv import Recognize
-from sensor_msgs.msg import Image, CameraInfo
 import image_geometry
-from people_msgs.msg import PersonStamped, Person
+import message_filters
+import numpy as np
+import rospy
 from geometry_msgs.msg import Point
+from image_recognition_msgs.srv import Recognize
+from people_msgs.msg import PersonStamped
+from sensor_msgs.msg import Image, CameraInfo
+from visualization_msgs.msg import Marker, MarkerArray
+
+
+def color_map(N=256, normalized=False):
+    def bitget(byteval, idx):
+        return ((byteval & (1 << idx)) != 0)
+
+    dtype = 'float32' if normalized else 'uint8'
+    cmap = np.zeros((N, 3), dtype=dtype)
+    for i in range(N):
+        r = g = b = 0
+        c = i
+        for j in range(8):
+            r |= bitget(c, 0) << 7 - j
+            g |= bitget(c, 1) << 7 - j
+            b |= bitget(c, 2) << 7 - j
+            c >>= 3
+
+        cmap[i] = np.array([r, g, b])
+
+    cmap = cmap / 255 if normalized else cmap
+    return cmap
 
 
 class PeopleDetector(object):
@@ -19,31 +41,47 @@ class PeopleDetector(object):
         rospy.loginfo('starting people_detector')
         self.bridge = CvBridge()
 
-        depth_info_sub = message_filters.Subscriber('depth/camera_info', CameraInfo)
-        depth_sub = message_filters.Subscriber('depth/image', Image)
-        rgb_sub = message_filters.Subscriber('rgb/image', Image)
+        depth_info_sub = message_filters.Subscriber('/camera/depth/camera_info', CameraInfo)
+        depth_sub = message_filters.Subscriber('/camera/depth/image', Image)
+        rgb_sub = message_filters.Subscriber('/camera/rgb/image_color', Image)
 
         self.person_pub = rospy.Publisher('persons', PersonStamped, queue_size=1)
+        self.markers_pub = rospy.Publisher('viz', MarkerArray, queue_size=1)
 
-        self._ts = message_filters.TimeSynchronizer([depth_info_sub, rgb_sub, depth_sub], 10)
+        # self._ts = message_filters.TimeSynchronizer([depth_sub, depth_info_sub], 1)
+        self._ts = message_filters.ApproximateTimeSynchronizer([rgb_sub, depth_sub, depth_info_sub], queue_size=3,
+                                                               slop=0.1)
         self._ts.registerCallback(self.callback)
 
-        self.recognize = rospy.ServiceProxy('/recognize', Recognize)
+        self.recognize = rospy.ServiceProxy('recognize', Recognize)
+        rospy.wait_for_service(self.recognize)
+        rospy.loginfo('people_detector started')
 
-    def callback(self, depth_info, rgb, depth):
+    def callback(self, rgb, depth, depth_info):
         rospy.loginfo('got image cb')
         assert rgb.width == depth.width
         assert rgb.height == depth.height
-        # print rgb.header, depth.header
 
         cv_depth = self.bridge.imgmsg_to_cv2(depth)
 
         data = self.recognize(image=rgb)
-        for group_id, recognitions in groupby(data.recognitions, lambda r: r.group_id):
-            recognitions = list(recognitions)
-            rospy.loginfo('found %s objects for group %s', len(recognitions), group_id)
 
+        # groupby group_id
+        groups = {}
+        for group_id, recognitions in groupby(data.recognitions, lambda r: r.group_id):
+            groups[group_id] = list(recognitions)
+
+        cmap = color_map(N=len(groups), normalized=True)
+
+        markers = MarkerArray()
+        for i, (_, recognitions) in enumerate(groups.items()):
+            recognitions = list(recognitions)
+            rospy.loginfo('found %s objects for group %s', len(recognitions), i)
+            points = []
             for r in recognitions:
+                assert len(r.categorical_distribution.probabilities) == 1
+                p = r.categorical_distribution.probabilities[0]
+
                 roi = r.roi
                 x_min = roi.x_offset - self.padding
                 x_max = roi.x_offset + roi.width + self.padding
@@ -52,11 +90,16 @@ class PeopleDetector(object):
 
                 if x_min < 0 or y_min < 0 or x_max > depth.width or y_max > depth.height:
                     continue  # outside of the image
+                # rospy.loginfo('roi=[%d %d %d %d] in %dx%d', x_min, x_max, y_min, y_max, depth.width, depth.height)
 
                 region = cv_depth[x_min:x_max, y_min:y_max]
-                median = numpy.median(region)
 
-                rospy.loginfo('region min=%f, max=%f, median=%f', region.min(), region.max(), median)
+                # skip fully nan
+                if np.all(np.isnan(region)):
+                    continue
+
+                median = np.nanmedian(region)
+                rospy.loginfo('region min=%f, max=%f, median=%f', np.nanmin(region), np.nanmax(region), median)
 
                 # project to 3d
                 u = roi.x_offset + roi.width // 2
@@ -64,19 +107,44 @@ class PeopleDetector(object):
                 d = median
                 cam_model = image_geometry.PinholeCameraModel()
                 cam_model.fromCameraInfo(depth_info)
-                ray = numpy.array(cam_model.projectPixelTo3dRay((u, v)))
+                ray = np.array(cam_model.projectPixelTo3dRay((u, v)))
                 point3d = ray * d
 
                 rospy.loginfo('3d point of pixel %d,%d: %s', u, v, point3d)
+                point = Point(point3d[0], point3d[1], point3d[2])
+                points.append(point)
 
-                # create person
-                person = PersonStamped(header=rgb.header, person=Person(
-                    position=Point(point3d[0], point3d[1], point3d[2]),
-                ))
+            marker = self.point3d_to_marker(i, points, rgb.header, cmap[i, 0], cmap[i, 1], cmap[i, 2])
+            markers.markers.append(marker)
+        self.markers_pub.publish(markers)
 
-                self.person_pub.publish(person)
+        # create person
+        # person = PersonStamped(header=rgb.header, person=Person(
+        #     position=Point(point3d[0], point3d[1], point3d[2]),
+        # ))
+        #
+        # self.person_pub.publish(person)
 
+    def point3d_to_marker(self, i, points, header, r, g, b):
+        m = Marker()
+        m.header = header
+        m.ns = "joints"
+        m.id = i
+        m.type = Marker.SPHERE_LIST
+        m.action = Marker.ADD
+        m.lifetime = rospy.Duration(1)
+        m.points = points
 
+        m.scale.x = 0.1
+        m.scale.y = 0.1
+        m.scale.z = 0.1
+
+        m.color.r = r
+        m.color.g = g
+        m.color.b = b
+        m.color.a = 1.0
+
+        return m
 
 
 if __name__ == '__main__':
