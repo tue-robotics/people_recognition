@@ -94,7 +94,7 @@ def color_map(N=256, normalized=False):
     cmap = np.zeros((N, 3), dtype=dtype)
     for i in range(N):
         r = g = b = 0
-        c = i
+        c = i + 1 # skip the first color (black)
         for j in range(8):
             r |= bitget(c, 0) << 7 - j
             g |= bitget(c, 1) << 7 - j
@@ -123,12 +123,12 @@ class PeopleDetector(object):
         self.bridge = CvBridge()
 
         # parameters
-        self.threshold = get_param('threshold', 0.2)
+        self.threshold = float(get_param('~threshold', 0.2))
 
         # camera topics
         depth_info_sub = message_filters.Subscriber('/camera/depth/camera_info', CameraInfo)
-        depth_sub = message_filters.Subscriber('/camera/depth/image', Image)
-        rgb_sub = message_filters.Subscriber('/camera/rgb/image_color', Image)
+        depth_sub = message_filters.Subscriber('/camera/depth/image_rect', Image)
+        rgb_sub = message_filters.Subscriber('/camera/rgb/image_rect_color', Image)
 
         # openpose
         self.recognize = rospy.ServiceProxy('recognize', Recognize)
@@ -241,7 +241,7 @@ class PeopleDetector(object):
             ray = np.array(cam_model.projectPixelTo3dRay((u, v)))
             point3d = ray * d
 
-            rospy.loginfo('3d point of pixel %d,%d: %s', u, v, point3d)
+            rospy.loginfo('3d point of %s is %d,%d: %s', label, u, v, point3d)
             point = Point(point3d[0], point3d[1], point3d[2])
             joints.append(Joint(r.group_id, label, p, point))
         return joints
