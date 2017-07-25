@@ -42,16 +42,18 @@ class Skeleton(object):
             ('REye', 'Nose'),
 
             # body
-            ('LHip', 'Neck'),
-            ('LElbow', 'LWrist'),
+            ('LShoulder', 'Neck'),
             ('LShoulder', 'LElbow'),
-            ('RHip', 'Neck'),
+            ('LElbow', 'LWrist'),
             ('RElbow', 'RWrist'),
+            ('RShoulder', 'Neck'),
             ('RShoulder', 'RElbow'),
 
             # legs
+            ('LHip', 'Neck'),
             ('LAnkle', 'LKnee'),
             ('LKnee', 'LHip'),
+            ('RHip', 'Neck'),
             ('RAnkle', 'RKnee'),
             ('RKnee', 'RHip'),
         ]
