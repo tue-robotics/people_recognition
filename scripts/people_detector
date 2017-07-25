@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 import math
 from collections import namedtuple
-from cv_bridge import CvBridge
 from itertools import groupby
 
 import image_geometry
@@ -9,6 +8,7 @@ import message_filters
 import numpy as np
 import rospy
 import tf
+from cv_bridge import CvBridge
 from geometry_msgs.msg import Point, Vector3, Pose, Quaternion
 from image_recognition_msgs.srv import Recognize
 from people_msgs.msg import Person, People
@@ -142,8 +142,8 @@ class PeopleDetector(object):
 
         # published topics
         self.person_pub = rospy.Publisher('persons', People, queue_size=1)
-        self.markers_pub = rospy.Publisher('viz', MarkerArray, queue_size=1)
-        self.regions_viz_pub = rospy.Publisher('regions_viz', Image)
+        self.markers_pub = rospy.Publisher('~viz', MarkerArray, queue_size=1)
+        self.regions_viz_pub = rospy.Publisher('~regions_viz', Image, queue_size=1)
 
         # private variables
 
