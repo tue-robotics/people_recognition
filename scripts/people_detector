@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+from collections import namedtuple
 from cv_bridge import CvBridge
 from itertools import groupby
 
@@ -6,11 +7,81 @@ import image_geometry
 import message_filters
 import numpy as np
 import rospy
-from geometry_msgs.msg import Point
+from geometry_msgs.msg import Point, Vector3
 from image_recognition_msgs.srv import Recognize
 from people_msgs.msg import PersonStamped
 from sensor_msgs.msg import Image, CameraInfo
+from std_msgs.msg import ColorRGBA
 from visualization_msgs.msg import Marker, MarkerArray
+
+Joint = namedtuple('Joint', ['group_id', 'name', 'p', 'point'])
+
+
+class Skeleton(object):
+    """
+    Dictionary of all joints, the following joins could be available:
+
+    Nose
+    Neck
+    Chest
+    {L,R}{Shoulder,Elbow,Wrist,Hip,Knee,Ankle,Eye,Ear}
+    """
+
+    def __init__(self, bodyparts):
+        """Constructor
+
+        :param bodyparts: {name: Joint}
+        """
+        self.bodyparts = bodyparts
+        self.links = [
+            # head
+            ('Nose', 'Neck'),
+            ('LEar', 'LEye'),
+            ('LEye', 'Nose'),
+            ('REar', 'REye'),
+            ('REye', 'Nose'),
+
+            # body
+            ('LHip', 'Neck'),
+            ('LElbow', 'LWrist'),
+            ('LShoulder', 'LElbow'),
+            ('RHip', 'Neck'),
+            ('RElbow', 'RWrist'),
+            ('RShoulder', 'RElbow'),
+
+            # legs
+            ('LAnkle', 'LKnee'),
+            ('LKnee', 'LHip'),
+            ('RAnkle', 'RKnee'),
+            ('RKnee', 'RHip'),
+        ]
+
+    # def __iter__(self):
+    #     return self.bodyparts.__iter__()
+    #
+    # def __index__(self, value):
+    #     return self.bodyparts.__index__(value)
+    #
+    # def __getitem__(self, key):
+    #     return self.bodyparts.__getitem__(key)
+    #
+    # def items(self):
+    #     return self.bodyparts.items()
+
+    def get_links(self):
+        """
+        :returns [Point], with point pairs for all the links
+        """
+        for (a, b) in self.links:
+            if a in self.bodyparts and b in self.bodyparts:
+                yield self.bodyparts[a].point
+                yield self.bodyparts[b].point
+                rospy.loginfo("Add link {}".format((a, b)))
+            else:
+                rospy.logwarn("Not all bodyparts of link {} found".format((a, b)))
+
+    def __repr__(self):
+        return '%s(%r)' % (self.__class__.__name__, self.bodyparts)
 
 
 def color_map(N=256, normalized=False):
@@ -34,6 +105,14 @@ def color_map(N=256, normalized=False):
     return cmap
 
 
+def get_param(name, default):
+    if rospy.has_param(name):
+        return rospy.get_param(name)
+    else:
+        rospy.logwarn('parameter %s not set, using the default value of %s', name, default)
+        return rospy.get_param(name, default)
+
+
 class PeopleDetector(object):
     padding = 5
 
@@ -41,19 +120,28 @@ class PeopleDetector(object):
         rospy.loginfo('starting people_detector')
         self.bridge = CvBridge()
 
+        # parameters
+        self.threshold = get_param('threshold', 0.2)
+
+        # camera topics
         depth_info_sub = message_filters.Subscriber('/camera/depth/camera_info', CameraInfo)
         depth_sub = message_filters.Subscriber('/camera/depth/image', Image)
         rgb_sub = message_filters.Subscriber('/camera/rgb/image_color', Image)
 
+        # openpose
+        self.recognize = rospy.ServiceProxy('recognize', Recognize)
+
+        # published topics
         self.person_pub = rospy.Publisher('persons', PersonStamped, queue_size=1)
         self.markers_pub = rospy.Publisher('viz', MarkerArray, queue_size=1)
+
+        # private variables
 
         # self._ts = message_filters.TimeSynchronizer([depth_sub, depth_info_sub], 1)
         self._ts = message_filters.ApproximateTimeSynchronizer([rgb_sub, depth_sub, depth_info_sub], queue_size=3,
                                                                slop=0.1)
         self._ts.registerCallback(self.callback)
 
-        self.recognize = rospy.ServiceProxy('recognize', Recognize)
         rospy.wait_for_service(self.recognize)
         rospy.loginfo('people_detector started')
 
@@ -62,61 +150,46 @@ class PeopleDetector(object):
         assert rgb.width == depth.width
         assert rgb.height == depth.height
 
-        cv_depth = self.bridge.imgmsg_to_cv2(depth)
-
+        t = rospy.Time.now()
         data = self.recognize(image=rgb)
+        rospy.loginfo('openpose took %f seconds', (rospy.Time.now() - t).to_sec())
+
+        joints = self.recognitions_to_joints(data.recognitions, depth, depth_info)
 
         # groupby group_id
         groups = {}
-        for group_id, recognitions in groupby(data.recognitions, lambda r: r.group_id):
-            groups[group_id] = list(recognitions)
+        for group_id, js in groupby(joints, lambda j: j.group_id):
+            groups[group_id] = list(js)
 
+        # pushlish all joints
         cmap = color_map(N=len(groups), normalized=True)
-
         markers = MarkerArray()
-        for i, (_, recognitions) in enumerate(groups.items()):
-            recognitions = list(recognitions)
-            rospy.loginfo('found %s objects for group %s', len(recognitions), i)
-            points = []
-            for r in recognitions:
-                assert len(r.categorical_distribution.probabilities) == 1
-                p = r.categorical_distribution.probabilities[0]
+        for i, (_, js) in enumerate(groups.items()):
+            rospy.loginfo('found %s objects for group %s', len(js), i)
 
-                roi = r.roi
-                x_min = roi.x_offset - self.padding
-                x_max = roi.x_offset + roi.width + self.padding
-                y_min = roi.y_offset - self.padding
-                y_max = roi.y_offset + roi.height + self.padding
+            points = [j.point for j in js]
+            markers.markers.append(Marker(header=rgb.header,
+                                          ns='joints',
+                                          id=i,
+                                          type=Marker.SPHERE_LIST,
+                                          action=Marker.ADD,
+                                          lifetime=rospy.Duration(1),
+                                          points=points,
+                                          scale=Vector3(0.1, 0.1, 0.1),
+                                          color=ColorRGBA(cmap[i, 0], cmap[i, 1], cmap[i, 2], 1.0)))
 
-                if x_min < 0 or y_min < 0 or x_max > depth.width or y_max > depth.height:
-                    continue  # outside of the image
-                # rospy.loginfo('roi=[%d %d %d %d] in %dx%d', x_min, x_max, y_min, y_max, depth.width, depth.height)
-
-                region = cv_depth[x_min:x_max, y_min:y_max]
-
-                # skip fully nan
-                if np.all(np.isnan(region)):
-                    continue
-
-                median = np.nanmedian(region)
-                rospy.loginfo('region min=%f, max=%f, median=%f', np.nanmin(region), np.nanmax(region), median)
-
-                # project to 3d
-                u = roi.x_offset + roi.width // 2
-                v = roi.y_offset + roi.height // 2
-                d = median
-                cam_model = image_geometry.PinholeCameraModel()
-                cam_model.fromCameraInfo(depth_info)
-                ray = np.array(cam_model.projectPixelTo3dRay((u, v)))
-                point3d = ray * d
-
-                rospy.loginfo('3d point of pixel %d,%d: %s', u, v, point3d)
-                point = Point(point3d[0], point3d[1], point3d[2])
-                points.append(point)
-
-            marker = self.point3d_to_marker(i, points, rgb.header, cmap[i, 0], cmap[i, 1], cmap[i, 2])
-            markers.markers.append(marker)
+            s = Skeleton({j.name: j for j in js})
+            markers.markers.append(Marker(header=rgb.header,
+                                          ns='links',
+                                          id=i,
+                                          type=Marker.LINE_LIST,
+                                          action=Marker.ADD,
+                                          lifetime=rospy.Duration(1),
+                                          points=list(s.get_links()),
+                                          scale=Vector3(0.05, 0, 0),
+                                          color=ColorRGBA(cmap[i, 0], cmap[i, 1], cmap[i, 2], 1.0)))
         self.markers_pub.publish(markers)
+
 
         # create person
         # person = PersonStamped(header=rgb.header, person=Person(
@@ -125,26 +198,51 @@ class PeopleDetector(object):
         #
         # self.person_pub.publish(person)
 
-    def point3d_to_marker(self, i, points, header, r, g, b):
-        m = Marker()
-        m.header = header
-        m.ns = "joints"
-        m.id = i
-        m.type = Marker.SPHERE_LIST
-        m.action = Marker.ADD
-        m.lifetime = rospy.Duration(1)
-        m.points = points
+    def recognitions_to_joints(self, recognitions, depth, depth_info):
+        cv_depth = self.bridge.imgmsg_to_cv2(depth)
 
-        m.scale.x = 0.1
-        m.scale.y = 0.1
-        m.scale.z = 0.1
+        joints = []
+        for r in recognitions:
+            assert len(r.categorical_distribution.probabilities) == 1
+            pl = r.categorical_distribution.probabilities[0]
+            label = pl.label
+            p = pl.probability
 
-        m.color.r = r
-        m.color.g = g
-        m.color.b = b
-        m.color.a = 1.0
+            if p < self.threshold:
+                continue
 
-        return m
+            roi = r.roi
+            x_min = roi.x_offset - self.padding
+            x_max = roi.x_offset + roi.width + self.padding
+            y_min = roi.y_offset - self.padding
+            y_max = roi.y_offset + roi.height + self.padding
+
+            if x_min < 0 or y_min < 0 or x_max > depth.width or y_max > depth.height:
+                continue  # outside of the image
+            # rospy.loginfo('roi=[%d %d %d %d] in %dx%d', x_min, x_max, y_min, y_max, depth.width, depth.height)
+
+            region = cv_depth[x_min:x_max, y_min:y_max]
+
+            # skip fully nan
+            if np.all(np.isnan(region)):
+                continue
+
+            median = np.nanmedian(region)
+            rospy.loginfo('region p=%f min=%f, max=%f, median=%f', p, np.nanmin(region), np.nanmax(region), median)
+
+            # project to 3d
+            u = roi.x_offset + roi.width // 2
+            v = roi.y_offset + roi.height // 2
+            d = median
+            cam_model = image_geometry.PinholeCameraModel()
+            cam_model.fromCameraInfo(depth_info)
+            ray = np.array(cam_model.projectPixelTo3dRay((u, v)))
+            point3d = ray * d
+
+            rospy.loginfo('3d point of pixel %d,%d: %s', u, v, point3d)
+            point = Point(point3d[0], point3d[1], point3d[2])
+            joints.append(Joint(r.group_id, label, p, point))
+        return joints
 
 
 if __name__ == '__main__':
