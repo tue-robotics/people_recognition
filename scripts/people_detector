@@ -9,7 +9,7 @@ import numpy as np
 import rospy
 from geometry_msgs.msg import Point, Vector3
 from image_recognition_msgs.srv import Recognize
-from people_msgs.msg import PersonStamped
+from people_msgs.msg import Person, People
 from sensor_msgs.msg import Image, CameraInfo
 from std_msgs.msg import ColorRGBA
 from visualization_msgs.msg import Marker, MarkerArray
@@ -64,8 +64,12 @@ class Skeleton(object):
     # def __index__(self, value):
     #     return self.bodyparts.__index__(value)
     #
-    # def __getitem__(self, key):
-    #     return self.bodyparts.__getitem__(key)
+    def __getitem__(self, key):
+        return self.bodyparts.__getitem__(key)
+
+    def __contains__(self, item):
+        return self.bodyparts.__contains__(item)
+
     #
     # def items(self):
     #     return self.bodyparts.items()
@@ -76,11 +80,12 @@ class Skeleton(object):
         """
         for (a, b) in self.links:
             if a in self.bodyparts and b in self.bodyparts:
+                # rospy.loginfo("Add link {}".format((a, b)))
                 yield self.bodyparts[a].point
                 yield self.bodyparts[b].point
-                rospy.loginfo("Add link {}".format((a, b)))
             else:
-                rospy.logwarn("Not all bodyparts of link {} found".format((a, b)))
+                # rospy.logwarn("Not all bodyparts of link {} found".format((a, b)))
+                pass
 
     def __repr__(self):
         return '%s(%r)' % (self.__class__.__name__, self.bodyparts)
@@ -94,7 +99,7 @@ def color_map(N=256, normalized=False):
     cmap = np.zeros((N, 3), dtype=dtype)
     for i in range(N):
         r = g = b = 0
-        c = i + 1 # skip the first color (black)
+        c = i + 1  # skip the first color (black)
         for j in range(8):
             r |= bitget(c, 0) << 7 - j
             g |= bitget(c, 1) << 7 - j
@@ -134,7 +139,7 @@ class PeopleDetector(object):
         self.recognize = rospy.ServiceProxy('recognize', Recognize)
 
         # published topics
-        self.person_pub = rospy.Publisher('persons', PersonStamped, queue_size=1)
+        self.person_pub = rospy.Publisher('persons', People, queue_size=1)
         self.markers_pub = rospy.Publisher('viz', MarkerArray, queue_size=1)
 
         # private variables
@@ -159,14 +164,15 @@ class PeopleDetector(object):
         joints = self.recognitions_to_joints(data.recognitions, depth, depth_info)
 
         # groupby group_id
-        groups = {}
+        groups = []
         for group_id, js in groupby(joints, lambda j: j.group_id):
-            groups[group_id] = list(js)
+            groups.append(list(js))
 
-        # pushlish all joints
-        cmap = color_map(N=len(groups), normalized=True)
         markers = MarkerArray()
-        for i, (_, js) in enumerate(groups.items()):
+
+        # visualize joints
+        cmap = color_map(N=len(groups), normalized=True)
+        for i, js in enumerate(groups):
             rospy.loginfo('found %s objects for group %s', len(js), i)
 
             points = [j.point for j in js]
@@ -180,7 +186,10 @@ class PeopleDetector(object):
                                           scale=Vector3(0.1, 0.1, 0.1),
                                           color=ColorRGBA(cmap[i, 0], cmap[i, 1], cmap[i, 2], 1.0)))
 
-            s = Skeleton({j.name: j for j in js})
+        skeletons = [Skeleton({j.name: j for j in js}) for js in groups]
+
+        # visualize links
+        for i, s in enumerate(skeletons):
             markers.markers.append(Marker(header=rgb.header,
                                           ns='links',
                                           id=i,
@@ -190,15 +199,21 @@ class PeopleDetector(object):
                                           points=list(s.get_links()),
                                           scale=Vector3(0.05, 0, 0),
                                           color=ColorRGBA(cmap[i, 0], cmap[i, 1], cmap[i, 2], 1.0)))
+
+        persons = []
+        for s in skeletons:
+            # create persons
+            if 'Neck' not in s:
+                continue
+            point3d = s['Neck'].point
+            person = Person(
+                position=point3d,
+            )
+            persons.append(person)
+
+        self.person_pub.publish(People(header=rgb.header, people=persons))
+
         self.markers_pub.publish(markers)
-
-
-        # create person
-        # person = PersonStamped(header=rgb.header, person=Person(
-        #     position=Point(point3d[0], point3d[1], point3d[2]),
-        # ))
-        #
-        # self.person_pub.publish(person)
 
     def recognitions_to_joints(self, recognitions, depth, depth_info):
         cv_depth = self.bridge.imgmsg_to_cv2(depth)
