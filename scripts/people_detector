@@ -164,7 +164,10 @@ class PeopleDetector(object):
         cam_model.fromCameraInfo(depth_info)
 
         t = rospy.Time.now()
-        data = self.recognize(image=rgb)
+        try:
+            data = self.recognize(image=rgb)
+        except rospy.ServiceException:
+            return
         rospy.loginfo('openpose took %f seconds', (rospy.Time.now() - t).to_sec())
 
         joints = self.recognitions_to_joints(data.recognitions, depth, cam_model)
