@@ -160,11 +160,14 @@ class PeopleDetector(object):
         assert rgb.width == depth.width
         assert rgb.height == depth.height
 
+        cam_model = image_geometry.PinholeCameraModel()
+        cam_model.fromCameraInfo(depth_info)
+
         t = rospy.Time.now()
         data = self.recognize(image=rgb)
         rospy.loginfo('openpose took %f seconds', (rospy.Time.now() - t).to_sec())
 
-        joints = self.recognitions_to_joints(data.recognitions, depth, depth_info)
+        joints = self.recognitions_to_joints(data.recognitions, depth, cam_model)
 
         # groupby group_id
         groups = []
@@ -211,6 +214,7 @@ class PeopleDetector(object):
             point3d = s['Neck'].point
             persons.append(Person(
                 position=point3d,
+                tags=['wave_left', 'jumping']
             ))
 
         # visualize persons
@@ -219,23 +223,37 @@ class PeopleDetector(object):
 
         q = tf.transformations.quaternion_from_euler(-math.pi / 2, 0, 0)
         for i, p in enumerate(persons):
+            text = ','.join(p.tags)
+            y_max = p.position.y - 2 * head
             y_avg = p.position.y - head + height / 2
-            p = Point(p.position.x, y_avg, p.position.z)
+            p_avg = Point(p.position.x, y_avg, p.position.z)
+            p_head = Point(p.position.x, y_max, p.position.z)
             markers.markers.append(Marker(header=rgb.header,
                                           ns='persons',
                                           id=i,
                                           type=Marker.CYLINDER,
                                           action=Marker.ADD,
                                           lifetime=rospy.Duration(1),
-                                          pose=Pose(position=p, orientation=Quaternion(*q)),
+                                          pose=Pose(position=p_avg, orientation=Quaternion(*q)),
                                           scale=Vector3(0.2, 0.2, height),
                                           color=ColorRGBA(cmap[i, 0], cmap[i, 1], cmap[i, 2], 0.2)))
+
+            markers.markers.append(Marker(header=rgb.header,
+                                          ns='labels',
+                                          id=i,
+                                          type=Marker.TEXT_VIEW_FACING,
+                                          action=Marker.ADD,
+                                          lifetime=rospy.Duration(1),
+                                          pose=Pose(position=p_head, orientation=Quaternion(*q)),
+                                          text=text,
+                                          scale=Vector3(0, 0, 0.2),
+                                          color=ColorRGBA(cmap[i, 0], cmap[i, 1], cmap[i, 2], 1)))
 
         self.person_pub.publish(People(header=rgb.header, people=persons))
         # publish all markers in one go
         self.markers_pub.publish(markers)
 
-    def recognitions_to_joints(self, recognitions, depth, depth_info):
+    def recognitions_to_joints(self, recognitions, depth, cam_model):
         cv_depth = self.bridge.imgmsg_to_cv2(depth)
         regions_viz = np.zeros_like(cv_depth)
 
@@ -276,13 +294,11 @@ class PeopleDetector(object):
             u = roi.x_offset + roi.width // 2
             v = roi.y_offset + roi.height // 2
             d = median
-            cam_model = image_geometry.PinholeCameraModel()
-            cam_model.fromCameraInfo(depth_info)
             ray = np.array(cam_model.projectPixelTo3dRay((u, v)))
             point3d = ray * d
 
             rospy.loginfo('3d point of %s is %d,%d: %s', label, u, v, point3d)
-            point = Point(point3d[0], point3d[1], point3d[2])
+            point = Point(*point3d)
             joints.append(Joint(r.group_id, label, p, point))
         return joints
 
