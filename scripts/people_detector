@@ -143,6 +143,7 @@ class PeopleDetector(object):
         # published topics
         self.person_pub = rospy.Publisher('persons', People, queue_size=1)
         self.markers_pub = rospy.Publisher('viz', MarkerArray, queue_size=1)
+        self.regions_viz_pub = rospy.Publisher('regions_viz', Image)
 
         # private variables
 
@@ -236,6 +237,7 @@ class PeopleDetector(object):
 
     def recognitions_to_joints(self, recognitions, depth, depth_info):
         cv_depth = self.bridge.imgmsg_to_cv2(depth)
+        regions_viz = np.zeros_like(cv_depth)
 
         joints = []
         for r in recognitions:
@@ -257,7 +259,11 @@ class PeopleDetector(object):
                 continue  # outside of the image
             # rospy.loginfo('roi=[%d %d %d %d] in %dx%d', x_min, x_max, y_min, y_max, depth.width, depth.height)
 
-            region = cv_depth[x_min:x_max, y_min:y_max]
+            region = cv_depth[y_min:y_max, x_min:x_max]
+
+            # debugging viz
+            regions_viz[y_min:y_max, x_min:x_max] = cv_depth[y_min:y_max, x_min:x_max]
+            self.regions_viz_pub.publish(self.bridge.cv2_to_imgmsg(regions_viz))
 
             # skip fully nan
             if np.all(np.isnan(region)):
