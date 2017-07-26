@@ -131,6 +131,7 @@ class PeopleDetector(object):
 
         # parameters
         self.threshold = float(get_param('~threshold', 0.2))
+        self.heuristic = get_param('~heuristic', 'shoulder')
 
         # camera topics
         depth_info_sub = message_filters.Subscriber('/camera/depth/camera_info', CameraInfo)
@@ -217,7 +218,7 @@ class PeopleDetector(object):
             point3d = s['Neck'].point
             persons.append(Person(
                 position=point3d,
-                tags=['wave_left', 'jumping']
+                tags=self.get_person_tags(s)
             ))
 
         # visualize persons
@@ -291,7 +292,7 @@ class PeopleDetector(object):
                 continue
 
             median = np.nanmedian(region)
-            rospy.loginfo('region p=%f min=%f, max=%f, median=%f', p, np.nanmin(region), np.nanmax(region), median)
+            rospy.logdebug('region p=%f min=%f, max=%f, median=%f', p, np.nanmin(region), np.nanmax(region), median)
 
             # project to 3d
             u = roi.x_offset + roi.width // 2
@@ -300,10 +301,32 @@ class PeopleDetector(object):
             ray = np.array(cam_model.projectPixelTo3dRay((u, v)))
             point3d = ray * d
 
-            rospy.loginfo('3d point of %s is %d,%d: %s', label, u, v, point3d)
+            rospy.logdebug('3d point of %s is %d,%d: %s', label, u, v, point3d)
             point = Point(*point3d)
             joints.append(Joint(r.group_id, label, p, point))
         return joints
+
+    def get_person_tags(self, skeleton):
+        tags = []
+        for side in ('L', 'R'):
+            try:
+                if self.heuristic == 'shoulder':
+                    other = skeleton[side + 'Shoulder'].point
+                elif self.heuristic == 'head':
+                    other = skeleton['Head'].point
+                else:
+                    raise ValueError('wrong heuristic')
+
+                wrist = skeleton[side + 'Wrist'].point
+                elbow = skeleton[side + 'Elbow'].point
+            except KeyError as e:
+                continue
+
+            if wrist.y < other.y:
+                tags.append(side + 'wave')
+
+        rospy.loginfo(tags)
+        return tags
 
 
 if __name__ == '__main__':
