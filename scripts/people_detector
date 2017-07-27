@@ -359,7 +359,7 @@ class PeopleDetector(object):
                 continue
 
             if wrist.y < other.y:
-                tags.append(side + 'wave')
+                tags.append(side + 'Wave')
 
         rospy.loginfo(tags)
         return tags
