@@ -134,12 +134,12 @@ class PeopleDetector(object):
         self.heuristic = get_param('~heuristic', 'shoulder')
 
         # camera topics
-        depth_info_sub = message_filters.Subscriber('/camera/depth/camera_info', CameraInfo)
-        depth_sub = message_filters.Subscriber('/camera/depth/image_rect', Image)
-        rgb_sub = message_filters.Subscriber('/camera/rgb/image_rect_color', Image)
+        depth_info_sub = message_filters.Subscriber('camera/depth/camera_info', CameraInfo)
+        depth_sub = message_filters.Subscriber('camera/depth/image', Image)
+        rgb_sub = message_filters.Subscriber('camera/rgb/image', Image)
 
         # openpose
-        self.recognize = rospy.ServiceProxy('recognize', Recognize)
+        self.recognize = rospy.ServiceProxy('pose_detector/recognize', Recognize)
 
         # published topics
         self.person_pub = rospy.Publisher('persons', People, queue_size=1)
