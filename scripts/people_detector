@@ -169,7 +169,8 @@ class PeopleDetector(object):
         t = rospy.Time.now()
         try:
             data = self.recognize(image=rgb)
-        except rospy.ServiceException:
+        except rospy.ServiceException as e:
+            rospy.logwarn('openpose call failed: %s', e)
             return
         rospy.loginfo('openpose took %f seconds', (rospy.Time.now() - t).to_sec())
 
