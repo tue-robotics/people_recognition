@@ -298,8 +298,8 @@ class PeopleDetector(object):
             rospy.logdebug('region p=%f min=%f, max=%f, median=%f', p, np.nanmin(region), np.nanmax(region), median)
 
             # project to 3d
-            u = roi.x_offset + roi.width // 2
-            v = roi.y_offset + roi.height // 2
+            u = (x_min + x_max) // 2
+            v = (y_min + y_max) // 2
             d = median
             ray = np.array(cam_model.projectPixelTo3dRay((u, v)))
             point3d = ray * d
