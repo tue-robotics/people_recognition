@@ -14,6 +14,7 @@ from cv_bridge import CvBridge
 from geometry_msgs.msg import Point, Vector3, Pose, Quaternion
 from image_recognition_msgs.srv import Recognize
 from people_msgs.msg import Person, People
+from robot_skills.util.kdl_conversions import pointMsgToKdlVector
 from sensor_msgs.msg import Image, CameraInfo
 from std_msgs.msg import ColorRGBA
 from visualization_msgs.msg import Marker, MarkerArray
@@ -36,7 +37,6 @@ class Skeleton(object):
 
         :param bodyparts: {name: Joint}
         """
-        self.bodyparts = bodyparts
         self.links = [
             # head
             ('Nose', 'Neck'),
@@ -61,6 +61,22 @@ class Skeleton(object):
             ('RAnkle', 'RKnee'),
             ('RKnee', 'RHip'),
         ]
+
+        self.bodyparts = bodyparts
+
+    def filter_bodyparts(self, threshold):
+        filter_list = set()
+        for (a, b) in self.links:
+            if a in self.bodyparts and b in self.bodyparts:
+                p1 = self.bodyparts[a].point
+                p2 = self.bodyparts[b].point
+
+                l = (pointMsgToKdlVector(p1) - pointMsgToKdlVector(p2)).Norm()
+                if l > threshold:
+                    filter_list.add(a)
+                    filter_list.add(b)
+
+        return Skeleton({name: joint for name, joint in self.bodyparts.items() if name not in filter_list})
 
     # def __iter__(self):
     #     return self.bodyparts.__iter__()
@@ -132,7 +148,8 @@ class PeopleDetector(object):
         self.bridge = CvBridge()
 
         # parameters
-        self.threshold = float(get_param('~threshold', 0.2))
+        self.threshold = float(get_param('~probability_threshold', 0.2))
+        self.link_threshold = float(get_param('~link_threshold', 0.5))
         self.heuristic = get_param('~heuristic', 'shoulder')
 
         # camera topics
@@ -200,6 +217,7 @@ class PeopleDetector(object):
                                           color=ColorRGBA(cmap[i, 0], cmap[i, 1], cmap[i, 2], 1.0)))
 
         skeletons = [Skeleton({j.name: j for j in js}) for js in groups]
+        skeletons = [s.filter_bodyparts(self.link_threshold) for s in skeletons]
 
         # visualize links
         for i, s in enumerate(skeletons):
