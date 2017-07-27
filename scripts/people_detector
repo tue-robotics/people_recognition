@@ -146,14 +146,16 @@ class PeopleDetector(object):
         self.markers_pub = rospy.Publisher('~viz', MarkerArray, queue_size=1)
         self.regions_viz_pub = rospy.Publisher('~regions_viz', Image, queue_size=1)
 
+        # before subscribing, wait for services
+        rospy.loginfo('wait for service [%s]', self.recognize.resolved_name)
+        self.recognize.wait_for_service()
+
         # private variables
 
         # self._ts = message_filters.TimeSynchronizer([depth_sub, depth_info_sub], 1)
         self._ts = message_filters.ApproximateTimeSynchronizer([rgb_sub, depth_sub, depth_info_sub], queue_size=3,
                                                                slop=0.1)
         self._ts.registerCallback(self.callback)
-
-        rospy.wait_for_service(self.recognize)
         rospy.loginfo('people_detector started')
 
     def callback(self, rgb, depth, depth_info):
