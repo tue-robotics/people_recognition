@@ -211,7 +211,7 @@ class PeopleDetector(object):
                                           id=i,
                                           type=Marker.SPHERE_LIST,
                                           action=Marker.ADD,
-                                          lifetime=rospy.Duration(1),
+                                          lifetime=rospy.Duration(1.5),
                                           points=points,
                                           scale=Vector3(0.1, 0.1, 0.1),
                                           color=ColorRGBA(cmap[i, 0], cmap[i, 1], cmap[i, 2], 1.0)))
@@ -226,7 +226,7 @@ class PeopleDetector(object):
                                           id=i,
                                           type=Marker.LINE_LIST,
                                           action=Marker.ADD,
-                                          lifetime=rospy.Duration(1),
+                                          lifetime=rospy.Duration(1.5),
                                           points=list(s.get_links()),
                                           scale=Vector3(0.05, 0, 0),
                                           color=ColorRGBA(cmap[i, 0], cmap[i, 1], cmap[i, 2], 1.0)))
@@ -258,7 +258,7 @@ class PeopleDetector(object):
                                           id=i,
                                           type=Marker.CYLINDER,
                                           action=Marker.ADD,
-                                          lifetime=rospy.Duration(1),
+                                          lifetime=rospy.Duration(1.5),
                                           pose=Pose(position=p_avg, orientation=Quaternion(*q)),
                                           scale=Vector3(0.2, 0.2, height),
                                           color=ColorRGBA(cmap[i, 0], cmap[i, 1], cmap[i, 2], 0.2)))
@@ -268,7 +268,7 @@ class PeopleDetector(object):
             #                               id=i,
             #                               type=Marker.TEXT_VIEW_FACING,
             #                               action=Marker.ADD,
-            #                               lifetime=rospy.Duration(1),
+            #                               lifetime=rospy.Duration(1.5),
             #                               pose=Pose(position=p_head, orientation=Quaternion(*q)),
             #                               text=text,
             #                               scale=Vector3(0, 0, 0.2),
