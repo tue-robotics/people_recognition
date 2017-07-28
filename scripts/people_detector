@@ -22,13 +22,29 @@ from visualization_msgs.msg import Marker, MarkerArray
 Joint = namedtuple('Joint', ['group_id', 'name', 'p', 'point'])
 
 
+def geometry_msg_point_to_kdl_vector(msg):
+    return kdl.Vector(msg.x, msg.y, msg.z)
+
+
+def get_frame_from_vector(x_vector, origin):
+    unit_z = kdl.Vector(0, 0, 1)
+    unit_z_cross_diff = (unit_z * x_vector) / (unit_z * x_vector).Norm()
+    y_vector = x_vector * unit_z_cross_diff
+    z_vector = x_vector * y_vector
+
+    rotation = kdl.Rotation(x_vector, y_vector, z_vector)
+    translation = origin
+
+    return kdl.Frame(rotation, translation)
+
+
 class Skeleton(object):
     """
     Dictionary of all joints, the following joins could be available:
 
     Nose
     Neck
-    Chest
+    nose
     {L,R}{Shoulder,Elbow,Wrist,Hip,Knee,Ankle,Eye,Ear}
     """
 
@@ -71,7 +87,7 @@ class Skeleton(object):
                 p1 = self.bodyparts[a].point
                 p2 = self.bodyparts[b].point
 
-                l = (kdl.Vector(p1.x, p1.y, p1.z) - kdl.Vector(p2.x, p2.y, p2.z)).Norm()
+                l = (geometry_msg_point_to_kdl_vector(p1) - geometry_msg_point_to_kdl_vector(p2)).Norm()
                 if l > threshold:
                     filter_list.add(a)
                     filter_list.add(b)
@@ -151,6 +167,7 @@ class PeopleDetector(object):
         self.threshold = float(get_param('~probability_threshold', 0.2))
         self.link_threshold = float(get_param('~link_threshold', 0.5))
         self.heuristic = get_param('~heuristic', 'shoulder')
+        self.arm_norm_threshold = get_param('~arm_norm_threshold', 0.5)
 
         # camera topics
         depth_info_sub = message_filters.Subscriber('camera/depth/camera_info', CameraInfo)
@@ -199,6 +216,7 @@ class PeopleDetector(object):
             groups.append(list(js))
 
         markers = MarkerArray()
+        markers.markers.append(Marker(action=Marker.DELETEALL))
 
         # visualize joints
         cmap = color_map(N=len(groups), normalized=True)
@@ -211,7 +229,6 @@ class PeopleDetector(object):
                                           id=i,
                                           type=Marker.SPHERE_LIST,
                                           action=Marker.ADD,
-                                          lifetime=rospy.Duration(1.5),
                                           points=points,
                                           scale=Vector3(0.1, 0.1, 0.1),
                                           color=ColorRGBA(cmap[i, 0], cmap[i, 1], cmap[i, 2], 1.0)))
@@ -226,7 +243,6 @@ class PeopleDetector(object):
                                           id=i,
                                           type=Marker.LINE_LIST,
                                           action=Marker.ADD,
-                                          lifetime=rospy.Duration(1.5),
                                           points=list(s.get_links()),
                                           scale=Vector3(0.05, 0, 0),
                                           color=ColorRGBA(cmap[i, 0], cmap[i, 1], cmap[i, 2], 1.0)))
@@ -237,10 +253,18 @@ class PeopleDetector(object):
             if 'Neck' not in s:
                 continue
             point3d = s['Neck'].point
-            persons.append(Person(
+
+            person = Person(
                 position=point3d,
-                tags=self.get_person_tags(s)
-            ))
+                tags=self.get_person_tags(s),
+            )
+
+            pointing_pose = self.get_pointing_pose(s, self.arm_norm_threshold)
+            if pointing_pose:
+                person.tags.append("is_pointing")
+                person.pointing_pose = pointing_pose
+
+            persons.append(person)
 
         # visualize persons
         height = 1.8
@@ -261,7 +285,17 @@ class PeopleDetector(object):
                                           lifetime=rospy.Duration(1.5),
                                           pose=Pose(position=p_avg, orientation=Quaternion(*q)),
                                           scale=Vector3(0.2, 0.2, height),
-                                          color=ColorRGBA(cmap[i, 0], cmap[i, 1], cmap[i, 2], 0.2)))
+                                          color=ColorRGBA(cmap[i, 0], cmap[i, 1], cmap[i, 2], 0.5)))
+            if "is_pointing" in p.tags:
+                markers.markers.append(Marker(header=rgb.header,
+                                              ns='pointing_pose',
+                                              id=i,
+                                              type=Marker.ARROW,
+                                              action=Marker.ADD,
+                                              lifetime=rospy.Duration(1.5),
+                                              pose=p.pointing_pose,
+                                              scale=Vector3(1, 0.1, 0.1),
+                                              color=ColorRGBA(cmap[i, 0], cmap[i, 1], cmap[i, 2], 1.0)))
 
             # markers.markers.append(Marker(header=rgb.header,
             #                               ns='labels',
@@ -300,7 +334,7 @@ class PeopleDetector(object):
 
             if rgb.width != depth.width or rgb.height != depth.height:
                 factor = depth.width / rgb.width
-                rospy.loginfo("using hack for Sjoerd's rgbd stuff, scaling factor %f", factor)
+                rospy.logdebug("using hack for Sjoerd's rgbd stuff, scaling factor %f", factor)
 
                 x_min = int(x_min * factor)
                 x_max = int(x_max * factor)
@@ -384,6 +418,98 @@ class PeopleDetector(object):
 
         rospy.loginfo(tags)
         return tags
+
+    @staticmethod
+    def get_pointing_pose(skeleton, arm_norm_threshold=0.3, neck_norm_threshold=0.7):
+        # We do required the shoulders for pointing calculation
+        if "Neck" not in skeleton or "Nose" not in skeleton:
+            return None
+
+        neck = geometry_msg_point_to_kdl_vector(skeleton['Neck'].point)
+        nose = geometry_msg_point_to_kdl_vector(skeleton['Nose'].point)
+        neck_vector = (nose - neck) / (nose - neck).Norm()
+
+        # Check if arms are pointing
+        left_arm_valid = "LWrist" in skeleton and "LElbow" in skeleton
+        right_arm_valid = "RWrist" in skeleton and "RElbow" in skeleton
+
+        if left_arm_valid:
+            left_wrist = geometry_msg_point_to_kdl_vector(skeleton['LWrist'].point)
+            left_elbow = geometry_msg_point_to_kdl_vector(skeleton['LElbow'].point)
+            left_shoulder = geometry_msg_point_to_kdl_vector(skeleton['LShoulder'].point)
+
+            left_lower_arm_vector = (left_wrist - left_elbow) / (left_wrist - left_elbow).Norm()
+            left_upper_arm_vector = (left_elbow - left_shoulder) / (left_elbow - left_shoulder).Norm()
+            left_frame = get_frame_from_vector(left_lower_arm_vector, left_wrist)
+            left_arm_norm = (left_lower_arm_vector * left_upper_arm_vector).Norm()
+
+            left_arm_neck_norm = (neck_vector * left_upper_arm_vector).Norm()
+
+            rospy.loginfo("Left arm norm: %.2f", left_arm_norm)
+        else:
+            rospy.loginfo("Left arm not valid because it does not contain all required bodyparts")
+
+        if right_arm_valid:
+            right_wrist = geometry_msg_point_to_kdl_vector(skeleton['RWrist'].point)
+            right_elbow = geometry_msg_point_to_kdl_vector(skeleton['RElbow'].point)
+            right_shoulder = geometry_msg_point_to_kdl_vector(skeleton['RShoulder'].point)
+
+            right_lower_arm_vector = (right_wrist - right_elbow) / (right_wrist - right_elbow).Norm()
+            right_upper_arm_vector = (right_elbow - right_shoulder) / (right_elbow - right_shoulder).Norm()
+            right_frame = get_frame_from_vector(right_lower_arm_vector, right_wrist)
+            right_arm_norm = (right_lower_arm_vector * right_upper_arm_vector).Norm()
+
+            right_arm_neck_norm = (neck_vector * right_upper_arm_vector).Norm()
+
+            rospy.loginfo("Left arm norm: %.2f", right_arm_norm)
+        else:
+            rospy.loginfo("Left arm not valid because it does not contain all required bodyparts")
+
+        rospy.loginfo("Arm norm threshold: %.2f", arm_norm_threshold)
+
+        # Constraint based on parralelliness of the arm
+        if left_arm_valid and left_arm_norm > arm_norm_threshold:
+            rospy.loginfo("Rejecting left arm because of norm threshold ...")
+            left_arm_valid = False
+        if right_arm_valid and right_arm_norm > arm_norm_threshold:
+            rospy.loginfo("Rejecting right arm because of norm threshold ...")
+            right_arm_valid = False
+
+        # Constraint based on parralelliness arm and neck
+        if left_arm_valid and left_arm_neck_norm < neck_norm_threshold:
+            rospy.loginfo("Rejecting left arm because of neck norm threshold ...")
+            left_arm_valid = False
+        if right_arm_valid and right_arm_neck_norm < neck_norm_threshold:
+            rospy.loginfo("Rejecting right arm because of neck norm threshold ...")
+            right_arm_valid = False
+
+        # Optimize
+        frame = None
+        if left_arm_valid and right_arm_valid:
+            if left_arm_neck_norm > right_arm_neck_norm:
+                rospy.loginfo("Right arm is pointing the most, using this one")
+                frame = right_frame
+            else:
+                rospy.loginfo("Left arm is pointing the most, using this one")
+                frame = left_frame
+        if left_arm_valid and right_arm_valid:
+            if left_arm_norm > right_arm_norm:
+                rospy.loginfo("Right arm is pointing the most, using this one")
+                frame = right_frame
+            else:
+                rospy.loginfo("Left arm is pointing the most, using this one")
+                frame = left_frame
+
+        if left_arm_valid:
+            frame = left_frame
+        if right_arm_valid:
+            frame = right_frame
+
+        if not frame:
+            rospy.loginfo("No valid arms found ...")
+            return None
+
+        return Pose(position=Point(*frame.p), orientation=Quaternion(*frame.M.GetQuaternion()))
 
 
 if __name__ == '__main__':
