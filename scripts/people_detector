@@ -298,11 +298,9 @@ class PeopleDetector(object):
             y_min = roi.y_offset - self.padding
             y_max = roi.y_offset + roi.height + self.padding
 
-            rospy.loginfo('checking')
             if rgb.width != depth.width or rgb.height != depth.height:
-                rospy.loginfo("using hack for Sjoerd's rgbd stuff")
                 factor = depth.width / rgb.width
-                rospy.loginfo('scaling factor %f', factor)
+                rospy.loginfo("using hack for Sjoerd's rgbd stuff, scaling factor %f", factor)
 
                 x_min = int(x_min * factor)
                 x_max = int(x_max * factor)
