@@ -319,20 +319,22 @@ class PeopleDetector(object):
             regions_viz[y_min:y_max, x_min:x_max] = cv_depth[y_min:y_max, x_min:x_max]
             self.regions_viz_pub.publish(self.bridge.cv2_to_imgmsg(regions_viz))
 
+            u = (x_min + x_max) // 2
+            v = (y_min + y_max) // 2
+
             # skip fully nan
             if np.all(np.isnan(region)):
                 continue
 
             # Sjoerd's rgbd implementation returns 0 on invalid
             if not np.all(region):
+                joints.append(Joint(r.group_id, label, p, Point(x=u, y=v, z=None)))
                 continue
 
             median = np.nanmedian(region)
             rospy.logdebug('region p=%f min=%f, max=%f, median=%f', p, np.nanmin(region), np.nanmax(region), median)
 
             # project to 3d
-            u = (x_min + x_max) // 2
-            v = (y_min + y_max) // 2
             d = median
             ray = np.array(cam_model.projectPixelTo3dRay((u, v)))
             point3d = ray * d
@@ -340,7 +342,28 @@ class PeopleDetector(object):
             rospy.logdebug('3d point of %s is %d,%d: %s', label, u, v, point3d)
             point = Point(*point3d)
             joints.append(Joint(r.group_id, label, p, point))
-        return joints
+
+        new_joints = []
+        for joint in joints:
+            if joint.point.z:
+                new_joints.append(joint)
+            else:
+                zs = []
+                for j in joints:
+                    if j.group_id == joint.group_id and j.name != joint.name and j.point.z:
+                        zs.append(j.point.z)
+
+                if zs:
+                    mean_z = np.mean(zs)
+                    ray = np.array(cam_model.projectPixelTo3dRay((joint.point.x, joint.point.y)))
+                    point3d = ray * mean_z
+
+                    new_joint = Joint(joint.group_id, joint.name, joint.p, Point(*point3d))
+                    new_joints.append(new_joint)
+                else:
+                    new_joints.append(joint)
+
+        return new_joints
 
     def get_person_tags(self, skeleton):
         tags = []
