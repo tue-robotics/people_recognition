@@ -306,7 +306,7 @@ class PeopleDetector(object):
             #                               scale=Vector3(0, 0, 0.2),
             #                               color=ColorRGBA(cmap[i, 0], cmap[i, 1], cmap[i, 2], 1)))
 
-        self.person_pub.publish(People(header=rgb.header, people=persons))
+        self.person_pub.publish(People(header=rgb.header, people=persons.values()))
         # publish all markers in one go
         self.markers_pub.publish(markers)
 
