@@ -411,7 +411,7 @@ class PeopleDetector(object):
             except KeyError as e:
                 continue
 
-            if wrist.y < other.y:
+            if wrist.y < other.y - 0.3:
                 tags.append(side + 'Wave')
 
         rospy.loginfo(tags)
