@@ -168,6 +168,7 @@ class PeopleDetector(object):
         self.link_threshold = float(get_param('~link_threshold', 0.5))
         self.heuristic = get_param('~heuristic', 'shoulder')
         self.arm_norm_threshold = get_param('~arm_norm_threshold', 0.5)
+        self.wave_threshold = get_param('~wave_threshold', 0.3)
 
         # camera topics
         depth_info_sub = message_filters.Subscriber('camera/depth/camera_info', CameraInfo)
@@ -407,11 +408,10 @@ class PeopleDetector(object):
                     raise ValueError('wrong heuristic')
 
                 wrist = skeleton[side + 'Wrist'].point
-                elbow = skeleton[side + 'Elbow'].point
-            except KeyError as e:
+            except KeyError:
                 continue
 
-            if wrist.y < other.y - 0.3:
+            if wrist.y < other.y - self.wave_threshold:
                 tags.append(side + 'Wave')
 
         rospy.loginfo(tags)
