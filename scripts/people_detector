@@ -413,7 +413,7 @@ class PeopleDetector(object):
             except KeyError:
                 continue
 
-            if wrist.y < (other.y - self.wave_threshold):
+            if wrist.y < (other.y - self.wave_threshold) and wrist.x < (other.x + self.hor_threshold):
                 tags.append(side + 'Wave')
 
         for side in ('L', 'R'):
