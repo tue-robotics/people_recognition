@@ -414,6 +414,22 @@ class PeopleDetector(object):
             if wrist.y < (other.y - self.wave_threshold):
                 tags.append(side + 'Wave')
 
+        for side in ('L', 'R'):
+            try:
+                if self.heuristic == 'shoulder':
+                    other = skeleton[side + 'Shoulder'].point
+                elif self.heuristic == 'head':
+                    other = skeleton['Head'].point
+                else:
+                    raise ValueError('wrong heuristic')
+
+                wrist = skeleton[side + 'Wrist'].point
+            except KeyError:
+                continue
+
+            if wrist.x > (other.x + self.wave_threshold):
+                tags.append(side + 'Pointing')
+
         rospy.loginfo(tags)
         return tags
 
