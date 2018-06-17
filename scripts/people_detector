@@ -168,7 +168,9 @@ class PeopleDetector(object):
         self.link_threshold = float(get_param('~link_threshold', 0.5))
         self.heuristic = get_param('~heuristic', 'shoulder')
         self.arm_norm_threshold = get_param('~arm_norm_threshold', 0.5)
-        self.wave_threshold = get_param('~wave_threshold', 0.3)
+        self.wave_threshold = get_param('~wave_threshold', 0.2)
+        self.vert_threshold = get_param('~vert_threshold', 0.7)
+        self.hor_threshold = get_param('~hor_threshold', 0.4)
 
         # camera topics
         depth_info_sub = message_filters.Subscriber('camera/depth/camera_info', CameraInfo)
@@ -427,8 +429,40 @@ class PeopleDetector(object):
             except KeyError:
                 continue
 
-            if wrist.x > (other.x + self.wave_threshold):
+            if wrist.x > (other.x + self.hor_threshold):
                 tags.append(side + 'Pointing')
+
+        for side in ('L', 'R'):
+            try:
+                if self.heuristic == 'shoulder':
+                    other = skeleton[side + 'Shoulder'].point
+                elif self.heuristic == 'head':
+                    other = skeleton['Head'].point
+                else:
+                    raise ValueError('wrong heuristic')
+
+                knee = skeleton[side + 'Knee'].point
+            except KeyError:
+                continue
+
+            if knee.y < (other.y + self.vert_threshold) & knee.x > (other.x + self.hor_threshold):
+                tags.append(side + 'Laying')
+
+        for side in ('L', 'R'):
+            try:
+                if self.heuristic == 'shoulder':
+                    other = skeleton[side + 'Shoulder'].point
+                elif self.heuristic == 'head':
+                    other = skeleton['Head'].point
+                else:
+                    raise ValueError('wrong heuristic')
+
+                knee = skeleton[side + 'Knee'].point
+            except KeyError:
+                continue
+
+            if knee.y < (other.y + self.vert_threshold) & knee.x < (other.x + self.hor_threshold):
+                tags.append(side + 'Laying')
 
         rospy.loginfo(tags)
         return tags
