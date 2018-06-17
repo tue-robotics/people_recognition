@@ -445,7 +445,7 @@ class PeopleDetector(object):
             except KeyError:
                 continue
 
-            if knee.y < (other.y + self.vert_threshold) & knee.x > (other.x + self.hor_threshold):
+            if knee.y < (other.y + self.vert_threshold) and knee.x > (other.x + self.hor_threshold):
                 tags.append(side + 'Laying')
 
         for side in ('L', 'R'):
@@ -461,8 +461,8 @@ class PeopleDetector(object):
             except KeyError:
                 continue
 
-            if knee.y < (other.y + self.vert_threshold) & knee.x < (other.x + self.hor_threshold):
-                tags.append(side + 'Laying')
+            if knee.y < (other.y + self.vert_threshold) and knee.x < (other.x + self.hor_threshold):
+                tags.append(side + 'Sitting')
 
         rospy.loginfo(tags)
         return tags
