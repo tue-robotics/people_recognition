@@ -1,15 +1,19 @@
+# Python modules
 import time
 from contextlib import closing
 from multiprocessing import Pool
-
 import cv2
 import math
+
+# ROS modules
 import rospy
 from cv_bridge import CvBridge
-from image_recognition_msgs.msg import Recognition, FaceProperties
-from image_recognition_msgs.srv import Recognize, GetFaceProperties
+from std_msgs.msg import String
 from sensor_msgs.msg import RegionOfInterest
 
+# Image recognition repository modules
+from image_recognition_msgs.msg import Recognition, FaceProperties
+from image_recognition_msgs.srv import Recognize, GetFaceProperties, ExtractColour
 from image_recognition_util import image_writer
 
 
@@ -22,14 +26,12 @@ def _threaded_srv(args):
     del args
     return result
 
-
 def _get_and_wait_for_services(service_names, service_class, suffix=""):
     services = {s: rospy.ServiceProxy('{}{}'.format(s, suffix), service_class) for s in service_names}
     for service in services.values():
         rospy.loginfo("Waiting for service {} ...".format(service.resolved_name))
         service.wait_for_service()
     return services
-
 
 class PeopleDetector(object):
     def __init__(self):
@@ -41,6 +43,10 @@ class PeopleDetector(object):
         self._face_properties_services = _get_and_wait_for_services([
             'keras'
         ], GetFaceProperties, '/get_face_properties')
+
+        self._colour_extractor_services = _get_and_wait_for_services([
+            'extract_colour'
+        ], ExtractColour, '/extract_colour')
 
         self._bridge = CvBridge()
 
@@ -137,7 +143,6 @@ class PeopleDetector(object):
         best.roi.height = int(best.roi.height + best.roi.height * 2 * padding_factor)
 
         return best
-
 
     @staticmethod
     def _get_best_label_from_categorical_distribution(c):
