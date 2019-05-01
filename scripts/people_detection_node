@@ -6,7 +6,7 @@ import time
 
 import cv2
 import rospy
-from image_recognition_people_detector.people_detector import PeopleDetector
+from image_recognition_people_detector import PeopleDetector
 
 parser = argparse.ArgumentParser(description='Get people detections')
 parser.add_argument('-v', '--verbose', help="Increase output verbosity", action="store_true")
@@ -22,9 +22,19 @@ cam_parser.add_argument('--rate', default=3.0, type=float, help='Input image')
 
 args = parser.parse_args()
 
-rospy.init_node('get_people_detections')
+class PeopleDetectionNode:
+    def __init__(self):
+        self._people_detector = PeopleDetector()
+        self._detect_people_srv = rospy.Service('detect_people', DetectPeople,
+                self._detect_people_srv)
 
-detector = PeopleDetector()
+        rospy.loginfo("PeopleDetectionNode initialized:")
+
+    def _detect_people_srv(self, req):
+
+if __name__ == '__main__':
+    rospy.init_node('people_detection')
+    detector = PeopleDetector()
 
 if args.mode == 'image':
     image = cv2.imread(args.image)
