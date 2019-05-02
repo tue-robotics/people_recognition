@@ -258,18 +258,28 @@ class PeopleDetector(object):
         shirt_images = [PeopleDetector._image_from_roi(image, PeopleDetector.move_face_roi_to_shirt(r.roi, image)) for r in face_recognitions]
         shirt_colours_array = [self._get_colour_extractor(img) for img in shirt_images]
 
+        # Prepare image annotation labels and People message
+        image_annotations = list()
+        people = list()
+
+        for face_label, face_properties, shirt_colours in zip(face_labels,
+                face_properties_array, shirt_colours_array):
+            temp_label = PeopleDetector._face_properties_to_label(face_properties) + \
+                    PeopleDetector._shirt_colours_to_label(shirt_colours)
+
+            if face_label:
+                image_annotations.append(face_label + " " + temp_label)
+            else:
+                image_annotations.append(temp_label)
+
+            people.append(Person(name=face_label,
+                                 age=face_properties.age,
+                                 gender=face_properties.gender,
+                                 shirt_colors=shirt_colours))
+
         cv_image = image_writer.get_annotated_cv_image(image,
                                                        recognitions=face_recognitions,
-                                                       labels=[face_label if face_label else
-                                                                PeopleDetector._face_properties_to_label(face_properties) + PeopleDetector._shirt_colours_to_label(shirt_colours)
-                                                               for face_label, face_properties, shirt_colours in zip(face_labels, face_properties_array, shirt_colours_array)])
+                                                       labels=image_annotations)
 
-        people = [Person(name=face_label,
-                         age=face_properties.age,
-                         gender=face_properties.gender,
-                         shirt_colors=shirt_colors)
-                  for face_label, face_properties, shirt_colors in zip(face_labels,
-                                                                       face_properties_array,
-                                                                       shirt_colours_array)]
 
         return people, cv_image
