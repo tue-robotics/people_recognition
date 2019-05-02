@@ -214,6 +214,13 @@ class PeopleDetector(object):
                                     face_properties.age)
 
     @staticmethod
+    def _shirt_colours_to_label(shirt_colours):
+        label = ""
+        for colour in shirt_colours:
+            label += " {}".format(colour)
+        return label
+
+    @staticmethod
     def move_face_roi_to_shirt(face_roi, img):
         """
         Given a ROI for a face, shift the ROI to the person's shirt. Assuming the person is upright :/
@@ -254,9 +261,8 @@ class PeopleDetector(object):
         cv_image = image_writer.get_annotated_cv_image(image,
                                                        recognitions=face_recognitions,
                                                        labels=[face_label if face_label else
-                                                                PeopleDetector._face_properties_to_label(face_properties)
-                                                               for face_label, face_properties
-                                                               in zip(face_labels, face_properties_array)])
+                                                                PeopleDetector._face_properties_to_label(face_properties) + PeopleDetector._shirt_colours_to_label(shirt_colours)
+                                                               for face_label, face_properties, shirt_colours in zip(face_labels, face_properties_array, shirt_colours_array)])
 
         people = [Person(name=face_label,
                          age=face_properties.age,
