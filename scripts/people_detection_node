@@ -32,7 +32,7 @@ class PeopleDetectionNode:
             raise Exception("Could not convert image to opencv image: %s" % str(e))
 
         rospy.loginfo("Detecting people in incoming image")
-        people = self._people_detector.recognize(bgr_image)
+        people, _ = self._people_detector.recognize(bgr_image)
 
         return DetectPeopleResponse(people=people)
 
