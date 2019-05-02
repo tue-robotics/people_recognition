@@ -215,7 +215,7 @@ class PeopleDetector(object):
 
     @staticmethod
     def _shirt_colours_to_label(shirt_colours):
-        label = ""
+        label = " shirt colours:"
         for colour in shirt_colours['extract_colour'].colours:
             label += " {}".format(colour.data)
         return label
