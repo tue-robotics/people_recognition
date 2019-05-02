@@ -4,6 +4,8 @@ project(people_detection_3d_msgs)
 find_package(catkin REQUIRED COMPONENTS
   message_generation
   sensor_msgs
+  image_recognition_msgs
+  geometry_msgs
 )
 
 # Generate messages in the 'msg' folder
@@ -22,10 +24,12 @@ add_service_files(
 generate_messages(
   DEPENDENCIES
   sensor_msgs
+  image_recognition_msgs
+  geometry_msgs
 )
 
 catkin_package(
-  CATKIN_DEPENDS message_runtime sensor_msgs
+  CATKIN_DEPENDS message_runtime sensor_msgs image_recognition_msgs geometry_msgs
 )
 
 # Test catkin lint
