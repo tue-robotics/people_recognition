@@ -5,19 +5,20 @@ import math
 import PyKDL as kdl
 from collections import namedtuple
 from itertools import groupby
+import numpy as np
 
 import image_geometry
 import message_filters
-import numpy as np
 import rospy
 import tf
 from cv_bridge import CvBridge
 from geometry_msgs.msg import Point, Vector3, Pose, Quaternion
-from image_recognition_msgs.srv import Recognize
-from tue_msgs.msg import Person, People
 from sensor_msgs.msg import Image, CameraInfo
 from std_msgs.msg import ColorRGBA
 from visualization_msgs.msg import Marker, MarkerArray
+
+from image_recognition_msgs.srv import Recognize
+from tue_msgs.msg import Person, People
 
 Joint = namedtuple('Joint', ['group_id', 'name', 'p', 'point'])
 
