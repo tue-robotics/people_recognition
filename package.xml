@@ -1,14 +1,14 @@
 <?xml version="1.0"?>
 <package format="2">
-  <name>people_detector</name>
+  <name>people_detector_3d</name>
   <version>0.0.0</version>
-  <description>The people_detector package</description>
+  <description>The 3D People Detector package</description>
 
-  <maintainer email="rayman747@hotmail.com">Ramon Wijnands</maintainer>
+  <maintainer email="ar13pit@gmail.com">Arpit Aggarwal</maintainer>
 
   <license>MIT</license>
 
-  <author email="rayman747@hotmail.com">Ramon Wijnands</author>
+  <author email="ar13pit@gmail.com">Arpit Aggarwal</author>
 
   <buildtool_depend>catkin</buildtool_depend>
 
@@ -18,5 +18,5 @@
   <exec_depend>python-numpy</exec_depend>
   <exec_depend>tue_msgs</exec_depend>
   <exec_depend>rospy</exec_depend>
-  
+
 </package>
