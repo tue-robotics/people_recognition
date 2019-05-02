@@ -251,10 +251,12 @@ class PeopleDetector(object):
         shirt_images = [PeopleDetector._image_from_roi(image, PeopleDetector.move_face_roi_to_shirt(r.roi, image)) for r in face_recognitions]
         shirt_colors_array = [self._get_colour_extractor(img) for img in shirt_images]
 
-        cv_image = image_writer.get_annotated_cv_image(image, face_recognitions, [
-            face_label if face_label else PeopleDetector._face_properties_to_label(face_properties)
-            for face_label, face_properties in zip(face_labels, face_properties_array)
-        ])
+        cv_image = image_writer.get_annotated_cv_image(image,
+                                                       recognitions=face_recognitions,
+                                                       labels=[face_label if face_label else
+                                                                PeopleDetector._face_properties_to_label(face_properties)
+                                                               for face_label, face_properties
+                                                               in zip(face_labels, face_properties_array)])
 
         people = [Person(name=face_label,
                          age=face_properties.age,
