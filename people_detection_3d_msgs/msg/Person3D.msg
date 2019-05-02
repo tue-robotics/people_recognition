@@ -5,3 +5,12 @@ float64 gender_confidence
 string posture
 string emotion
 string[] shirt_colors
+image_recognition_msgs/Recognition[] body_parts_pose
+
+geometry_msgs/Point position
+geometry_msgs/Point velocity
+float64             reliability
+string[]            tagnames
+string[]            tags
+
+geometry_msgs/Pose  pointing_pose
