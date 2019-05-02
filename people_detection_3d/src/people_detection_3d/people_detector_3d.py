@@ -624,9 +624,3 @@ class PeopleDetector3D(object):
             return None
 
         return Pose(position=Point(*frame.p), orientation=Quaternion(*frame.M.GetQuaternion()))
-
-
-if __name__ == '__main__':
-    rospy.init_node('people_detector')
-    PeopleDetector()
-    rospy.spin()
