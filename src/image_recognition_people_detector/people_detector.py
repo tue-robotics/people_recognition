@@ -70,6 +70,15 @@ class PeopleDetector(object):
 
         return result['keras'].properties_array
 
+    def _get_colour_extractor(self, img):
+        args = zip(self._colour_extractor_services.values(), [{
+            "image": self._bridge.cv2_to_imgmsg(img, "bgr8")
+        }] * len(self._colour_extractor_services))
+
+        with closing(Pool(len(self._colour_extractor_services))) as p:
+            result = dict(zip(self._colour_extractor_services.keys(), p.map(_threaded_srv, args)))
+
+
     @staticmethod
     def _get_recognitions_with_label(label, recognitions):
         def _is_label_recognition(recognition):
