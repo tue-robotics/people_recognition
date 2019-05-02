@@ -12,7 +12,7 @@ from image_recognition_msgs.srv import DetectPeople, DetectPeopleResponse
 
 class PeopleDetectionNode:
     def __init__(self):
-        self._bridge = cvBridge()
+        self._bridge = CvBridge()
         self._detect_people_srv = rospy.Service('detect_people', DetectPeople,
                 self._detect_people_srv)
         self._people_detector = PeopleDetector()
@@ -22,8 +22,8 @@ class PeopleDetectionNode:
     def _detect_people_srv(self, req):
         """
         Callback when the DetectPeople service is called
-        :param req: Input image
-        :return: people
+        :param req: DetectPeopleRequest (with a .image attribute)
+        :return: DetectPeopleResponse (with a .people attribute)
         """
         # Convert to opencv images
         try:
