@@ -56,7 +56,7 @@ class PeopleDetector(object):
     def _get_recognitions(self, img):
         """
         Get recognitions from openpose and openface
-        :param: Input image (as cv image) recieved by people detector service
+        :param: Input image (as cv image) received by people detector service
         """
         args = zip(self._recognize_services.values(), [{
             "image": self._bridge.cv2_to_imgmsg(img, "bgr8")
@@ -90,6 +90,8 @@ class PeopleDetector(object):
 
         with closing(Pool(len(self._colour_extractor_services))) as p:
             result = dict(zip(self._colour_extractor_services.keys(), p.map(_threaded_srv, args)))
+
+        return result
 
 
     @staticmethod
@@ -212,15 +214,18 @@ class PeopleDetector(object):
                                     face_properties.age)
 
     @staticmethod
-    def move_face_roi_to_shirt(face_roi):
+    def move_face_roi_to_shirt(face_roi, img):
         """
-        Given a ROI for a face, shift teh ROI to the person's shirt. Assuming the person is upright :/
+        Given a ROI for a face, shift the ROI to the person's shirt. Assuming the person is upright :/
         :param face_roi: RegionOfInterest
+        :param img: cv2 image
         :return: RegionOfInterest
         """
         shirt_roi = copy.deepcopy(face_roi)
+        shirt_roi.height = int(face_roi.height * 1.5)
         shirt_roi.y_offset += face_roi.height
-        shirt_roi.height *= 1.5
+        shirt_roi.y_offset = min(shirt_roi.y_offset, img.shape[0] - shirt_roi.height)
+        rospy.logdebug("face_roi: {}, shirt_roi: {}, img.shape: {}".format(face_roi, shirt_roi, img.shape))
         return shirt_roi
 
     def recognize(self, image):
@@ -243,7 +248,8 @@ class PeopleDetector(object):
         face_properties_array = self._get_face_properties(face_images)
 
         # Colour Extractor service call
-        shirt_images = [PeopleDetector._image_from_roi(image, PeopleDetector.move_face_roi_to_shirt(r.roi)) for r in face_recognitions]
+        shirt_images = [PeopleDetector._image_from_roi(image, PeopleDetector.move_face_roi_to_shirt(r.roi, image)) for r in face_recognitions]
+        shirt_colors_array = [self._get_colour_extractor(img) for img in shirt_images]
 
         cv_image = image_writer.get_annotated_cv_image(image, face_recognitions, [
             face_label if face_label else PeopleDetector._face_properties_to_label(face_properties)
@@ -251,9 +257,11 @@ class PeopleDetector(object):
         ])
 
         people = [Person(name=face_label,
-            age=face_properties.age,
-            gender=face_properties.gender,
-            shirt_colors=) for face_label, face_properties, shirt_colors in zip(face_labels,
-                face_properties_array, shirt_colors_array)]
+                         age=face_properties.age,
+                         gender=face_properties.gender,
+                         shirt_colors=shirt_colors)
+                  for face_label, face_properties, shirt_colors in zip(face_labels,
+                                                                       face_properties_array,
+                                                                       shirt_colors_array)]
 
         return people, cv_image
