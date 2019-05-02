@@ -12,7 +12,7 @@ from std_msgs.msg import String
 from sensor_msgs.msg import RegionOfInterest
 
 # Image recognition repository modules
-from image_recognition_msgs.msg import Recognition, FaceProperties
+from image_recognition_msgs.msg import Recognition, FaceProperties, Person
 from image_recognition_msgs.srv import Recognize, GetFaceProperties, ExtractColour
 from image_recognition_util import image_writer
 
@@ -237,4 +237,10 @@ class PeopleDetector(object):
             for face_label, face_properties in zip(face_labels, face_properties_array)
         ])
 
-        return face_recognitions, cv_image
+        people = [Person(name=face_label,
+            age=face_properties.age,
+            gender=face_properties.gender,
+            shirt_colors=) for face_label, face_properties, shirt_colors in zip(face_labels,
+                face_properties_array, shirt_colors_array)]
+
+        return people, cv_image
