@@ -4,6 +4,7 @@ from contextlib import closing
 from multiprocessing import Pool
 import cv2
 import math
+import copy
 
 # ROS modules
 import rospy
@@ -210,6 +211,18 @@ class PeopleDetector(object):
         return "{} (age={})".format("MALE" if face_properties.gender == FaceProperties.MALE else "FEMALE",
                                     face_properties.age)
 
+    @staticmethod
+    def move_face_roi_to_shirt(face_roi):
+        """
+        Given a ROI for a face, shift teh ROI to the person's shirt. Assuming the person is upright :/
+        :param face_roi: RegionOfInterest
+        :return: RegionOfInterest
+        """
+        shirt_roi = copy.deepcopy(face_roi)
+        shirt_roi.y_offset += face_roi.height
+        shirt_roi.height *= 1.5
+        return shirt_roi
+
     def recognize(self, image):
         # OpenPose and OpenFace service calls
         start_recognize = time.time()
@@ -230,7 +243,7 @@ class PeopleDetector(object):
         face_properties_array = self._get_face_properties(face_images)
 
         # Colour Extractor service call
-
+        shirt_images = [PeopleDetector._image_from_roi(image, PeopleDetector.move_face_roi_to_shirt(r.roi)) for r in face_recognitions]
 
         cv_image = image_writer.get_annotated_cv_image(image, face_recognitions, [
             face_label if face_label else PeopleDetector._face_properties_to_label(face_properties)
