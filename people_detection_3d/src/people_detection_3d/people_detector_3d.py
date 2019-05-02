@@ -1,5 +1,8 @@
 #!/usr/bin/env python
-from __future__ import division
+from __future__ import print_function, division
+
+from contextlib import closing
+from multiprocessing import Pool
 
 import math
 import PyKDL as kdl
@@ -17,11 +20,31 @@ from sensor_msgs.msg import Image, CameraInfo
 from std_msgs.msg import ColorRGBA
 from visualization_msgs.msg import Marker, MarkerArray
 
-from image_recognition_msgs.srv import Recognize
+from image_recognition_msgs.srv import Recognize, DetectPeople
 from tue_msgs.msg import Person, People
 
-Joint = namedtuple('Joint', ['group_id', 'name', 'p', 'point'])
+def _threaded_srv(args):
+    """
+    Required for calling service in parallel
+    """
+    srv, kwarg_dict = args
+    result = srv(**kwarg_dict)
+    del args
+    return result
 
+
+def _get_and_wait_for_services(service_names, service_class, suffix=""):
+    """
+    Function to start and wait for dependent services
+    """
+    services = {s: rospy.ServiceProxy('{}{}'.format(s, suffix), service_class) for s in service_names}
+    for service in services.values():
+        rospy.loginfo("Waiting for service {} ...".format(service.resolved_name))
+        service.wait_for_service()
+    return services
+
+
+Joint = namedtuple('Joint', ['group_id', 'name', 'p', 'point'])
 
 def geometry_msg_point_to_kdl_vector(msg):
     return kdl.Vector(msg.x, msg.y, msg.z)
@@ -157,12 +180,16 @@ def get_param(name, default):
         return rospy.get_param(name, default)
 
 
-class PeopleDetector(object):
+class PeopleDetector3D(object):
     padding = 5
 
     def __init__(self):
-        rospy.loginfo('starting people_detector')
-        self.bridge = CvBridge()
+        self._detect_people_services = _get_and_wait_for_services([
+            'people_detector'
+        ], DetectPeople, '/detect_people')
+
+        rospy.loginfo('People detector 3D initialized')
+        # self.bridge = CvBridge()
 
         # parameters
         self.threshold = float(get_param('~probability_threshold', 0.2))
@@ -174,12 +201,12 @@ class PeopleDetector(object):
         self.hor_threshold = get_param('~hor_threshold', 0.4)
 
         # camera topics
-        depth_info_sub = message_filters.Subscriber('camera/depth/camera_info', CameraInfo)
-        depth_sub = message_filters.Subscriber('camera/depth/image', Image)
-        rgb_sub = message_filters.Subscriber('camera/rgb/image', Image)
+        #depth_info_sub = message_filters.Subscriber('camera/depth/camera_info', CameraInfo)
+        #depth_sub = message_filters.Subscriber('camera/depth/image', Image)
+        #rgb_sub = message_filters.Subscriber('camera/rgb/image', Image)
 
         # openpose
-        self.recognize = rospy.ServiceProxy('pose_detector/recognize', Recognize)
+        #self.recognize = rospy.ServiceProxy('pose_detector/recognize', Recognize)
 
         # published topics
         self.person_pub = rospy.Publisher('persons', People, queue_size=1)
@@ -187,8 +214,8 @@ class PeopleDetector(object):
         self.regions_viz_pub = rospy.Publisher('~regions_viz', Image, queue_size=1)
 
         # before subscribing, wait for services
-        rospy.loginfo('wait for service [%s]', self.recognize.resolved_name)
-        self.recognize.wait_for_service()
+        #rospy.loginfo('wait for service [%s]', self.recognize.resolved_name)
+        #self.recognize.wait_for_service()
 
         # private variables
 
@@ -196,13 +223,36 @@ class PeopleDetector(object):
         # self._ts = message_filters.ApproximateTimeSynchronizer([rgb_sub, depth_sub, depth_info_sub], queue_size=3,
         #                                                        slop=0.1)
         self._ts.registerCallback(self.callback)
-        rospy.loginfo('people_detector started')
+        #rospy.loginfo('people_detector started')
+
+    def _get_detect_people(self, rgb_imgmsg):
+        """
+        Get recognitions from openpose and openface
+        :param: rgb_imgmsg: RGB Image msg people detector service
+        """
+        args = zip(self._detect_people_services.values(), [{
+            "image": rgb_imgmsg
+        }] * len(self._detect_people_services))
+
+        with closing(Pool(len(self._detect_people_services))) as p:  # Without closing we have a memory leak
+            return dict(zip(self._detect_people_services.keys(), p.map(_threaded_srv, args)))
+
+
+    def recognize(self, rgb_imgmsg, depth_imgmsg, depth_caminfomsg):
+        """
+        Service call function
+        :param: rgb_imgmsg: RGB Image msg
+        :param: depth_imgmsg: Depth Image_msg
+        :param: depth_caminfomsg: Depth CameraInfo msg
+        """
+        cam_model = image_geometry.PinholeCameraModel()
+        cam_model.fromCameraInfo(depth_caminfomsg)
+
+
 
     def callback(self, rgb, depth, depth_info):
         rospy.loginfo('got image cb')
 
-        cam_model = image_geometry.PinholeCameraModel()
-        cam_model.fromCameraInfo(depth_info)
 
         t = rospy.Time.now()
         try:
