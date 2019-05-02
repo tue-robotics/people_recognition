@@ -1,0 +1,7 @@
+# Interface that can request Face Properties of an array of face imaegs
+
+sensor_msgs/Image image_rgb
+sensor_msgs/Image image_depth
+sensor_msgs/CameraInfo camera_info
+---
+Person3D[] people
