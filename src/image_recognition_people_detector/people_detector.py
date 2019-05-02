@@ -103,6 +103,11 @@ class PeopleDetector(object):
 
     @staticmethod
     def _get_face_rois_openpose(recognitions):
+        """
+        Get ROIs of faces from openpose recognitions using the nose, left ear
+        and right ear
+        :param: recognitions from openpose
+        """
         nose_recognitions = PeopleDetector._get_recognitions_with_label("Nose", recognitions)
         left_ear_recognitions = PeopleDetector._get_recognitions_with_label("LEar", recognitions)
         right_ear_recognitions = PeopleDetector._get_recognitions_with_label("REar", recognitions)
@@ -144,6 +149,11 @@ class PeopleDetector(object):
 
     @staticmethod
     def _get_container_recognition(roi, recognitions, padding_factor=0.1):
+        """
+        Associate OpenPose ROI with best OpenPose face ROI
+        :param: roi: openpose face roi
+        :recognitions: openface recognitions
+        """
         x = roi.x_offset + .5 * roi.width
         y = roi.y_offset + .5 * roi.height
 
