@@ -216,8 +216,8 @@ class PeopleDetector(object):
     @staticmethod
     def _shirt_colours_to_label(shirt_colours):
         label = ""
-        for colour in shirt_colours:
-            label += " {}".format(colour)
+        for colour in shirt_colours['extract_colour'].colours:
+            label += " {}".format(colour.data)
         return label
 
     @staticmethod
@@ -256,7 +256,7 @@ class PeopleDetector(object):
 
         # Colour Extractor service call
         shirt_images = [PeopleDetector._image_from_roi(image, PeopleDetector.move_face_roi_to_shirt(r.roi, image)) for r in face_recognitions]
-        shirt_colors_array = [self._get_colour_extractor(img) for img in shirt_images]
+        shirt_colours_array = [self._get_colour_extractor(img) for img in shirt_images]
 
         cv_image = image_writer.get_annotated_cv_image(image,
                                                        recognitions=face_recognitions,
@@ -270,6 +270,6 @@ class PeopleDetector(object):
                          shirt_colors=shirt_colors)
                   for face_label, face_properties, shirt_colors in zip(face_labels,
                                                                        face_properties_array,
-                                                                       shirt_colors_array)]
+                                                                       shirt_colours_array)]
 
         return people, cv_image
