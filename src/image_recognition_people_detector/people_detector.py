@@ -53,6 +53,10 @@ class PeopleDetector(object):
         rospy.loginfo("People detector initialized")
 
     def _get_recognitions(self, img):
+        """
+        Get recognitions from openpose and openface
+        :param: Input image (as cv image) recieved by people detector service
+        """
         args = zip(self._recognize_services.values(), [{
             "image": self._bridge.cv2_to_imgmsg(img, "bgr8")
         }] * len(self._recognize_services))
@@ -61,6 +65,10 @@ class PeopleDetector(object):
             return dict(zip(self._recognize_services.keys(), p.map(_threaded_srv, args)))
 
     def _get_face_properties(self, images):
+        """
+        Get face properties from Keras
+        :param: face images as cv images
+        """
         args = zip(self._face_properties_services.values(), [{
             "face_image_array": [self._bridge.cv2_to_imgmsg(image, "bgr8") for image in images]
         }] * len(self._face_properties_services))
@@ -71,6 +79,10 @@ class PeopleDetector(object):
         return result['keras'].properties_array
 
     def _get_colour_extractor(self, img):
+        """
+        Get results of the colour extractor service
+        :param: CV image to extract colour from
+        """
         args = zip(self._colour_extractor_services.values(), [{
             "image": self._bridge.cv2_to_imgmsg(img, "bgr8")
         }] * len(self._colour_extractor_services))
@@ -189,18 +201,26 @@ class PeopleDetector(object):
                                     face_properties.age)
 
     def recognize(self, image):
+        # OpenPose and OpenFace service calls
         start_recognize = time.time()
         recognitions = self._get_recognitions(image)
         rospy.logdebug("Recognize took %.4f seconds", time.time() - start_recognize)
 
+        # Extract face ROIs from recognitions of openpose
         openpose_face_rois = PeopleDetector._get_face_rois_openpose(recognitions['openpose'].recognitions)
+
         face_recognitions = [PeopleDetector._get_container_recognition(openpose_face_roi,
                                                                        recognitions['openface'].recognitions)
                              for openpose_face_roi in openpose_face_rois]
 
         face_labels = [PeopleDetector._get_best_label(r) for r in face_recognitions]
         face_images = [PeopleDetector._image_from_roi(image, r.roi) for r in face_recognitions]
+
+        # Keras service call
         face_properties_array = self._get_face_properties(face_images)
+
+        # Colour Extractor service call
+
 
         cv_image = image_writer.get_annotated_cv_image(image, face_recognitions, [
             face_label if face_label else PeopleDetector._face_properties_to_label(face_properties)
