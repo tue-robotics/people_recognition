@@ -8,7 +8,7 @@ from cv_bridge import CvBridge, CvBridgeError
 
 from image_recognition_people_detector import PeopleDetector
 from image_recognition_msgs.msg import Person
-from image_recognition_msgs.srv import DetectPeople
+from image_recognition_msgs.srv import DetectPeople, DetectPeopleResponse
 
 class PeopleDetectionNode:
     def __init__(self):
@@ -27,12 +27,14 @@ class PeopleDetectionNode:
         """
         # Convert to opencv images
         try:
-            bgr_images = self._bridge.imgmsg_to_cv2(req.image, "bgr8")
+            bgr_image = self._bridge.imgmsg_to_cv2(req.image, "bgr8")
         except CvBridgeError as e:
             raise Exception("Could not convert image to opencv image: %s" % str(e))
 
         rospy.loginfo("Detecting people in incoming image")
-        people = self._people_detector.get_detection()
+        people = self._people_detector.recognize(bgr_image)
+
+        return DetectPeopleResponse(people=people)
 
 if __name__ == '__main__':
     rospy.init_node('people_detection')
