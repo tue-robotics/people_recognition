@@ -56,6 +56,7 @@ class PeopleDetector(object):
         args = zip(self._recognize_services.values(), [{
             "image": self._bridge.cv2_to_imgmsg(img, "bgr8")
         }] * len(self._recognize_services))
+
         with closing(Pool(len(self._recognize_services))) as p:  # Without closing we have a memory leak
             return dict(zip(self._recognize_services.keys(), p.map(_threaded_srv, args)))
 
@@ -63,6 +64,7 @@ class PeopleDetector(object):
         args = zip(self._face_properties_services.values(), [{
             "face_image_array": [self._bridge.cv2_to_imgmsg(image, "bgr8") for image in images]
         }] * len(self._face_properties_services))
+
         with closing(Pool(len(self._face_properties_services))) as p:  # Without closing we have a memory leak
             result = dict(zip(self._face_properties_services.keys(), p.map(_threaded_srv, args)))
 
@@ -92,6 +94,7 @@ class PeopleDetector(object):
             try:
                 left_ear_recognition = next(
                     r for r in left_ear_recognitions if r.group_id == nose_recognition.group_id)
+
                 left_size = math.hypot(left_ear_recognition.roi.x_offset - nose_recognition.roi.x_offset,
                                        left_ear_recognition.roi.y_offset - nose_recognition.roi.y_offset)
             except StopIteration:
@@ -99,6 +102,7 @@ class PeopleDetector(object):
             try:
                 right_ear_recognition = next(
                     r for r in right_ear_recognitions if r.group_id == nose_recognition.group_id)
+
                 right_size = math.hypot(right_ear_recognition.roi.x_offset - nose_recognition.roi.x_offset,
                                         right_ear_recognition.roi.y_offset - nose_recognition.roi.y_offset)
             except StopIteration:
@@ -107,12 +111,14 @@ class PeopleDetector(object):
             size = left_size + right_size
             width = int(size)
             height = int(math.sqrt(2) * size)
+
             rois.append(RegionOfInterest(
                 x_offset=max(0, int(nose_recognition.roi.x_offset - .5 * width)),
                 y_offset=max(0, int(nose_recognition.roi.y_offset - .5 * height)),
                 width=width,
                 height=height
             ))
+
         return rois
 
     @staticmethod
@@ -182,6 +188,7 @@ class PeopleDetector(object):
         face_recognitions = [PeopleDetector._get_container_recognition(openpose_face_roi,
                                                                        recognitions['openface'].recognitions)
                              for openpose_face_roi in openpose_face_rois]
+
         face_labels = [PeopleDetector._get_best_label(r) for r in face_recognitions]
         face_images = [PeopleDetector._image_from_roi(image, r.roi) for r in face_recognitions]
         face_properties_array = self._get_face_properties(face_images)
