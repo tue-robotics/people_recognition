@@ -1,9 +1,7 @@
 #!/usr/bin/env python
-from __future__ import print_function
 
 # ROS modules
 import rospy
-from cv_bridge import CvBridge, CvBridgeError
 
 # People detection 3D modules
 from people_detection_3d import PeopleDetector3D
@@ -11,7 +9,6 @@ from people_detection_3d_msgs.srv import DetectPeople3D, DetectPeople3DResponse
 
 class PeopleDetection3DNode:
     def __init__(self):
-        self._bridge = CvBridge()
         self._detect_people_3d_srv = rospy.Service('detect_people_3d',
                 DetectPeople3D,
                 self._detect_people_3d_srv)
@@ -22,19 +19,16 @@ class PeopleDetection3DNode:
     def _detect_people_3d_srv(self, req):
         """
         Callback when the DetectPeople3D service is called
-        :param req: DetectPeople3DRequest (with a .image attribute)
+        :param req: DetectPeople3DRequest (with .image_rgb, .image_depth and
+            .camera_info_depth attributes)
         :return: DetectPeople3DResponse (with a .people attribute)
         """
         # Convert to opencv images
-        try:
-            bgr_image = self._bridge.imgmsg_to_cv2(req.image, "bgr8")
-        except CvBridgeError as e:
-            raise Exception("Could not convert image to opencv image: %s" % str(e))
+        rospy.loginfo("Detecting people in 3D from incoming RGB-D image")
+        people3d = self._people_detector_3d.recognize(req.image_rgb,
+                req.image_depth, req.camera_info_depth)
 
-        rospy.loginfo("Detecting people in incoming image")
-        people, _ = self._people_detector.recognize(bgr_image)
-
-        return DetectPeople3DResponse(people=people)
+        return DetectPeople3DResponse(people=people3d)
 
 if __name__ == '__main__':
     rospy.init_node('people_detection_3d')
