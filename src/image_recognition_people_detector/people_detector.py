@@ -210,8 +210,9 @@ class PeopleDetector(object):
 
     @staticmethod
     def _face_properties_to_label(face_properties):
-        return "{} (age={})".format("MALE" if face_properties.gender == FaceProperties.MALE else "FEMALE",
-                                    face_properties.age)
+        return "{}={} (age={})".format("MALE" if face_properties.gender == FaceProperties.MALE else "FEMALE",
+                                        face_properties.gender_confidence,
+                                        face_properties.age)
 
     @staticmethod
     def _shirt_colours_to_label(shirt_colours):
@@ -275,6 +276,7 @@ class PeopleDetector(object):
             people.append(Person(name=face_label,
                                  age=face_properties.age,
                                  gender=face_properties.gender,
+                                 gender_confidence=face_properties.gender_confidence,
                                  shirt_colors=shirt_colours))
 
         cv_image = image_writer.get_annotated_cv_image(image,
