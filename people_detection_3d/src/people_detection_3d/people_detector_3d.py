@@ -21,7 +21,7 @@ from std_msgs.msg import ColorRGBA
 from visualization_msgs.msg import Marker, MarkerArray
 
 from image_recognition_msgs.srv import Recognize, DetectPeople
-from tue_msgs.msg import Person, People
+from people_detection_3d_msgs.msg import Person3D
 
 def _threaded_srv(args):
     """
@@ -209,7 +209,7 @@ class PeopleDetector3D(object):
         #self.recognize = rospy.ServiceProxy('pose_detector/recognize', Recognize)
 
         # published topics
-        self.person_pub = rospy.Publisher('persons', People, queue_size=1)
+ #       self.person_pub = rospy.Publisher('persons', People, queue_size=1)
         self.markers_pub = rospy.Publisher('~viz', MarkerArray, queue_size=1)
         self.regions_viz_pub = rospy.Publisher('~regions_viz', Image, queue_size=1)
 
@@ -219,10 +219,10 @@ class PeopleDetector3D(object):
 
         # private variables
 
-        self._ts = message_filters.TimeSynchronizer([rgb_sub, depth_sub, depth_info_sub], 1)
+#        self._ts = message_filters.TimeSynchronizer([rgb_sub, depth_sub, depth_info_sub], 1)
         # self._ts = message_filters.ApproximateTimeSynchronizer([rgb_sub, depth_sub, depth_info_sub], queue_size=3,
         #                                                        slop=0.1)
-        self._ts.registerCallback(self.callback)
+#        self._ts.registerCallback(self.callback)
         #rospy.loginfo('people_detector started')
 
     def _get_detect_people(self, rgb_imgmsg):
@@ -238,31 +238,28 @@ class PeopleDetector3D(object):
             return dict(zip(self._detect_people_services.keys(), p.map(_threaded_srv, args)))
 
 
-    def recognize(self, rgb_imgmsg, depth_imgmsg, depth_caminfomsg):
+    def recognize(self, rgb, depth, depth_info):
         """
         Service call function
-        :param: rgb_imgmsg: RGB Image msg
-        :param: depth_imgmsg: Depth Image_msg
-        :param: depth_caminfomsg: Depth CameraInfo msg
+        :param: rgb: RGB Image msg
+        :param: depth: Depth Image_msg
+        :param: depth_info: Depth CameraInfo msg
         """
         cam_model = image_geometry.PinholeCameraModel()
-        cam_model.fromCameraInfo(depth_caminfomsg)
+        cam_model.fromCameraInfo(depth_info)
 
-
-
-    def callback(self, rgb, depth, depth_info):
         rospy.loginfo('got image cb')
 
 
         t = rospy.Time.now()
         try:
-            data = self.recognize(image=rgb)
+            people2d = self._get_detect_people(rgb)['people_detector'].people
         except rospy.ServiceException as e:
-            rospy.logwarn('openpose call failed: %s', e)
+            rospy.logwarn('PeopleDetector2D call failed: %s', e)
             return
-        rospy.loginfo('openpose took %f seconds', (rospy.Time.now() - t).to_sec())
+        rospy.loginfo('PeopleDetector2D took %f seconds', (rospy.Time.now() - t).to_sec())
 
-        joints = self.recognitions_to_joints(data.recognitions, rgb, depth, cam_model)
+        joints = self.recognitions_to_joints(people2d.body_parts_pose, rgb, depth, cam_model)
 
         # groupby group_id
         groups = []
