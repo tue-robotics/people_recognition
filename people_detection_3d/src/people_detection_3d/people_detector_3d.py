@@ -11,12 +11,12 @@ from itertools import groupby
 import numpy as np
 
 import image_geometry
-import message_filters
+# import message_filters
 import rospy
 import tf
 from cv_bridge import CvBridge
 from geometry_msgs.msg import Point, Vector3, Pose, Quaternion
-from sensor_msgs.msg import Image, CameraInfo
+from sensor_msgs.msg import Image
 from std_msgs.msg import ColorRGBA
 from visualization_msgs.msg import Marker, MarkerArray
 
@@ -318,10 +318,10 @@ class PeopleDetector3D(object):
             persons.append(person)
 
         # visualize persons
-        height = 1.8
-        head = 0.2
+        # height = 1.8
+        # head = 0.2
 
-        q = tf.transformations.quaternion_from_euler(-math.pi / 2, 0, 0)
+        # q = tf.transformations.quaternion_from_euler(-math.pi / 2, 0, 0)
         for i, p in enumerate(persons):
             # text = ','.join(p.tags)
             # y_max = p.position.y - 2 * head
