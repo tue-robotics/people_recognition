@@ -234,9 +234,12 @@ class PeopleDetector(object):
                                         face_properties.age)
 
     @staticmethod
-    def _shirt_colours_to_label(shirt_colours):
+    def _shirt_colours_to_label(shirt_colours, dict_key):
+        """
+        TODO: get rid of dict_key arg
+        """
         label = " shirt colours:"
-        for colour in shirt_colours[self._colour_extractor_srv_prefix].colours:
+        for colour in shirt_colours[dict_key].colours:
             label += " {}".format(colour.data)
         return label
 
@@ -288,7 +291,8 @@ class PeopleDetector(object):
         for face_label, face_properties, shirt_colours, body_parts in zip(face_labels,
                 face_properties_array, shirt_colours_array, body_parts_array):
             temp_label = PeopleDetector._face_properties_to_label(face_properties) + \
-                    PeopleDetector._shirt_colours_to_label(shirt_colours)
+                    PeopleDetector._shirt_colours_to_label(shirt_colours,
+                            self._colour_extractor_srv_prefix)
 
             if face_label:
                 image_annotations.append(face_label + " " + temp_label)
