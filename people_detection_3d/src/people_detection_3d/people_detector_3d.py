@@ -295,17 +295,21 @@ class PeopleDetector3D(object):
                                           scale=Vector3(0.03, 0, 0),
                                           color=ColorRGBA(cmap[i, 0] * 0.9, cmap[i, 1] * 0.9, cmap[i, 2] * 0.9, 1.0)))
 
-
+            point3d = Vector3(i, i, i)
             try:
                 point3d = skeleton['Neck'].point
             except KeyError:
                 try:
                     point3d = skeleton['Head'].point
                 except KeyError:
-                    x = np.average([joint.point.x for _, joint in skeleton.bodyparts.iteritems()])
-                    y = np.average([joint.point.y for _, joint in skeleton.bodyparts.iteritems()])
-                    z = np.average([joint.point.z for _, joint in skeleton.bodyparts.iteritems()])
-                    point3d = Vector3(x, y, z)
+                    if any(skeleton.bodyparts):
+                        x = np.average([joint.point.x for _, joint in skeleton.bodyparts.iteritems()])
+                        y = np.average([joint.point.y for _, joint in skeleton.bodyparts.iteritems()])
+                        z = np.average([joint.point.z for _, joint in skeleton.bodyparts.iteritems()])
+                        point3d = Vector3(x, y, z)
+                    else:
+                        rospy.logwarn("There are no bodyparts to average")
+            rospy.loginfo('Position: {}'.format(point3d))
 
             person3d = Person3D(
                 name=person2d.name,
