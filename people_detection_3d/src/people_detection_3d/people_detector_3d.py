@@ -245,7 +245,7 @@ class PeopleDetector3D(object):
 
         t = rospy.Time.now()
         try:
-            people2d = self._get_detect_people(rgb)['people_detector'].people
+            people2d = self._get_detect_people(rgb)['detect_people'].people
         except rospy.ServiceException as e:
             rospy.logwarn('PeopleDetector2D call failed: %s', e)
             return
