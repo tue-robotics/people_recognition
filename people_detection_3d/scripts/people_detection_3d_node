@@ -28,7 +28,7 @@ class PeopleDetection3DNode:
 
         rospy.loginfo("PeopleDetection3DNode initialized:")
 
-    def _get_param(name, default):
+    def _get_param(self, name, default):
         if rospy.has_param(name):
             return rospy.get_param(name)
         else:
