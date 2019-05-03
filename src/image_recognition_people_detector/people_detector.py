@@ -160,7 +160,7 @@ class PeopleDetector(object):
         :param: recognitions: All bodyparts recieved from openpose
         :return: List of body_parts
         """
-        return body_parts = [r for r in recognitions if r.group_id == group_id]
+        return [r for r in recognitions if r.group_id == group_id]
 
     @staticmethod
     def _get_container_recognition(roi, recognitions, padding_factor=0.1):
