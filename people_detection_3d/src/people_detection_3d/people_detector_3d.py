@@ -349,7 +349,7 @@ class PeopleDetector3D(object):
         # self.person_pub.publish(People(header=rgb.header, people=people3d))
         # publish all markers in one go
         self.markers_pub.publish(markers)
-        rospy.loginfo("Done. Found {} people".format(len(people3d)))
+        rospy.loginfo("Done. Found {} people, {} markers".format(len(people3d), len(markers.markers)))
         return people3d
 
     def recognitions_to_joints(self, recognitions, rgb, depth, cam_model):
