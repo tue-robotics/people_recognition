@@ -25,9 +25,8 @@ class PeopleDetectionNode:
 
         # Define the service only after PeopleDetector has initialized
         # completely else an early service call can be made causing errors
-        self._detect_people_srv = rospy.Service('detect_people', DetectPeople,
-                self._detect_people_srv)
-        rospy.loginfo("PeopleDetectionNode initialized:")
+        self._detect_people_srv = rospy.Service('detect_people', DetectPeople, self._detect_people_srv)
+        rospy.loginfo("PeopleDetectionNode initialized")
 
     def _get_param(self, name, default):
         if rospy.has_param(name):
@@ -47,8 +46,8 @@ class PeopleDetectionNode:
             bgr_image = self._bridge.imgmsg_to_cv2(req.image, "bgr8")
         except CvBridgeError as e:
             raise Exception("Could not convert image to opencv image: %s" % str(e))
-
-        rospy.loginfo("Detecting people in incoming image")
+        #
+        rospy.loginfo("Detecting people in incoming image...")
         people, _ = self._people_detector.recognize(bgr_image)
         rospy.loginfo("Done")
 
@@ -58,3 +57,4 @@ if __name__ == '__main__':
     rospy.init_node('people_detection')
     node = PeopleDetectionNode()
     rospy.spin()
+    print("people_detection exited")
