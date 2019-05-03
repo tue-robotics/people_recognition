@@ -313,7 +313,7 @@ class PeopleDetector3D(object):
                 gender_confidence=person2d.gender_confidence,
                 posture=person2d.posture,
                 emotion=person2d.emotion,
-                shirt_colours=person2d.shirt_colours,
+                shirt_colors=person2d.shirt_colors,
                 body_parts_pose=person2d.body_parts,
                 position=point3d,
                 tags=self.get_person_tags(skeleton),
