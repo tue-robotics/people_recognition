@@ -239,11 +239,9 @@ class PeopleDetector3D(object):
         :param: depth: Depth Image_msg
         :param: depth_info: Depth CameraInfo msg
         """
+        rospy.loginfo('Got recognize service call')
         cam_model = image_geometry.PinholeCameraModel()
         cam_model.fromCameraInfo(depth_info)
-
-        rospy.loginfo('got image cb')
-
 
         t = rospy.Time.now()
         try:
