@@ -250,6 +250,7 @@ class PeopleDetector3D(object):
             rospy.logwarn('PeopleDetector2D call failed: %s', e)
             return
         rospy.loginfo('PeopleDetector2D took %f seconds', (rospy.Time.now() - t).to_sec())
+        rospy.loginfo('Found {} people'.format(len(people2d)))
 
         joints = self.recognitions_to_joints(people2d.body_parts_pose, rgb, depth, cam_model)
 
