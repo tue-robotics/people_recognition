@@ -178,8 +178,8 @@ class PeopleDetector3D(object):
             arm_norm_threshold, wave_threshold, vert_threshold, hor_threshold,
             padding):
         self._detect_people_services = _get_and_wait_for_services([
-            'people_detector'
-        ], DetectPeople, '/detect_people')
+            'detect_people'
+        ], DetectPeople)
 
         self._bridge = CvBridge()
 
