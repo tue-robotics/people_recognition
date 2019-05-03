@@ -38,17 +38,22 @@ class PeopleDetector(object):
     def __init__(self, openpose_srv_prefix, openface_srv_prefix,
             keras_srv_prefix, colour_extractor_srv_prefix):
 
+        self._openpose_srv_prefix = openpose_srv_prefix
+        self._openface_srv_prefix = openface_srv_prefix
+        self._keras_srv_prefix = keras_srv_prefix
+        self._colour_extractor_srv_prefix = colour_extractor_srv_prefix
+
         self._recognize_services = _get_and_wait_for_services([
-            openpose_srv_prefix,
-            openface_srv_prefix
+            self._openpose_srv_prefix,
+            self._openface_srv_prefix
         ], Recognize, '/recognize')
 
         self._face_properties_services = _get_and_wait_for_services([
-            keras_srv_prefix
+            self._keras_srv_prefix
         ], GetFaceProperties, '/get_face_properties')
 
         self._colour_extractor_services = _get_and_wait_for_services([
-            colour_extractor_srv_prefix
+            self._colour_extractor_srv_prefix
         ], ExtractColour, '/extract_colour')
 
         self._bridge = CvBridge()
@@ -231,7 +236,7 @@ class PeopleDetector(object):
     @staticmethod
     def _shirt_colours_to_label(shirt_colours):
         label = " shirt colours:"
-        for colour in shirt_colours['extract_colour'].colours:
+        for colour in shirt_colours:
             label += " {}".format(colour.data)
         return label
 
@@ -257,13 +262,13 @@ class PeopleDetector(object):
         rospy.logdebug("Recognize took %.4f seconds", time.time() - start_recognize)
 
         # Extract face ROIs and their corresponding group ids from recognitions of openpose
-        openpose_face_rois, openpose_face_group_ids = PeopleDetector._get_face_rois_ids_openpose(recognitions['openpose'].recognitions)
+        openpose_face_rois, openpose_face_group_ids = PeopleDetector._get_face_rois_ids_openpose(recognitions[self._openpose_srv_prefix].recognitions)
 
         body_parts_array = [PeopleDetector._get_body_parts_openpose(group_id,
-            recognitions['openpose'].recognitions) for group_id in openpose_face_group_ids]
+            recognitions[self._openpose_srv_prefix].recognitions) for group_id in openpose_face_group_ids]
 
         face_recognitions = [PeopleDetector._get_container_recognition(openpose_face_roi,
-                                                                       recognitions['openface'].recognitions)
+                                                                       recognitions[self._openface_srv_prefix].recognitions)
                              for openpose_face_roi in openpose_face_rois]
 
         face_labels = [PeopleDetector._get_best_label(r) for r in face_recognitions]
@@ -274,7 +279,8 @@ class PeopleDetector(object):
 
         # Colour Extractor service call
         shirt_images = [PeopleDetector._image_from_roi(image, PeopleDetector.move_face_roi_to_shirt(r.roi, image)) for r in face_recognitions]
-        shirt_colours_array = [self._get_colour_extractor(img) for img in shirt_images]
+        shirt_colours_array =
+        [self._get_colour_extractor(img)[self._colour_extractor_srv_prefix].colours for img in shirt_images]
 
         # Prepare image annotation labels and People message
         image_annotations = list()
