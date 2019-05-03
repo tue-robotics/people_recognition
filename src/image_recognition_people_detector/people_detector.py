@@ -105,7 +105,7 @@ class PeopleDetector(object):
         return [r for r in recognitions if _is_label_recognition(r)]
 
     @staticmethod
-    def _get_face_rois_openpose(recognitions):
+    def _get_face_rois_ids_openpose(recognitions):
         """
         Get ROIs of faces from openpose recognitions using the nose, left ear
         and right ear
@@ -115,7 +115,8 @@ class PeopleDetector(object):
         left_ear_recognitions = PeopleDetector._get_recognitions_with_label("LEar", recognitions)
         right_ear_recognitions = PeopleDetector._get_recognitions_with_label("REar", recognitions)
 
-        rois = []
+        rois = list()
+        group_ids = list()
         for nose_recognition in nose_recognitions:
             # We assume a vertical head here
             left_size = 50
@@ -147,8 +148,9 @@ class PeopleDetector(object):
                 width=width,
                 height=height
             ))
+            group_ids.append(nose_recognition.group_id)
 
-        return rois
+        return rois, group_ids
 
     @staticmethod
     def _get_body_parts_openpose(group_id, recognitions):
@@ -252,8 +254,8 @@ class PeopleDetector(object):
         recognitions = self._get_recognitions(image)
         rospy.logdebug("Recognize took %.4f seconds", time.time() - start_recognize)
 
-        # Extract face ROIs from recognitions of openpose
-        openpose_face_rois = PeopleDetector._get_face_rois_openpose(recognitions['openpose'].recognitions)
+        # Extract face ROIs and their corresponding group ids from recognitions of openpose
+        openpose_face_rois, openpose_face_group_ids = PeopleDetector._get_face_rois_ids_openpose(recognitions['openpose'].recognitions)
 
         face_recognitions = [PeopleDetector._get_container_recognition(openpose_face_roi,
                                                                        recognitions['openface'].recognitions)
