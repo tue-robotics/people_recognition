@@ -323,11 +323,11 @@ class PeopleDetector3D(object):
 
         q = tf.transformations.quaternion_from_euler(-math.pi / 2, 0, 0)
         for i, p in enumerate(persons):
-            text = ','.join(p.tags)
-            y_max = p.position.y - 2 * head
-            y_avg = p.position.y - head + height / 2
-            p_avg = Point(p.position.x, y_avg, p.position.z)
-            p_head = Point(p.position.x, y_max, p.position.z)
+            # text = ','.join(p.tags)
+            # y_max = p.position.y - 2 * head
+            # y_avg = p.position.y - head + height / 2
+            # p_avg = Point(p.position.x, y_avg, p.position.z)
+            # p_head = Point(p.position.x, y_max, p.position.z)
             # markers.markers.append(Marker(header=rgb.header,
             #                               ns='persons',
             #                               id=i,
