@@ -182,7 +182,7 @@ class PeopleDetector3D(object):
         ], DetectPeople, '/detect_people')
 
         rospy.loginfo('People detector 3D initialized')
-        # self.bridge = CvBridge()
+        self._bridge = CvBridge()
 
         # parameters
         self.threshold = probability_threshold
@@ -356,7 +356,7 @@ class PeopleDetector3D(object):
         self.markers_pub.publish(markers)
 
     def recognitions_to_joints(self, recognitions, rgb, depth, cam_model):
-        cv_depth = self.bridge.imgmsg_to_cv2(depth)
+        cv_depth = self._bridge.imgmsg_to_cv2(depth)
         regions_viz = np.zeros_like(cv_depth)
 
         joints = []
@@ -392,7 +392,7 @@ class PeopleDetector3D(object):
 
             # debugging viz
             regions_viz[y_min:y_max, x_min:x_max] = cv_depth[y_min:y_max, x_min:x_max]
-            self.regions_viz_pub.publish(self.bridge.cv2_to_imgmsg(regions_viz))
+            self.regions_viz_pub.publish(self._bridge.cv2_to_imgmsg(regions_viz))
 
             u = (x_min + x_max) // 2
             v = (y_min + y_max) // 2
