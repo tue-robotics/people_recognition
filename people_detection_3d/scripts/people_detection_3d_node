@@ -40,10 +40,6 @@ class PeopleDetection3DNode:
 
             self._ts.registerCallback(self._topic_callback)
 
-        self._detect_people_3d_srv = rospy.Service('detect_people_3d',
-                DetectPeople3D,
-                self._detect_people_3d_srv)
-
         # Define the service only after PeopleDetector has initialized
         # completely else an early service call can be made causing errors
         self._detect_people_3d_srv = rospy.Service('detect_people_3d',
