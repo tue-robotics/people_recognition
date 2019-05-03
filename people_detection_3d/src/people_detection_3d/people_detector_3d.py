@@ -252,22 +252,20 @@ class PeopleDetector3D(object):
         rospy.loginfo('PeopleDetector2D took %f seconds', (rospy.Time.now() - t).to_sec())
         rospy.loginfo('Found {} people'.format(len(people2d)))
 
-        joints = self.recognitions_to_joints(people2d.body_parts_pose, rgb, depth, cam_model)
-
-        # groupby group_id
-        groups = list()
-        for group_id, js in groupby(joints, lambda j: j.group_id):
-            groups.append(list(js))
+        cmap = color_map(N=len(people2d), normalized=True)
 
         markers = MarkerArray()
         markers.markers.append(Marker(action=Marker.DELETEALL))
 
-        # visualize joints
-        cmap = color_map(N=len(groups), normalized=True)
-        for i, js in enumerate(groups):
-            rospy.loginfo('found %s objects for group %s', len(js), i)
+        # import ipdb; ipdb.set_trace()
+        people3d = []
+        for i, person2d in enumerate(people2d):
+            joints = self.recognitions_to_joints(person2d.body_parts, rgb, depth, cam_model)
 
-            points = [j.point for j in js]
+            # visualize joints
+            rospy.loginfo('found %s objects for group %s', len(joints), i)
+
+            points = [j.point for j in joints]
             markers.markers.append(Marker(header=rgb.header,
                                           ns='joints',
                                           id=i,
@@ -277,82 +275,55 @@ class PeopleDetector3D(object):
                                           scale=Vector3(0.07, 0.07, 0.07),
                                           color=ColorRGBA(cmap[i, 0], cmap[i, 1], cmap[i, 2], 1.0)))
 
-        skeletons = [Skeleton({j.name: j for j in js}) for js in groups]
-        skeletons = [s.filter_bodyparts(self.link_threshold) for s in skeletons]
+            unfiltered_skeleton = Skeleton({j.name: j for j in joints})
+            skeleton = unfiltered_skeleton.filter_bodyparts(self.link_threshold)
 
-        # visualize links
-        for i, s in enumerate(skeletons):
+            # visualize links
             markers.markers.append(Marker(header=rgb.header,
                                           ns='links',
                                           id=i,
                                           type=Marker.LINE_LIST,
                                           action=Marker.ADD,
-                                          points=list(s.get_links()),
+                                          points=list(skeleton.get_links()),
                                           scale=Vector3(0.03, 0, 0),
                                           color=ColorRGBA(cmap[i, 0] * 0.9, cmap[i, 1] * 0.9, cmap[i, 2] * 0.9, 1.0)))
 
-        # create persons
-        persons = list()
-        for s in skeletons:
-            if 'Neck' not in s:
+            if 'Neck' not in skeleton:
                 continue
-            point3d = s['Neck'].point
+            point3d = skeleton['Neck'].point
 
-            person = Person(
+            person3d = Person3D(
                 position=point3d,
-                tags=self.get_person_tags(s),
+                tags=self.get_person_tags(skeleton),
             )
 
-            pointing_pose = self.get_pointing_pose(s, self.arm_norm_threshold)
+            pointing_pose = self.get_pointing_pose(skeleton, self.arm_norm_threshold)
             if pointing_pose:
-                person.tags.append("is_pointing")
-                person.pointing_pose = pointing_pose
+                person3d.tags.append("is_pointing")
+                person3d.pointing_pose = pointing_pose
 
-            persons.append(person)
+                people3d.append(person3d)
 
-        # visualize persons
-        # height = 1.8
-        # head = 0.2
+            # visualize persons
+            # height = 1.8
+            # head = 0.2
 
-        # q = tf.transformations.quaternion_from_euler(-math.pi / 2, 0, 0)
-        for i, p in enumerate(persons):
-            # text = ','.join(p.tags)
-            # y_max = p.position.y - 2 * head
-            # y_avg = p.position.y - head + height / 2
-            # p_avg = Point(p.position.x, y_avg, p.position.z)
-            # p_head = Point(p.position.x, y_max, p.position.z)
-            # markers.markers.append(Marker(header=rgb.header,
-            #                               ns='persons',
-            #                               id=i,
-            #                               type=Marker.CYLINDER,
-            #                               action=Marker.ADD,
-            #                               pose=Pose(position=p_avg, orientation=Quaternion(*q)),
-            #                               scale=Vector3(0.2, 0.2, height),
-            #                               color=ColorRGBA(cmap[i, 0], cmap[i, 1], cmap[i, 2], 0.5)))
-            if "is_pointing" in p.tags:
+            # q = tf.transformations.quaternion_from_euler(-math.pi / 2, 0, 0)
+            if "is_pointing" in person3d.tags:
                 markers.markers.append(Marker(header=rgb.header,
                                               ns='pointing_pose',
                                               id=i,
                                               type=Marker.ARROW,
                                               action=Marker.ADD,
-                                              pose=p.pointing_pose,
+                                              pose=person3d.pointing_pose,
                                               scale=Vector3(0.5, 0.05, 0.05),
                                               color=ColorRGBA(cmap[i, 0], cmap[i, 1], cmap[i, 2], 1.0)))
 
-            # markers.markers.append(Marker(header=rgb.header,
-            #                               ns='labels',
-            #                               id=i,
-            #                               type=Marker.TEXT_VIEW_FACING,
-            #                               action=Marker.ADD,
-            #                               lifetime=rospy.Duration(1.5),
-            #                               pose=Pose(position=p_head, orientation=Quaternion(*q)),
-            #                               text=text,
-            #                               scale=Vector3(0, 0, 0.2),
-            #                               color=ColorRGBA(cmap[i, 0], cmap[i, 1], cmap[i, 2], 1)))
-
-        self.person_pub.publish(People(header=rgb.header, people=persons))
+        # self.person_pub.publish(People(header=rgb.header, people=people3d))
         # publish all markers in one go
         self.markers_pub.publish(markers)
+
+        return people3d
 
     def recognitions_to_joints(self, recognitions, rgb, depth, cam_model):
         cv_depth = self._bridge.imgmsg_to_cv2(depth)
