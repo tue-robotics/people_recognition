@@ -236,7 +236,7 @@ class PeopleDetector(object):
     @staticmethod
     def _shirt_colours_to_label(shirt_colours):
         label = " shirt colours:"
-        for colour in shirt_colours:
+        for colour in shirt_colours[self._colour_extractor_srv_prefix].colours:
             label += " {}".format(colour.data)
         return label
 
@@ -279,7 +279,7 @@ class PeopleDetector(object):
 
         # Colour Extractor service call
         shirt_images = [PeopleDetector._image_from_roi(image, PeopleDetector.move_face_roi_to_shirt(r.roi, image)) for r in face_recognitions]
-        shirt_colours_array = [self._get_colour_extractor(img)[self._colour_extractor_srv_prefix].colours for img in shirt_images]
+        shirt_colours_array = [self._get_colour_extractor(img) for img in shirt_images]
 
         # Prepare image annotation labels and People message
         image_annotations = list()
