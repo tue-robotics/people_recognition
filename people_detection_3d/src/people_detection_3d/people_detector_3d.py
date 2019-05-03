@@ -307,6 +307,14 @@ class PeopleDetector3D(object):
                     point3d = Vector3(x, y, z)
 
             person3d = Person3D(
+                name=person2d.name,
+                age=person2d.age,
+                gender=person2d.gender,
+                gender_confidence=person2d.gender_confidence,
+                posture=person2d.posture,
+                emotion=person2d.emotion,
+                shirt_colours=person2d.shirt_colours,
+                body_parts_pose=person2d.body_parts,
                 position=point3d,
                 tags=self.get_person_tags(skeleton),
             )
