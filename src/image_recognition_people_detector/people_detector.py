@@ -9,7 +9,6 @@ import copy
 # ROS modules
 import rospy
 from cv_bridge import CvBridge
-from std_msgs.msg import String
 from sensor_msgs.msg import RegionOfInterest
 
 # Image recognition repository modules
@@ -234,13 +233,15 @@ class PeopleDetector(object):
                                         face_properties.age)
 
     @staticmethod
-    def _shirt_colours_to_label(shirt_colours, dict_key):
+    def _shirt_colours_to_label(shirt_colours):
         """
-        TODO: get rid of dict_key arg
+        Convert shirt colours array to label string
+        :param: shirt_colours: Array to colours
+        :return: string label
         """
         label = " shirt colours:"
-        for colour in shirt_colours[dict_key].colours:
-            label += " {}".format(colour.data)
+        for colour in shirt_colours:
+            label += " {}".format(colour)
         return label
 
     @staticmethod
@@ -282,7 +283,7 @@ class PeopleDetector(object):
 
         # Colour Extractor service call
         shirt_images = [PeopleDetector._image_from_roi(image, PeopleDetector.move_face_roi_to_shirt(r.roi, image)) for r in face_recognitions]
-        shirt_colours_array = [self._get_colour_extractor(img) for img in shirt_images]
+        shirt_colours_array = [self._get_colour_extractor(img)[self._colour_extractor_srv_prefix].colours for img in shirt_images]
 
         # Prepare image annotation labels and People message
         image_annotations = list()
@@ -291,8 +292,7 @@ class PeopleDetector(object):
         for face_label, face_properties, shirt_colours, body_parts in zip(face_labels,
                 face_properties_array, shirt_colours_array, body_parts_array):
             temp_label = PeopleDetector._face_properties_to_label(face_properties) + \
-                    PeopleDetector._shirt_colours_to_label(shirt_colours,
-                            self._colour_extractor_srv_prefix)
+                    PeopleDetector._shirt_colours_to_label(shirt_colours)
 
             if face_label:
                 image_annotations.append(face_label + " " + temp_label)
