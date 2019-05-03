@@ -12,8 +12,6 @@ from image_recognition_msgs.srv import DetectPeople, DetectPeopleResponse
 class PeopleDetectionNode:
     def __init__(self):
         self._bridge = CvBridge()
-        self._detect_people_srv = rospy.Service('detect_people', DetectPeople,
-                self._detect_people_srv)
 
         openpose_srv_prefix = self._get_param('~openpose_srv_prefix', "openpose")
         openface_srv_prefix = self._get_param('~openface_srv_prefix', "openface")
@@ -25,6 +23,10 @@ class PeopleDetectionNode:
                                                 keras_srv_prefix,
                                                 colour_extractor_srv_prefix)
 
+        # Define the service only after PeopleDetector has initialized
+        # completely else an early service call can be made causing errors
+        self._detect_people_srv = rospy.Service('detect_people', DetectPeople,
+                self._detect_people_srv)
         rospy.loginfo("PeopleDetectionNode initialized:")
 
     def _get_param(self, name, default):
