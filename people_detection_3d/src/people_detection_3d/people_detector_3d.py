@@ -259,7 +259,9 @@ class PeopleDetector3D(object):
         cmap = color_map(N=len(people2d), normalized=True)
 
         markers = MarkerArray()
-        markers.markers.append(Marker(action=Marker.DELETEALL))
+        delete_all = Marker(action=Marker.DELETEALL)
+        delete_all.header.frame_id = rgb.header.frame_id
+        markers.markers.append(delete_all)
 
         # import ipdb; ipdb.set_trace()
         people3d = []
