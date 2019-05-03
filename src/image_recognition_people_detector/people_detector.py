@@ -279,8 +279,7 @@ class PeopleDetector(object):
 
         # Colour Extractor service call
         shirt_images = [PeopleDetector._image_from_roi(image, PeopleDetector.move_face_roi_to_shirt(r.roi, image)) for r in face_recognitions]
-        shirt_colours_array =
-        [self._get_colour_extractor(img)[self._colour_extractor_srv_prefix].colours for img in shirt_images]
+        shirt_colours_array = [self._get_colour_extractor(img)[self._colour_extractor_srv_prefix].colours for img in shirt_images]
 
         # Prepare image annotation labels and People message
         image_annotations = list()
