@@ -263,13 +263,12 @@ class PeopleDetector3D(object):
         delete_all.header.frame_id = rgb.header.frame_id
         markers.markers.append(delete_all)
 
-        # import ipdb; ipdb.set_trace()
         people3d = []
         for i, person2d in enumerate(people2d):
             joints = self.recognitions_to_joints(person2d.body_parts, rgb, depth, cam_model)
 
             # visualize joints
-            rospy.loginfo('found %s objects for group %s', len(joints), i)
+            rospy.logdebug('found %s objects for group %s', len(joints), i)
 
             points = [j.point for j in joints]
             markers.markers.append(Marker(header=rgb.header,
@@ -324,7 +323,7 @@ class PeopleDetector3D(object):
                 person3d.tags.append("is_pointing")
                 person3d.pointing_pose = pointing_pose
 
-                people3d.append(person3d)
+            people3d.append(person3d)
 
             # visualize persons
             # height = 1.8
@@ -344,7 +343,7 @@ class PeopleDetector3D(object):
         # self.person_pub.publish(People(header=rgb.header, people=people3d))
         # publish all markers in one go
         self.markers_pub.publish(markers)
-
+        rospy.loginfo("Done. Found {} people".format(len(people3d)))
         return people3d
 
     def recognitions_to_joints(self, recognitions, rgb, depth, cam_model):
@@ -498,7 +497,7 @@ class PeopleDetector3D(object):
             if knee.y < (other.y + self.vert_threshold) and knee.x < (other.x + self.hor_threshold):
                 tags.append(side + 'Sitting')
 
-        rospy.loginfo(tags)
+        rospy.logdebug(tags)
         return tags
 
     @staticmethod
@@ -540,9 +539,9 @@ class PeopleDetector3D(object):
                     left_arm_vector = (left_wrist - left_shoulder) / (left_wrist - left_shoulder).Norm()
                     left_frame = get_frame_from_vector(left_arm_vector, left_wrist)
 
-                rospy.loginfo("Left arm norm: %.2f", left_arm_norm)
+                rospy.logdebug("Left arm norm: %.2f", left_arm_norm)
         else:
-            rospy.loginfo("Left arm not valid because it does not contain all required bodyparts")
+            rospy.logdebug("Left arm not valid because it does not contain all required bodyparts")
 
         if right_arm_valid:
 
@@ -566,18 +565,18 @@ class PeopleDetector3D(object):
                     right_arm_vector = (right_wrist - right_shoulder) / (right_wrist - right_shoulder).Norm()
                     right_frame = get_frame_from_vector(right_arm_vector, right_wrist)
 
-                rospy.loginfo("Right arm norm: %.2f", right_arm_norm)
+                rospy.logdebug("Right arm norm: %.2f", right_arm_norm)
         else:
-            rospy.loginfo("Left arm not valid because it does not contain all required bodyparts")
+            rospy.logdebug("Left arm not valid because it does not contain all required bodyparts")
 
-        rospy.loginfo("Arm norm threshold: %.2f", arm_norm_threshold)
+        rospy.logdebug("Arm norm threshold: %.2f", arm_norm_threshold)
 
         # Constraint based on parralelliness arm and neck
         if left_arm_valid and left_arm_neck_norm < neck_norm_threshold:
-            rospy.loginfo("Rejecting left arm because of neck norm threshold ...")
+            rospy.logdebug("Rejecting left arm because of neck norm threshold ...")
             left_arm_valid = False
         if right_arm_valid and right_arm_neck_norm < neck_norm_threshold:
-            rospy.loginfo("Rejecting right arm because of neck norm threshold ...")
+            rospy.logdebug("Rejecting right arm because of neck norm threshold ...")
             right_arm_valid = False
 
         # Optimize
@@ -603,7 +602,7 @@ class PeopleDetector3D(object):
             frame = right_frame
 
         if not frame:
-            rospy.loginfo("No valid arms found ...")
+            rospy.logdebug("No valid arms found ...")
             return None
 
         return Pose(position=Point(*frame.p), orientation=Quaternion(*frame.M.GetQuaternion()))

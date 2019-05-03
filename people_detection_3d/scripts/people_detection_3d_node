@@ -35,7 +35,7 @@ class PeopleDetection3DNode:
 
             # self._ts = message_filters.TimeSynchronizer([rgb_sub, depth_sub, depth_info_sub], 1)
             self._ts = message_filters.ApproximateTimeSynchronizer([rgb_sub, depth_sub, depth_info_sub],
-                                                                   queue_size=3,
+                                                                   queue_size=1,
                                                                    slop=10)
 
             self._ts.registerCallback(self._topic_callback)
@@ -72,7 +72,7 @@ class PeopleDetection3DNode:
     def _topic_callback(self, rgb, depth, depth_info):
         rospy.logdebug("_topic_callback called")
         people3d = self._people_detector_3d.recognize(rgb, depth, depth_info)
-        print(people3d)
+        # print(people3d)
 
 if __name__ == '__main__':
     rospy.init_node('people_detection_3d')
