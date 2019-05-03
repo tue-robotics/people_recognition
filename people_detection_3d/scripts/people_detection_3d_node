@@ -2,10 +2,13 @@
 
 # ROS modules
 import rospy
+import message_filters
+from sensor_msgs.msg import Image, CameraInfo
 
 # People detection 3D modules
 from people_detection_3d import PeopleDetector3D
 from people_detection_3d_msgs.srv import DetectPeople3D, DetectPeople3DResponse
+
 
 class PeopleDetection3DNode:
     def __init__(self):
@@ -17,6 +20,17 @@ class PeopleDetection3DNode:
         vert_threshold = self._get_param('~vert_threshold', 0.7)
         hor_threshold = self._get_param('~hor_threshold', 0.4)
         padding = self._get_param('~padding', 5)
+
+        enable_topic_mode = self._get_param('~enable_topic_mode', False)
+
+        if enable_topic_mode:
+            depth_info_sub = message_filters.Subscriber('camera_info', CameraInfo)
+            depth_sub = message_filters.Subscriber('depth', Image)
+            rgb_sub = message_filters.Subscriber('rgb', Image)
+
+            self._ts = message_filters.TimeSynchronizer([rgb_sub, depth_sub, depth_info_sub], 1)
+
+            self._ts.registerCallback(self._topic_callback)
 
         self._people_detector_3d = PeopleDetector3D(probability_threshold,
                 link_threshold, heuristic, arm_norm_threshold, wave_threshold,
@@ -50,6 +64,9 @@ class PeopleDetection3DNode:
                 req.image_depth, req.camera_info_depth)
 
         return DetectPeople3DResponse(people=people3d)
+
+    def _topic_callback(self, rgb, depth, depth_info):
+        people3d = self._people_detector_3d.recognize(rgb, depth, depth_info)
 
 if __name__ == '__main__':
     rospy.init_node('people_detection_3d')
