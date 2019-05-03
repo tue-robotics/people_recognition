@@ -10,6 +10,10 @@ from image_recognition_people_detector.people_detector import PeopleDetector
 
 parser = argparse.ArgumentParser(description='Get people detections')
 parser.add_argument('-v', '--verbose', help="Increase output verbosity", action="store_true")
+parser.add_argument('--openpose_srv_prefix', default="openpose")
+parser.add_argument('--openface_srv_prefix', default="openface")
+parser.add_argument('--keras_srv_prefix', default="keras")
+parser.add_argument('--colour_extractor_srv_prefix', default="colour_extractor")
 
 mode_parser = parser.add_subparsers(help='Mode')
 image_parser = mode_parser.add_parser('image', help='Use image mode')
@@ -24,7 +28,10 @@ args = parser.parse_args()
 
 rospy.init_node('get_people_detections')
 
-detector = PeopleDetector()
+detector = PeopleDetector(args.openpose_srv_prefix,
+                            args.openface_srv_prefix,
+                            args.keras_srv_prefix,
+                            args.colour_extractor_srv_prefix)
 
 if args.mode == 'image':
     image = cv2.imread(args.image)
