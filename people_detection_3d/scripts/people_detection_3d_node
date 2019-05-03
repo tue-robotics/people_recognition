@@ -9,10 +9,6 @@ from people_detection_3d_msgs.srv import DetectPeople3D, DetectPeople3DResponse
 
 class PeopleDetection3DNode:
     def __init__(self):
-        self._detect_people_3d_srv = rospy.Service('detect_people_3d',
-                DetectPeople3D,
-                self._detect_people_3d_srv)
-
         probability_threshold = float(self._get_param('~probability_threshold', 0.2))
         link_threshold = float(self._get_param('~link_threshold', 0.5))
         heuristic = self._get_param('~heuristic', 'shoulder')
@@ -25,6 +21,12 @@ class PeopleDetection3DNode:
         self._people_detector_3d = PeopleDetector3D(probability_threshold,
                 link_threshold, heuristic, arm_norm_threshold, wave_threshold,
                 vert_threshold, hor_threshold, padding)
+
+        # Define the service only after PeopleDetector has initialized
+        # completely else an early service call can be made causing errors
+        self._detect_people_3d_srv = rospy.Service('detect_people_3d',
+                DetectPeople3D,
+                self._detect_people_3d_srv)
 
         rospy.loginfo("PeopleDetection3DNode initialized:")
 
