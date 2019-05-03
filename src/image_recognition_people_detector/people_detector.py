@@ -151,6 +151,16 @@ class PeopleDetector(object):
         return rois
 
     @staticmethod
+    def _get_body_parts_openpose(group_id, recognitions):
+        """
+        Get a list of all bodyparts associated with a particular group ID
+        :param: group_id: The group ID of the bodyparts to be fetched
+        :param: recognitions: All bodyparts recieved from openpose
+        :return: List of body_parts
+        """
+        return body_parts = [r for r in recognitions if r.group_id == group_id]
+
+    @staticmethod
     def _get_container_recognition(roi, recognitions, padding_factor=0.1):
         """
         Associate OpenPose ROI with best OpenPose face ROI
