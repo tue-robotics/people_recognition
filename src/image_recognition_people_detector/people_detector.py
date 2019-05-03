@@ -257,6 +257,9 @@ class PeopleDetector(object):
         # Extract face ROIs and their corresponding group ids from recognitions of openpose
         openpose_face_rois, openpose_face_group_ids = PeopleDetector._get_face_rois_ids_openpose(recognitions['openpose'].recognitions)
 
+        body_parts_array = [PeopleDetector._get_body_parts_openpose(group_id,
+            recognitions['openpose'].recognitions) for group_id in openpose_face_group_ids]
+
         face_recognitions = [PeopleDetector._get_container_recognition(openpose_face_roi,
                                                                        recognitions['openface'].recognitions)
                              for openpose_face_roi in openpose_face_rois]
@@ -275,8 +278,8 @@ class PeopleDetector(object):
         image_annotations = list()
         people = list()
 
-        for face_label, face_properties, shirt_colours in zip(face_labels,
-                face_properties_array, shirt_colours_array):
+        for face_label, face_properties, shirt_colours, body_parts in zip(face_labels,
+                face_properties_array, shirt_colours_array, body_parts_array):
             temp_label = PeopleDetector._face_properties_to_label(face_properties) + \
                     PeopleDetector._shirt_colours_to_label(shirt_colours)
 
@@ -289,7 +292,8 @@ class PeopleDetector(object):
                                  age=face_properties.age,
                                  gender=face_properties.gender,
                                  gender_confidence=face_properties.gender_confidence,
-                                 shirt_colors=shirt_colours))
+                                 shirt_colors=shirt_colours,
+                                 body_parts=body_parts))
 
         cv_image = image_writer.get_annotated_cv_image(image,
                                                        recognitions=face_recognitions,
