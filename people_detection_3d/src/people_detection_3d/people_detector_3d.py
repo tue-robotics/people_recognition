@@ -16,7 +16,7 @@ import rospy
 import tf
 from cv_bridge import CvBridge
 from geometry_msgs.msg import Point, Vector3, Pose, Quaternion
-from sensor_msgs.msg import Image
+from sensor_msgs.msg import Image, CameraInfo
 from std_msgs.msg import ColorRGBA
 from visualization_msgs.msg import Marker, MarkerArray
 
@@ -232,16 +232,20 @@ class PeopleDetector3D(object):
             return dict(zip(self._detect_people_services.keys(), p.map(_threaded_srv, args)))
 
 
-    def recognize(self, rgb, depth, depth_info):
+    def recognize(self, rgb, depth, camera_info):
         """
         Service call function
         :param: rgb: RGB Image msg
         :param: depth: Depth Image_msg
         :param: depth_info: Depth CameraInfo msg
         """
+        assert isinstance(rgb, Image)
+        assert isinstance(depth, Image)
+        assert isinstance(camera_info, CameraInfo)
+
         rospy.loginfo('Got recognize service call')
         cam_model = image_geometry.PinholeCameraModel()
-        cam_model.fromCameraInfo(depth_info)
+        cam_model.fromCameraInfo(camera_info)
 
         t = rospy.Time.now()
         try:
