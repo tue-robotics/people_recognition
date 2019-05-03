@@ -181,7 +181,6 @@ def get_param(name, default):
 
 
 class PeopleDetector3D(object):
-    padding = 5
 
     def __init__(self):
         self._detect_people_services = _get_and_wait_for_services([
@@ -199,6 +198,7 @@ class PeopleDetector3D(object):
         self.wave_threshold = get_param('~wave_threshold', 0.2)
         self.vert_threshold = get_param('~vert_threshold', 0.7)
         self.hor_threshold = get_param('~hor_threshold', 0.4)
+        self.padding = get_param('~padding', 5)
 
         # camera topics
         #depth_info_sub = message_filters.Subscriber('camera/depth/camera_info', CameraInfo)
