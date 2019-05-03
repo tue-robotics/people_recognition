@@ -14,9 +14,25 @@ class PeopleDetectionNode:
         self._bridge = CvBridge()
         self._detect_people_srv = rospy.Service('detect_people', DetectPeople,
                 self._detect_people_srv)
-        self._people_detector = PeopleDetector()
+
+        openpose_srv_prefix = self._get_param('~openpose_srv_prefix', "openpose")
+        openface_srv_prefix = self._get_param('~openface_srv_prefix', "openface")
+        keras_srv_prefix = self._get_param('~keras_srv_prefix', "keras")
+        colour_extractor_srv_prefix = self._get_param('~colour_extractor_srv_prefix', "colour_extractor")
+
+        self._people_detector = PeopleDetector(openpose_srv_prefix,
+                                                openface_srv_prefix,
+                                                keras_srv_prefix,
+                                                colour_extractor_srv_prefix)
 
         rospy.loginfo("PeopleDetectionNode initialized:")
+
+    def _get_param(self, name, default):
+        if rospy.has_param(name):
+            return rospy.get_param(name)
+        else:
+            rospy.logwarn('parameter %s not set, using the default value of %s', name, default)
+            return rospy.get_param(name, default)
 
     def _detect_people_srv(self, req):
         """

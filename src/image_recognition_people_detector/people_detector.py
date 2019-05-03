@@ -35,18 +35,20 @@ def _get_and_wait_for_services(service_names, service_class, suffix=""):
     return services
 
 class PeopleDetector(object):
-    def __init__(self):
+    def __init__(self, openpose_srv_prefix, openface_srv_prefix,
+            keras_srv_prefix, colour_extractor_srv_prefix):
+
         self._recognize_services = _get_and_wait_for_services([
-            'openpose',
-            'openface'
+            openpose_srv_prefix,
+            openface_srv_prefix
         ], Recognize, '/recognize')
 
         self._face_properties_services = _get_and_wait_for_services([
-            'keras'
+            keras_srv_prefix
         ], GetFaceProperties, '/get_face_properties')
 
         self._colour_extractor_services = _get_and_wait_for_services([
-            'extract_colour'
+            colour_extractor_srv_prefix
         ], ExtractColour, '/extract_colour')
 
         self._bridge = CvBridge()
