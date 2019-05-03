@@ -12,9 +12,28 @@ class PeopleDetection3DNode:
         self._detect_people_3d_srv = rospy.Service('detect_people_3d',
                 DetectPeople3D,
                 self._detect_people_3d_srv)
-        self._people_detector_3d = PeopleDetector3D()
+
+        probability_threshold = float(self._get_param('~probability_threshold', 0.2))
+        link_threshold = float(self._get_param('~link_threshold', 0.5))
+        heuristic = self._get_param('~heuristic', 'shoulder')
+        arm_norm_threshold = self._get_param('~arm_norm_threshold', 0.5)
+        wave_threshold = self._get_param('~wave_threshold', 0.2)
+        vert_threshold = self._get_param('~vert_threshold', 0.7)
+        hor_threshold = self._get_param('~hor_threshold', 0.4)
+        padding = self._get_param('~padding', 5)
+
+        self._people_detector_3d = PeopleDetector3D(probability_threshold,
+                link_threshold, heuristic, arm_norm_threshold, wave_threshold,
+                vert_threshold, hor_threshold, padding)
 
         rospy.loginfo("PeopleDetection3DNode initialized:")
+
+    def _get_param(name, default):
+        if rospy.has_param(name):
+            return rospy.get_param(name)
+        else:
+            rospy.logwarn('parameter %s not set, using the default value of %s', name, default)
+            return rospy.get_param(name, default)
 
     def _detect_people_3d_srv(self, req):
         """
