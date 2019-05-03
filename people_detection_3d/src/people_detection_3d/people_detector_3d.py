@@ -172,17 +172,11 @@ def color_map(N=256, normalized=False):
     return cmap
 
 
-def get_param(name, default):
-    if rospy.has_param(name):
-        return rospy.get_param(name)
-    else:
-        rospy.logwarn('parameter %s not set, using the default value of %s', name, default)
-        return rospy.get_param(name, default)
-
-
 class PeopleDetector3D(object):
 
-    def __init__(self):
+    def __init__(self, probability_threshold, link_threshold, heuristic,
+            arm_norm_threshold, wave_threshold, vert_threshold, hor_threshold,
+            padding):
         self._detect_people_services = _get_and_wait_for_services([
             'people_detector'
         ], DetectPeople, '/detect_people')
@@ -191,14 +185,14 @@ class PeopleDetector3D(object):
         # self.bridge = CvBridge()
 
         # parameters
-        self.threshold = float(get_param('~probability_threshold', 0.2))
-        self.link_threshold = float(get_param('~link_threshold', 0.5))
-        self.heuristic = get_param('~heuristic', 'shoulder')
-        self.arm_norm_threshold = get_param('~arm_norm_threshold', 0.5)
-        self.wave_threshold = get_param('~wave_threshold', 0.2)
-        self.vert_threshold = get_param('~vert_threshold', 0.7)
-        self.hor_threshold = get_param('~hor_threshold', 0.4)
-        self.padding = get_param('~padding', 5)
+        self.threshold = probability_threshold
+        self.link_threshold = link_threshold
+        self.heuristic = heuristic
+        self.arm_norm_threshold = arm_norm_threshold
+        self.wave_threshold = wave_threshold
+        self.vert_threshold = vert_threshold
+        self.hor_threshold = hor_threshold
+        self.padding = padding
 
         # camera topics
         #depth_info_sub = message_filters.Subscriber('camera/depth/camera_info', CameraInfo)
