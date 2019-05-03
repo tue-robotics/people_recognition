@@ -181,7 +181,6 @@ class PeopleDetector3D(object):
             'people_detector'
         ], DetectPeople, '/detect_people')
 
-        rospy.loginfo('People detector 3D initialized')
         self._bridge = CvBridge()
 
         # parameters
@@ -218,6 +217,7 @@ class PeopleDetector3D(object):
         #                                                        slop=0.1)
 #        self._ts.registerCallback(self.callback)
         #rospy.loginfo('people_detector started')
+        rospy.loginfo('People detector 3D initialized')
 
     def _get_detect_people(self, rgb_imgmsg):
         """
@@ -256,7 +256,7 @@ class PeopleDetector3D(object):
         joints = self.recognitions_to_joints(people2d.body_parts_pose, rgb, depth, cam_model)
 
         # groupby group_id
-        groups = []
+        groups = list()
         for group_id, js in groupby(joints, lambda j: j.group_id):
             groups.append(list(js))
 
@@ -293,7 +293,7 @@ class PeopleDetector3D(object):
                                           color=ColorRGBA(cmap[i, 0] * 0.9, cmap[i, 1] * 0.9, cmap[i, 2] * 0.9, 1.0)))
 
         # create persons
-        persons = []
+        persons = list()
         for s in skeletons:
             if 'Neck' not in s:
                 continue
@@ -359,7 +359,7 @@ class PeopleDetector3D(object):
         cv_depth = self._bridge.imgmsg_to_cv2(depth)
         regions_viz = np.zeros_like(cv_depth)
 
-        joints = []
+        joints = list()
         for r in recognitions:
             assert len(r.categorical_distribution.probabilities) == 1
             pl = r.categorical_distribution.probabilities[0]
@@ -418,12 +418,12 @@ class PeopleDetector3D(object):
             point = Point(*point3d)
             joints.append(Joint(r.group_id, label, p, point))
 
-        new_joints = []
+        new_joints = list()
         for joint in joints:
             if joint.point.z:
                 new_joints.append(joint)
             else:
-                zs = []
+                zs = list()
                 for j in joints:
                     if j.group_id == joint.group_id and j.name != joint.name and j.point.z:
                         zs.append(j.point.z)
@@ -441,7 +441,7 @@ class PeopleDetector3D(object):
         return new_joints
 
     def get_person_tags(self, skeleton):
-        tags = []
+        tags = list()
         for side in ('L', 'R'):
             try:
                 if self.heuristic == 'shoulder':
