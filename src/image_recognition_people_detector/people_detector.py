@@ -57,6 +57,24 @@ class PeopleDetector(object):
 
         rospy.loginfo("People detector initialized")
 
+    def _get_service_response(self, srv_name, args):
+        """
+        Method to get service response and write it in the
+        dependent_srvs_responses dictionary
+
+        :param: srv_name: Name of service
+        :param: args: Input arguments of the service request
+        :return: True if successful call else False
+        """
+        try:
+            self._dependent_srvs_reponses[srv_name] = self._dependent_srvs[srv_name](args)
+        except rospy.ServiceException as e:
+            rospy.logwarn("{} service call failed: {}".format(srv_name, e))
+            return False
+
+        return True
+
+
     def _get_recognitions(self, image_msg):
         """
         Get recognitions from openpose and openface
