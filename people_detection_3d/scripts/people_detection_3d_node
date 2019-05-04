@@ -70,15 +70,16 @@ class PeopleDetection3DNode:
         """
         # Convert to opencv images
         rospy.loginfo("Detecting people in 3D from incoming RGB-D image")
-        people3d = self._people_detector_3d.recognize(req.image_rgb,
+        people3d, _ = self._people_detector_3d.recognize(req.image_rgb,
                 req.image_depth, req.camera_info_depth)
 
         return DetectPeople3DResponse(people=people3d)
 
     def _topic_callback(self, rgb, depth, depth_info):
         rospy.logdebug("_topic_callback called")
-        people3d = self._people_detector_3d.recognize(rgb, depth, depth_info)
-        # print(people3d)
+        people3d, markers = self._people_detector_3d.recognize(rgb, depth, depth_info)
+        self._makers_pub.publish(markers)
+        #self._people_pub.publish(People3D(people=people3d))
 
 if __name__ == '__main__':
     rospy.init_node('people_detection_3d')
