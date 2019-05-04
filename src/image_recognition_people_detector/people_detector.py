@@ -304,7 +304,9 @@ class PeopleDetector(object):
         # Keras service call
         rospy.loginfo("_get_face_properties...")
         face_image_msg_array = [self._bridge.cv2_to_imgmsg(PeopleDetector._image_from_roi(image, r.roi), "bgr8") for r in face_recognitions]
-        face_properties_array = self._get_face_properties(face_image_msg_array)
+        keras_response = _get_service_response(self._keras_srv, face_image_msg_array)
+        assert isinstance(keras_response, GetFacePropertiesResponse)
+        face_properties_array = keras_response.properties_array
 
         # Colour Extractor service call
         shirt_image_msg_array = list()
