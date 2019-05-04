@@ -12,9 +12,11 @@ from cv_bridge import CvBridge
 from sensor_msgs.msg import Image, RegionOfInterest
 
 # Image recognition repository modules
-from image_recognition_msgs.msg import Recognition, FaceProperties, Person
-from image_recognition_msgs.srv import Recognize, GetFaceProperties, ExtractColour
 from image_recognition_util import image_writer
+from image_recognition_msgs.msg import Recognition, FaceProperties, Person
+from image_recognition_msgs.srv import (Recognize, RecognizeResponse,
+                                        GetFaceProperties, GetFacePropertiesResponse,
+                                        ExtractColour, ExtractColourResponse)
 
 
 # def _threaded_srv(args):
@@ -279,18 +281,22 @@ class PeopleDetector(object):
         # OpenPose and OpenFace service calls
         rospy.loginfo("Starting pose and face recognition...")
         start_recognize = time.time()
-        recognitions = self._get_recognitions(image_msg)
-        rospy.logdebug("Recognize took %.4f seconds", time.time() - start_recognize)
+        openpose_response = _get_service_response(self._openpose_srv, image_msg)
+        assert isinstance(openpose_response, RecognizeResponse)
 
+        openface_response = _get_service_response(self._openface_srv, image_msg)
+        assert isinstance(openface_response, RecognizeResponse)
+        rospy.logdebug("Recognize took %.4f seconds", time.time() - start_recognize)
         rospy.loginfo("_get_face_rois_ids_openpose...")
+
         # Extract face ROIs and their corresponding group ids from recognitions of openpose
-        openpose_face_rois, openpose_face_group_ids = PeopleDetector._get_face_rois_ids_openpose(recognitions[self._openpose_srv_name].recognitions)
+        openpose_face_rois, openpose_face_group_ids = PeopleDetector._get_face_rois_ids_openpose(openpose_response.recognitions)
 
         body_parts_array = [PeopleDetector._get_body_parts_openpose(group_id,
-            recognitions[self._openpose_srv_name].recognitions) for group_id in openpose_face_group_ids]
+            openpose_response.recognitions) for group_id in openpose_face_group_ids]
 
         face_recognitions = [PeopleDetector._get_container_recognition(openpose_face_roi,
-                                                                       recognitions[self._openface_srv_name].recognitions)
+                                                                       openface_response.recognitions)
                              for openpose_face_roi in openpose_face_rois]
 
         face_labels = [PeopleDetector._get_best_label(r) for r in face_recognitions]
