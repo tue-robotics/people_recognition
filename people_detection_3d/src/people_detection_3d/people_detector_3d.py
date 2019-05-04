@@ -8,7 +8,6 @@ from itertools import groupby
 import numpy as np
 
 import image_geometry
-# import message_filters
 import rospy
 import tf
 from cv_bridge import CvBridge
