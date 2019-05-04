@@ -28,33 +28,33 @@ from image_recognition_util import image_writer
 #     del args
 #     # return result
 
-def _get_and_wait_for_services(service_names, service_class, suffix=""):
-    services = {s: rospy.ServiceProxy('{}{}'.format(s, suffix), service_class) for s in service_names}
+def _get_and_wait_for_services(service_names, service_class):
+    services = {s: rospy.ServiceProxy('{}'.format(s), service_class) for s in service_names}
     for service in services.values():
         rospy.loginfo("Waiting for service {} ...".format(service.resolved_name))
         service.wait_for_service()
     return services
 
 class PeopleDetector(object):
-    def __init__(self, openpose_srv_prefix, openface_srv_prefix,
-            keras_srv_prefix, colour_extractor_srv_prefix):
+    def __init__(self, openpose_srv_name, openface_srv_name,
+            keras_srv_name, colour_extractor_srv_name):
 
-        self._openpose_srv_prefix = openpose_srv_prefix
-        self._openface_srv_prefix = openface_srv_prefix
-        self._keras_srv_prefix = keras_srv_prefix
-        self._colour_extractor_srv_prefix = colour_extractor_srv_prefix
+        self._openpose_srv_name = openpose_srv_name
+        self._openface_srv_name = openface_srv_name
+        self._keras_srv_name = keras_srv_name
+        self._colour_extractor_srv_name = colour_extractor_srv_name
 
         self._recognize_services = _get_and_wait_for_services([
-            self._openpose_srv_prefix,
-            self._openface_srv_prefix
+            self._openpose_srv_name,
+            self._openface_srv_name
         ], Recognize, '/recognize')
 
         self._face_properties_services = _get_and_wait_for_services([
-            self._keras_srv_prefix
+            self._keras_srv_name
         ], GetFaceProperties, '/get_face_properties')
 
         self._colour_extractor_services = _get_and_wait_for_services([
-            self._colour_extractor_srv_prefix
+            self._colour_extractor_srv_name
         ], ExtractColour, '/extract_colour')
 
         self._bridge = CvBridge()
@@ -91,7 +91,7 @@ class PeopleDetector(object):
         #
         # return result['keras'].properties_array
 
-        return self._face_properties_services[self._keras_srv_prefix](face_image_array=image_msg_array).properties_array
+        return self._face_properties_services[self._keras_srv_name](face_image_array=image_msg_array).properties_array
 
     def _get_colour_extractor(self, image_msg):
         """
@@ -281,13 +281,13 @@ class PeopleDetector(object):
 
         rospy.loginfo("_get_face_rois_ids_openpose...")
         # Extract face ROIs and their corresponding group ids from recognitions of openpose
-        openpose_face_rois, openpose_face_group_ids = PeopleDetector._get_face_rois_ids_openpose(recognitions[self._openpose_srv_prefix].recognitions)
+        openpose_face_rois, openpose_face_group_ids = PeopleDetector._get_face_rois_ids_openpose(recognitions[self._openpose_srv_name].recognitions)
 
         body_parts_array = [PeopleDetector._get_body_parts_openpose(group_id,
-            recognitions[self._openpose_srv_prefix].recognitions) for group_id in openpose_face_group_ids]
+            recognitions[self._openpose_srv_name].recognitions) for group_id in openpose_face_group_ids]
 
         face_recognitions = [PeopleDetector._get_container_recognition(openpose_face_roi,
-                                                                       recognitions[self._openface_srv_prefix].recognitions)
+                                                                       recognitions[self._openface_srv_name].recognitions)
                              for openpose_face_roi in openpose_face_rois]
 
         face_labels = [PeopleDetector._get_best_label(r) for r in face_recognitions]
@@ -305,7 +305,7 @@ class PeopleDetector(object):
             shirt_image_msg_array.append(self._bridge.cv2_to_imgmsg(shirt_image))
 
         rospy.loginfo("_get_colour_extractor...")
-        shirt_colours_array = [self._get_colour_extractor(image_msg)[self._colour_extractor_srv_prefix].colours for image_msg in shirt_image_msg_array]
+        shirt_colours_array = [self._get_colour_extractor(image_msg)[self._colour_extractor_srv_name].colours for image_msg in shirt_image_msg_array]
 
         # Prepare image annotation labels and People message
         image_annotations = list()
