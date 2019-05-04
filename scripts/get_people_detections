@@ -50,7 +50,7 @@ elif args.mode == 'cam':
 
         time_elapsed = time.time() - prev
         res, image = cap.read()
-        image_msg = cv_brige.cv2_to_imgmsg(image)
+        image_msg = cv_brige.cv2_to_imgmsg(image, "bgr8")
 
         if time_elapsed > 1. / args.rate:
             prev = time.time()
