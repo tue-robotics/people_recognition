@@ -8,8 +8,6 @@ from sensor_msgs.msg import Image, CameraInfo
 # People detection 3D modules
 from people_detection_3d import PeopleDetector3D
 from people_detection_3d_msgs.srv import DetectPeople3D, DetectPeople3DResponse
-from people_detection_3d_msgs.msg import Person3D
-
 
 class PeopleDetection3DNode:
     def __init__(self):
