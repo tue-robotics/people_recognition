@@ -4,9 +4,11 @@
 import rospy
 import message_filters
 from sensor_msgs.msg import Image, CameraInfo
+from visualization_msgs.msg import MarkerArray
 
 # People detection 3D modules
 from people_detection_3d import PeopleDetector3D
+# from people_detection_3d_msgs.msg import People3D
 from people_detection_3d_msgs.srv import DetectPeople3D, DetectPeople3DResponse
 
 class PeopleDetection3DNode:
@@ -30,6 +32,10 @@ class PeopleDetection3DNode:
             depth_info_sub = message_filters.Subscriber('camera_info', CameraInfo)
             depth_sub = message_filters.Subscriber('depth', Image)
             rgb_sub = message_filters.Subscriber('rgb', Image)
+
+            #self._people_pub = rospy.Publisher('people3d', People3D, queue_size=1)
+            self._makers_pub = rospy.Publisher('~viz', MarkerArray, queue_size=1)
+            self._regions_viz_pub = rospy.Publisher('~regions_viz', Image, queue_size=1)
 
             # self._ts = message_filters.TimeSynchronizer([rgb_sub, depth_sub, depth_info_sub], 1)
             self._ts = message_filters.ApproximateTimeSynchronizer([rgb_sub, depth_sub, depth_info_sub],

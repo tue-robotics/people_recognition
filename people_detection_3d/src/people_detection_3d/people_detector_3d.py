@@ -1,9 +1,6 @@
 #!/usr/bin/env python
 from __future__ import print_function, division
 
-from contextlib import closing
-from multiprocessing import Pool
-
 import math
 import PyKDL as kdl
 from collections import namedtuple
@@ -22,16 +19,6 @@ from visualization_msgs.msg import Marker, MarkerArray
 
 from image_recognition_msgs.srv import Recognize, DetectPeople
 from people_detection_3d_msgs.msg import Person3D
-
-def _threaded_srv(args):
-    """
-    Required for calling service in parallel
-    """
-    srv, kwarg_dict = args
-    result = srv(**kwarg_dict)
-    del args
-    return result
-
 
 def _get_and_wait_for_services(service_names, service_class, suffix=""):
     """
@@ -193,30 +180,6 @@ class PeopleDetector3D(object):
         self.hor_threshold = hor_threshold
         self.padding = padding
 
-        # camera topics
-        #depth_info_sub = message_filters.Subscriber('camera/depth/camera_info', CameraInfo)
-        #depth_sub = message_filters.Subscriber('camera/depth/image', Image)
-        #rgb_sub = message_filters.Subscriber('camera/rgb/image', Image)
-
-        # openpose
-        #self.recognize = rospy.ServiceProxy('pose_detector/recognize', Recognize)
-
-        # published topics
- #       self.person_pub = rospy.Publisher('persons', People, queue_size=1)
-        self.markers_pub = rospy.Publisher('~viz', MarkerArray, queue_size=1)
-        self.regions_viz_pub = rospy.Publisher('~regions_viz', Image, queue_size=1)
-
-        # before subscribing, wait for services
-        #rospy.loginfo('wait for service [%s]', self.recognize.resolved_name)
-        #self.recognize.wait_for_service()
-
-        # private variables
-
-#        self._ts = message_filters.TimeSynchronizer([rgb_sub, depth_sub, depth_info_sub], 1)
-        # self._ts = message_filters.ApproximateTimeSynchronizer([rgb_sub, depth_sub, depth_info_sub], queue_size=3,
-        #                                                        slop=0.1)
-#        self._ts.registerCallback(self.callback)
-        #rospy.loginfo('people_detector started')
         rospy.loginfo('People detector 3D initialized')
 
     def _get_detect_people(self, rgb_imgmsg):
