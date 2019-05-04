@@ -13,6 +13,7 @@ from people_detection_3d_msgs.srv import DetectPeople3D, DetectPeople3DResponse
 
 class PeopleDetection3DNode:
     def __init__(self):
+        detect_people_srv_name = self._get_param('~detect_people_srv_name', "detect_people")
         probability_threshold = float(self._get_param('~probability_threshold', 0.2))
         link_threshold = float(self._get_param('~link_threshold', 0.5))
         heuristic = self._get_param('~heuristic', 'shoulder')
@@ -24,9 +25,10 @@ class PeopleDetection3DNode:
 
         enable_topic_mode = self._get_param('~enable_topic_mode', False)
 
-        self._people_detector_3d = PeopleDetector3D(probability_threshold,
-                link_threshold, heuristic, arm_norm_threshold, wave_threshold,
-                vert_threshold, hor_threshold, padding)
+        self._people_detector_3d = PeopleDetector3D(detect_people_srv_name,
+                probability_threshold, link_threshold, heuristic,
+                arm_norm_threshold, wave_threshold, vert_threshold,
+                hor_threshold, padding)
 
         if enable_topic_mode:
             depth_info_sub = message_filters.Subscriber('camera_info', CameraInfo)
