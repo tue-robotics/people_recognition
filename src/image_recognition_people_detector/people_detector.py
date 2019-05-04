@@ -9,7 +9,7 @@ import copy
 # ROS modules
 import rospy
 from cv_bridge import CvBridge
-from sensor_msgs.msg import RegionOfInterest
+from sensor_msgs.msg import Image, RegionOfInterest
 
 # Image recognition repository modules
 from image_recognition_msgs.msg import Recognition, FaceProperties, Person
@@ -255,7 +255,7 @@ class PeopleDetector(object):
         return label
 
     @staticmethod
-    def move_face_roi_to_shirt(face_roi, image_shape):
+    def _shirt_roi_from_face_roi(face_roi, image_shape):
         """
         Given a ROI for a face, shift the ROI to the person's shirt. Assuming the person is upright :/
         :param face_roi: RegionOfInterest
@@ -270,6 +270,7 @@ class PeopleDetector(object):
         return shirt_roi
 
     def recognize(self, image_msg):
+        assert isinstance(image_msg, Image)
         image = self._bridge.imgmsg_to_cv2(image_msg)
 
         # OpenPose and OpenFace service calls
@@ -297,9 +298,14 @@ class PeopleDetector(object):
         face_properties_array = self._get_face_properties(face_image_msg_array)
 
         # Colour Extractor service call
-        shirt_images = [PeopleDetector._image_from_roi(image, PeopleDetector.move_face_roi_to_shirt(r.roi, image)) for r in face_recognitions]
+        shirt_image_msg_array = list()
+        for r in face_recognitions:
+            shirt_roi = PeopleDetector._shirt_roi_from_face_roi(r.roi, image.shape)
+            shirt_image = PeopleDetector._image_from_roi(image, shirt_roi)
+            shirt_image_msg_array.append(self._bridge.cv2_to_imgmsg(shirt_image))
+
         rospy.loginfo("_get_colour_extractor...")
-        shirt_colours_array = [self._get_colour_extractor(img)[self._colour_extractor_srv_prefix].colours for img in shirt_images]
+        shirt_colours_array = [self._get_colour_extractor(image_msg)[self._colour_extractor_srv_prefix].colours for image_msg in shirt_image_msg_array]
 
         # Prepare image annotation labels and People message
         image_annotations = list()
