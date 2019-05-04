@@ -47,15 +47,15 @@ class PeopleDetector(object):
         self._recognize_services = _get_and_wait_for_services([
             self._openpose_srv_name,
             self._openface_srv_name
-        ], Recognize, '/recognize')
+        ], Recognize)
 
         self._face_properties_services = _get_and_wait_for_services([
             self._keras_srv_name
-        ], GetFaceProperties, '/get_face_properties')
+        ], GetFaceProperties)
 
         self._colour_extractor_services = _get_and_wait_for_services([
             self._colour_extractor_srv_name
-        ], ExtractColour, '/extract_colour')
+        ], ExtractColour)
 
         self._bridge = CvBridge()
 
