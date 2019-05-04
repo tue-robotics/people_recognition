@@ -187,13 +187,6 @@ class PeopleDetector3D(object):
         Get recognitions from openpose and openface
         :param: rgb_imgmsg: RGB Image msg people detector service
         """
-        # args = zip(self._detect_people_services.values(), [{
-        #     "image": rgb_imgmsg
-        # }] * len(self._detect_people_services))
-        #
-        # with closing(Pool(len(self._detect_people_services))) as p:  # Without closing we have a memory leak
-        #     return dict(zip(self._detect_people_services.keys(), p.map(_threaded_srv, args)))
-
         return {srv_name: srv(image=rgb_imgmsg) for srv_name, srv in self._detect_people_services.iteritems()}
 
 
