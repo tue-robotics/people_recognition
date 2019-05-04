@@ -12,9 +12,9 @@ from image_recognition_people_detector.people_detector import PeopleDetector
 parser = argparse.ArgumentParser(description='Get people detections')
 parser.add_argument('-v', '--verbose', help="Increase output verbosity", action="store_true")
 parser.add_argument('--openpose_srv_name', default="openpose/recognize")
-parser.add_argument('--openface_srv_name', default="openface/recognize")
-parser.add_argument('--keras_srv_name', default="keras/get_face_properties")
-parser.add_argument('--colour_extractor_srv_name', default="colour_extractor/extract_colour")
+parser.add_argument('--openface_srv_name', default="face_recognition/recognize")
+parser.add_argument('--keras_srv_name', default="face_recognition/get_face_properties")
+parser.add_argument('--colour_extractor_srv_name', default="extract_colour")
 
 mode_parser = parser.add_subparsers(help='Mode')
 image_parser = mode_parser.add_parser('image', help='Use image mode')
