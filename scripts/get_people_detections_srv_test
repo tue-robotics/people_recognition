@@ -13,6 +13,7 @@ from image_recognition_msgs.srv import DetectPeople, DetectPeopleRequest
 
 parser = argparse.ArgumentParser(description='Get people detections')
 parser.add_argument('-v', '--verbose', help="Increase output verbosity", action="store_true")
+parser.add_argument('-s', '--service_name', help="Service name", required=True)
 
 mode_parser = parser.add_subparsers(help='Mode')
 image_parser = mode_parser.add_parser('image', help='Use image mode')
@@ -25,9 +26,9 @@ cam_parser.add_argument('--rate', default=3.0, type=float, help='Input image')
 
 args = parser.parse_args()
 
-rospy.init_node('get_people_detections')
+rospy.init_node('get_people_detections_srv_test')
 
-srv = rospy.ServiceProxy('/detect_people', DetectPeople)
+srv = rospy.ServiceProxy(args.service_name, DetectPeople)
 rospy.loginfo("Waiting for service {} ...".format(srv.resolved_name))
 srv.wait_for_service()
 
@@ -37,7 +38,7 @@ if args.mode == 'image':
     image = cv2.imread(args.image)
     imgmsg = cv_bridge.cv2_to_imgmsg(image, "bgr8")
 
-    for i in range(0, 100):
+    for i in range(0, 2):
         resp = srv(DetectPeopleRequest(image=imgmsg))
         rospy.loginfo("Iteration: {}".format(i))
 
