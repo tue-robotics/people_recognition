@@ -8,15 +8,15 @@ from image_recognition_msgs.srv import DetectPeople, DetectPeopleResponse
 class PeopleDetectionNode:
     def __init__(self):
 
-        openpose_srv_prefix = self._get_param('~openpose_srv_prefix', "openpose")
-        openface_srv_prefix = self._get_param('~openface_srv_prefix', "openface")
-        keras_srv_prefix = self._get_param('~keras_srv_prefix', "keras")
-        colour_extractor_srv_prefix = self._get_param('~colour_extractor_srv_prefix', "colour_extractor")
+        openpose_srv_name = self._get_param('~openpose_srv_name', "openpose/recognize")
+        openface_srv_name = self._get_param('~openface_srv_name', "openface/recognize")
+        keras_srv_name = self._get_param('~keras_srv_name', "keras/get_face_properties")
+        colour_extractor_srv_name = self._get_param('~colour_extractor_srv_name', "colour_extractor/extract_colour")
 
-        self._people_detector = PeopleDetector(openpose_srv_prefix,
-                                                openface_srv_prefix,
-                                                keras_srv_prefix,
-                                                colour_extractor_srv_prefix)
+        self._people_detector = PeopleDetector(openpose_srv_name,
+                                                openface_srv_name,
+                                                keras_srv_name,
+                                                colour_extractor_srv_name)
 
         # Define the service only after PeopleDetector has initialized
         # completely else an early service call can be made causing errors
