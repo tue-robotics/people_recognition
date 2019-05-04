@@ -18,18 +18,6 @@ from image_recognition_msgs.srv import (Recognize, RecognizeResponse,
                                         GetFaceProperties, GetFacePropertiesResponse,
                                         ExtractColour, ExtractColourResponse)
 
-
-# def _threaded_srv(args):
-#     """
-#     Required for calling service in parallel
-#     """
-#     srv, kwarg_dict = args
-#     # print "Calling service: {}".format(srv)
-#     result = srv(**kwarg_dict)
-#     # print "Got result from service: {}".format(srv)
-#     del args
-#     # return result
-
 def _get_and_wait_for_service(srv_name, srv_class):
     service = rospy.ServiceProxy('{}'.format(srv_name), srv_class)
     rospy.loginfo("Waiting for service {} ...".format(service.resolved_name))
@@ -49,7 +37,6 @@ def _get_service_response(srv, args):
     except rospy.ServiceException as e:
         rospy.logwarn("{} service call failed: {}".format(srv.resolved_name, e))
         return None
-
     return response
 
 class PeopleDetector(object):
@@ -64,56 +51,6 @@ class PeopleDetector(object):
         self._bridge = CvBridge()
 
         rospy.loginfo("People detector initialized")
-
-
-    def _get_recognitions(self, image_msg):
-        """
-        Get recognitions from openpose and openface
-        :param: Image msg received by people detector service
-        """
-        # args = zip(self._recognize_services.values(), [{
-        #     "image": self._bridge.cv2_to_imgmsg(img, "bgr8")
-        # }] * len(self._recognize_services))
-
-        # with closing(Pool(len(self._recognize_services))) as p:  # Without closing we have a memory leak
-        #     return dict(zip(self._recognize_services.keys(), p.map(_threaded_srv, args)))
-
-        # return dict(zip(self._recognize_services.keys(), map(_threaded_srv, args)))
-        return {srv_name:
-                    srv(image=image_msg) for srv_name, srv in self._recognize_services.iteritems()}
-
-    def _get_face_properties(self, image_msg_array):
-        """
-        Get face properties from Keras
-        :param: face images as cv images
-        """
-        # args = zip(self._face_properties_services.values(), [{
-        #     "face_image_array": [self._bridge.cv2_to_imgmsg(image, "bgr8") for image in images]
-        # }] * len(self._face_properties_services))
-        #
-        # with closing(Pool(len(self._face_properties_services))) as p:  # Without closing we have a memory leak
-        #     result = dict(zip(self._face_properties_services.keys(), p.map(_threaded_srv, args)))
-        #
-        # return result['keras'].properties_array
-
-        return self._face_properties_services[self._keras_srv_name](face_image_array=image_msg_array).properties_array
-
-    def _get_colour_extractor(self, image_msg):
-        """
-        Get results of the colour extractor service
-        :param: Image msg to extract colour from
-        """
-        # args = zip(self._colour_extractor_services.values(), [{
-        #     "image": self._bridge.cv2_to_imgmsg(img, "bgr8")
-        # }] * len(self._colour_extractor_services))
-        #
-        # with closing(Pool(len(self._colour_extractor_services))) as p:
-        #     result = dict(zip(self._colour_extractor_services.keys(), p.map(_threaded_srv, args)))
-        #
-        # return result
-
-        return {srv_name: srv(image=image_msg) for srv_name, srv in self._colour_extractor_services.iteritems()}
-
 
     @staticmethod
     def _get_recognitions_with_label(label, recognitions):
@@ -309,14 +246,14 @@ class PeopleDetector(object):
         face_properties_array = keras_response.properties_array
 
         # Colour Extractor service call
-        shirt_image_msg_array = list()
+        rospy.loginfo("_get_colour_extractor...")
+        shirt_colours_array = list()
         for r in face_recognitions:
             shirt_roi = PeopleDetector._shirt_roi_from_face_roi(r.roi, image.shape)
-            shirt_image = PeopleDetector._image_from_roi(image, shirt_roi)
-            shirt_image_msg_array.append(self._bridge.cv2_to_imgmsg(shirt_image))
-
-        rospy.loginfo("_get_colour_extractor...")
-        shirt_colours_array = [self._get_colour_extractor(image_msg)[self._colour_extractor_srv_name].colours for image_msg in shirt_image_msg_array]
+            shirt_image_msg = self._bridge.cv2_to_imgmsg(PeopleDetector._image_from_roi(image, shirt_roi))
+            colour_extractor_response = _get_service_response(self._colour_extractor_srv, shirt_image_msg)
+            assert isinstance(colour_extractor_response, ExtractColourResponse)
+            shirt_colours_array.append(colour_extractor_response.colours)
 
         # Prepare image annotation labels and People message
         image_annotations = list()
@@ -324,6 +261,7 @@ class PeopleDetector(object):
 
         for face_label, face_properties, shirt_colours, body_parts in zip(face_labels,
                 face_properties_array, shirt_colours_array, body_parts_array):
+
             temp_label = PeopleDetector._face_properties_to_label(face_properties) + \
                     PeopleDetector._shirt_colours_to_label(shirt_colours)
 
