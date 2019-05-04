@@ -9,9 +9,9 @@ class PeopleDetectionNode:
     def __init__(self):
 
         openpose_srv_name = self._get_param('~openpose_srv_name', "openpose/recognize")
-        openface_srv_name = self._get_param('~openface_srv_name', "openface/recognize")
-        keras_srv_name = self._get_param('~keras_srv_name', "keras/get_face_properties")
-        colour_extractor_srv_name = self._get_param('~colour_extractor_srv_name', "colour_extractor/extract_colour")
+        openface_srv_name = self._get_param('~openface_srv_name', "face_recognition/recognize")
+        keras_srv_name = self._get_param('~keras_srv_name', "face_recognition/get_face_properties")
+        colour_extractor_srv_name = self._get_param('~colour_extractor_srv_name', "extract_colour")
 
         self._people_detector = PeopleDetector(openpose_srv_name,
                                                 openface_srv_name,
