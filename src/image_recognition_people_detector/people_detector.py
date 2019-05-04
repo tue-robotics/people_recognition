@@ -28,51 +28,40 @@ from image_recognition_util import image_writer
 #     del args
 #     # return result
 
-def _get_and_wait_for_services(service_name_class_pairs):
-    services = {s: rospy.ServiceProxy('{}'.format(s), c) for s, c in service_name_class_pairs}
-    for service in services.values():
-        rospy.loginfo("Waiting for service {} ...".format(service.resolved_name))
-        service.wait_for_service()
-    return services
+def _get_and_wait_for_service(srv_name, srv_class):
+    service = rospy.ServiceProxy('{}'.format(srv_name), srv_class)
+    rospy.loginfo("Waiting for service {} ...".format(service.resolved_name))
+    service.wait_for_service()
+    return service
+
+def _get_service_response(srv, args):
+    """
+    Method to get service response with checks
+    :param: srv: service
+    :param: args: Input arguments of the service request
+    :return: response
+    """
+    response = None
+    try:
+        reponse = srv(args)
+    except rospy.ServiceException as e:
+        rospy.logwarn("{} service call failed: {}".format(srv.resolved_name, e))
+        return None
+
+    return response
 
 class PeopleDetector(object):
     def __init__(self, openpose_srv_name, openface_srv_name,
             keras_srv_name, colour_extractor_srv_name):
 
-        self._openpose_srv_name = openpose_srv_name
-        self._openface_srv_name = openface_srv_name
-        self._keras_srv_name = keras_srv_name
-        self._colour_extractor_srv_name = colour_extractor_srv_name
-
-        self._dependent_srvs = _get_and_wait_for_services([
-            (self._openpose_srv_name, Recognize),
-            (self._openface_srv_name, Recognize),
-            (self._keras_srv_name, GetFaceProperties),
-            (self._colour_extractor_srv_name, ExtractColour)
-        ])
-
-        self._dependent_srvs_responses = dict()
+        self._openpose_srv = _get_and_wait_for_service(openpose_srv_name, Recognize)
+        self._openface_srv = _get_and_wait_for_service(openface_srv_name, Recognize)
+        self._keras_srv = _get_and_wait_for_service(keras_srv_name, GetFaceProperties)
+        self._colour_extractor_srv = _get_and_wait_for_service(colour_extractor_srv_name, ExtractColour)
 
         self._bridge = CvBridge()
 
         rospy.loginfo("People detector initialized")
-
-    def _get_service_response(self, srv_name, args):
-        """
-        Method to get service response and write it in the
-        dependent_srvs_responses dictionary
-
-        :param: srv_name: Name of service
-        :param: args: Input arguments of the service request
-        :return: True if successful call else False
-        """
-        try:
-            self._dependent_srvs_reponses[srv_name] = self._dependent_srvs[srv_name](args)
-        except rospy.ServiceException as e:
-            rospy.logwarn("{} service call failed: {}".format(srv_name, e))
-            return False
-
-        return True
 
 
     def _get_recognitions(self, image_msg):
