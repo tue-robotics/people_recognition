@@ -47,9 +47,9 @@ class PeopleDetectionNode:
         except CvBridgeError as e:
             raise Exception("Could not convert image to opencv image: %s" % str(e))
         #
-        rospy.loginfo("Detecting people in incoming image...")
-        people, _ = self._people_detector.recognize(bgr_image)
-        rospy.loginfo("Done")
+        rospy.loginfo("Detecting people in incoming Image message...")
+        people, _ = self._people_detector.recognize(req.image)
+        rospy.loginfo("Done. Found {} people.".format(len(people)))
 
         return DetectPeopleResponse(people=people)
 
@@ -57,4 +57,4 @@ if __name__ == '__main__':
     rospy.init_node('people_detection')
     node = PeopleDetectionNode()
     rospy.spin()
-    print("people_detection exited")
+    rospy.loginfo("people_detection node exited")
