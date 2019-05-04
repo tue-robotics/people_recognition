@@ -28,8 +28,8 @@ from image_recognition_util import image_writer
 #     del args
 #     # return result
 
-def _get_and_wait_for_services(service_names, service_class):
-    services = {s: rospy.ServiceProxy('{}'.format(s), service_class) for s in service_names}
+def _get_and_wait_for_services(service_name_class_pairs):
+    services = {s: rospy.ServiceProxy('{}'.format(s), c) for s, c in service_name_class_pairs}
     for service in services.values():
         rospy.loginfo("Waiting for service {} ...".format(service.resolved_name))
         service.wait_for_service()
@@ -44,18 +44,14 @@ class PeopleDetector(object):
         self._keras_srv_name = keras_srv_name
         self._colour_extractor_srv_name = colour_extractor_srv_name
 
-        self._recognize_services = _get_and_wait_for_services([
-            self._openpose_srv_name,
-            self._openface_srv_name
-        ], Recognize)
+        self._dependent_srvs = _get_and_wait_for_services([
+            (self._openpose_srv_name, Recognize),
+            (self._openface_srv_name, Recognize),
+            (self._keras_srv_name, GetFaceProperties),
+            (self._colour_extractor_srv_name, ExtractColour)
+        ])
 
-        self._face_properties_services = _get_and_wait_for_services([
-            self._keras_srv_name
-        ], GetFaceProperties)
-
-        self._colour_extractor_services = _get_and_wait_for_services([
-            self._colour_extractor_srv_name
-        ], ExtractColour)
+        self._dependent_srvs_responses = dict()
 
         self._bridge = CvBridge()
 
