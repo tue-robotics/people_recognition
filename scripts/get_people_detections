@@ -5,6 +5,7 @@ import argparse
 import time
 
 import cv2
+from cv_bridge import CvBridge
 import rospy
 from image_recognition_people_detector.people_detector import PeopleDetector
 
@@ -33,9 +34,12 @@ detector = PeopleDetector(args.openpose_srv_prefix,
                             args.keras_srv_prefix,
                             args.colour_extractor_srv_prefix)
 
+cv_bridge = CvBridge()
+
 if args.mode == 'image':
     image = cv2.imread(args.image)
-    recognitions, overlayed_image = detector.recognize(image)
+    image_msg = cv_bridge.cv2_to_imgmsg(image, "bgr8")
+    recognitions, overlayed_image = detector.recognize(image_msg)
     rospy.loginfo(recognitions)
     cv2.imshow("overlayed_image", overlayed_image)
     cv2.waitKey()
@@ -46,11 +50,12 @@ elif args.mode == 'cam':
 
         time_elapsed = time.time() - prev
         res, image = cap.read()
+        image_msg = cv_brige.cv2_to_imgmsg(image)
 
         if time_elapsed > 1. / args.rate:
             prev = time.time()
 
-            recognitions, overlayed_image = detector.recognize(image)
+            recognitions, overlayed_image = detector.recognize(image_msg)
             cv2.imshow("overlayed_image", overlayed_image)
 
             if cv2.waitKey(1) & 0xFF == ord('q'):
