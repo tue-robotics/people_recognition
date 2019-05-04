@@ -17,19 +17,35 @@ from sensor_msgs.msg import Image, CameraInfo
 from std_msgs.msg import ColorRGBA
 from visualization_msgs.msg import Marker, MarkerArray
 
-from image_recognition_msgs.srv import Recognize, DetectPeople
+from image_recognition_msgs.srv import DetectPeople, DetectPeopleResponse
 from people_detection_3d_msgs.msg import Person3D
 
-def _get_and_wait_for_services(service_names, service_class):
+def _get_and_wait_for_service(srv_name, srv_class):
     """
-    Function to start and wait for dependent services
+    Function to start and wait for dependent service
+    :param: srv_name: Service name
+    :param: srv_class: Service class
+    :return: started ServiceProxy object
     """
-    services = {s: rospy.ServiceProxy('{}'.format(s), service_class) for s in service_names}
-    for service in services.values():
-        rospy.loginfo("Waiting for service {} ...".format(service.resolved_name))
-        service.wait_for_service()
-    return services
+    service = rospy.ServiceProxy('{}'.format(srv_name), srv_class)
+    rospy.loginfo("Waiting for service {} ...".format(service.resolved_name))
+    service.wait_for_service()
+    return service
 
+def _get_service_response(srv, args):
+    """
+    Method to get service response with checks
+    :param: srv: service
+    :param: args: Input arguments of the service request
+    :return: response
+    """
+    response = None
+    try:
+        response = srv(args)
+    except rospy.ServiceException as e:
+        rospy.logwarn("{} service call failed: {}".format(srv.resolved_name, e))
+        return None
+    return response
 
 Joint = namedtuple('Joint', ['group_id', 'name', 'p', 'point'])
 
@@ -165,11 +181,7 @@ class PeopleDetector3D(object):
             arm_norm_threshold, wave_threshold, vert_threshold, hor_threshold,
             padding):
 
-        self._detect_people_srv_name = detect_people_srv_name
-
-        self._detect_people_services = _get_and_wait_for_services([
-            self._detect_people_srv_name
-        ], DetectPeople)
+        self._detect_people_srv = _get_and_wait_for_service(detect_people_srv_name, DetectPeople)
 
         self._bridge = CvBridge()
 
@@ -184,14 +196,6 @@ class PeopleDetector3D(object):
         self.padding = padding
 
         rospy.loginfo('People detector 3D initialized')
-
-    def _get_detect_people(self, rgb_imgmsg):
-        """
-        Get recognitions from openpose and openface
-        :param: rgb_imgmsg: RGB Image msg people detector service
-        """
-        return {srv_name: srv(image=rgb_imgmsg) for srv_name, srv in self._detect_people_services.iteritems()}
-
 
     def recognize(self, rgb, depth, camera_info):
         """
@@ -209,11 +213,11 @@ class PeopleDetector3D(object):
         cam_model.fromCameraInfo(camera_info)
 
         t = rospy.Time.now()
-        try:
-            people2d = self._get_detect_people(rgb)['detect_people'].people
-        except rospy.ServiceException as e:
-            rospy.logwarn('PeopleDetector2D call failed: %s', e)
-            return
+
+        detect_people_response = _get_service_response(self._detect_people_srv, rgb)
+        assert isinstance(detect_people_response, DetectPeopleResponse)
+
+        people2d = detect_people_response.people
         rospy.loginfo('PeopleDetector2D took %f seconds', (rospy.Time.now() - t).to_sec())
         rospy.loginfo('Found {} people'.format(len(people2d)))
 
@@ -271,6 +275,7 @@ class PeopleDetector3D(object):
             rospy.loginfo('Position: {}'.format(point3d))
 
             person3d = Person3D(
+                header=rgb.header,
                 name=person2d.name,
                 age=person2d.age,
                 gender=person2d.gender,
