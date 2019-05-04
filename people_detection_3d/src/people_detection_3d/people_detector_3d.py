@@ -312,9 +312,9 @@ class PeopleDetector3D(object):
 
         # self.person_pub.publish(People(header=rgb.header, people=people3d))
         # publish all markers in one go
-        self.markers_pub.publish(markers)
+        # self.markers_pub.publish(markers)
         rospy.loginfo("Done. Found {} people, {} markers".format(len(people3d), len(markers.markers)))
-        return people3d
+        return people3d, markers
 
     def recognitions_to_joints(self, recognitions, rgb, depth, cam_model):
         cv_depth = self._bridge.imgmsg_to_cv2(depth)
