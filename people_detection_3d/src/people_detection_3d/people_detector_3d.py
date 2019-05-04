@@ -20,11 +20,11 @@ from visualization_msgs.msg import Marker, MarkerArray
 from image_recognition_msgs.srv import Recognize, DetectPeople
 from people_detection_3d_msgs.msg import Person3D
 
-def _get_and_wait_for_services(service_names, service_class, suffix=""):
+def _get_and_wait_for_services(service_names, service_class):
     """
     Function to start and wait for dependent services
     """
-    services = {s: rospy.ServiceProxy('{}{}'.format(s, suffix), service_class) for s in service_names}
+    services = {s: rospy.ServiceProxy('{}'.format(s), service_class) for s in service_names}
     for service in services.values():
         rospy.loginfo("Waiting for service {} ...".format(service.resolved_name))
         service.wait_for_service()
@@ -161,11 +161,14 @@ def color_map(N=256, normalized=False):
 
 class PeopleDetector3D(object):
 
-    def __init__(self, probability_threshold, link_threshold, heuristic,
+    def __init__(self, detect_people_srv_name, probability_threshold, link_threshold, heuristic,
             arm_norm_threshold, wave_threshold, vert_threshold, hor_threshold,
             padding):
+
+        self._detect_people_srv_name = detect_people_srv_name
+
         self._detect_people_services = _get_and_wait_for_services([
-            'detect_people'
+            self._detect_people_srv_name
         ], DetectPeople)
 
         self._bridge = CvBridge()
