@@ -215,6 +215,9 @@ class PeopleDetector(object):
         assert isinstance(image_msg, Image)
         image = self._bridge.imgmsg_to_cv2(image_msg)
 
+        image_annotations = list()
+        people = list()
+
         # OpenPose and OpenFace service calls
         rospy.loginfo("Starting pose and face recognition...")
         start_recognize = time.time()
@@ -256,9 +259,6 @@ class PeopleDetector(object):
             shirt_colours_array.append(colour_extractor_response.colours)
 
         # Prepare image annotation labels and People message
-        image_annotations = list()
-        people = list()
-
         for face_label, face_properties, shirt_colours, body_parts in zip(face_labels,
                 face_properties_array, shirt_colours_array, body_parts_array):
 
