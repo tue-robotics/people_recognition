@@ -33,7 +33,7 @@ def _get_service_response(srv, args):
     """
     response = None
     try:
-        reponse = srv(args)
+        response = srv(args)
     except rospy.ServiceException as e:
         rospy.logwarn("{} service call failed: {}".format(srv.resolved_name, e))
         return None
