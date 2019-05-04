@@ -66,3 +66,5 @@ roscd image_recognition_people_detector/scripts
 ./get_people_detections_srv_test image ../test/assets/example.jpg
 ```
 
+# Work Flow
+The node first calls the recognize services of the openpose and openface nodes. ROIs of faces are extracted from the recognitions returned by OpenPose and are associated with the recognitions returned by OpenFace through the face ROIs to create a `Person` object. The ROIs of body parts returned by OpenPose are associated with each `Person` object. Face images are sent to the Keras node and properties age and gender are extracted and assoicated with each person. The ROIs of the faces are shifted vertically to approximate the ROIs of the shirts. These are sent to the colour extractor to get the dominant colours.
