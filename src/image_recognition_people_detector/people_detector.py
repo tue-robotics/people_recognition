@@ -61,10 +61,10 @@ class PeopleDetector(object):
 
         rospy.loginfo("People detector initialized")
 
-    def _get_recognitions(self, img):
+    def _get_recognitions(self, image_msg):
         """
         Get recognitions from openpose and openface
-        :param: Input image (as cv image) received by people detector service
+        :param: Image msg received by people detector service
         """
         # args = zip(self._recognize_services.values(), [{
         #     "image": self._bridge.cv2_to_imgmsg(img, "bgr8")
@@ -75,28 +75,28 @@ class PeopleDetector(object):
 
         # return dict(zip(self._recognize_services.keys(), map(_threaded_srv, args)))
         return {srv_name:
-                    srv(image=self._bridge.cv2_to_imgmsg(img, "bgr8")) for srv_name, srv in self._recognize_services.iteritems()}
+                    srv(image=image_msg) for srv_name, srv in self._recognize_services.iteritems()}
 
-    def _get_face_properties(self, images):
+    def _get_face_properties(self, image_msg_array):
         """
         Get face properties from Keras
         :param: face images as cv images
         """
-        args = zip(self._face_properties_services.values(), [{
-            "face_image_array": [self._bridge.cv2_to_imgmsg(image, "bgr8") for image in images]
-        }] * len(self._face_properties_services))
+        # args = zip(self._face_properties_services.values(), [{
+        #     "face_image_array": [self._bridge.cv2_to_imgmsg(image, "bgr8") for image in images]
+        # }] * len(self._face_properties_services))
         #
         # with closing(Pool(len(self._face_properties_services))) as p:  # Without closing we have a memory leak
         #     result = dict(zip(self._face_properties_services.keys(), p.map(_threaded_srv, args)))
         #
         # return result['keras'].properties_array
 
-        return self._face_properties_services[self._keras_srv_prefix](face_image_array=[self._bridge.cv2_to_imgmsg(image, "bgr8") for image in images]).properties_array
+        return self._face_properties_services[self._keras_srv_prefix](face_image_array=image_msg_array]).properties_array
 
-    def _get_colour_extractor(self, img):
+    def _get_colour_extractor(self, image_msg):
         """
         Get results of the colour extractor service
-        :param: CV image to extract colour from
+        :param: Image msg to extract colour from
         """
         # args = zip(self._colour_extractor_services.values(), [{
         #     "image": self._bridge.cv2_to_imgmsg(img, "bgr8")
@@ -107,9 +107,7 @@ class PeopleDetector(object):
         #
         # return result
 
-        return {srv_name:
-                    srv(image=self._bridge.cv2_to_imgmsg(img, "bgr8")) for srv_name, srv in
-                self._colour_extractor_services.iteritems()}
+        return {srv_name: srv(image=image_msg) for srv_name, srv in self._colour_extractor_services.iteritems()}
 
 
     @staticmethod
@@ -257,25 +255,27 @@ class PeopleDetector(object):
         return label
 
     @staticmethod
-    def move_face_roi_to_shirt(face_roi, img):
+    def move_face_roi_to_shirt(face_roi, image_shape):
         """
         Given a ROI for a face, shift the ROI to the person's shirt. Assuming the person is upright :/
         :param face_roi: RegionOfInterest
-        :param img: cv2 image
+        :param image_shape: tuple of the image shape
         :return: RegionOfInterest
         """
         shirt_roi = copy.deepcopy(face_roi)
         shirt_roi.height = face_roi.height
         shirt_roi.y_offset += int(face_roi.height * 1.5)
-        shirt_roi.y_offset = min(shirt_roi.y_offset, img.shape[0] - shirt_roi.height)
-        rospy.logdebug("face_roi: {}, shirt_roi: {}, img.shape: {}".format(face_roi, shirt_roi, img.shape))
+        shirt_roi.y_offset = min(shirt_roi.y_offset, image_shape[0] - shirt_roi.height)
+        rospy.logdebug("face_roi: {}, shirt_roi: {}, img.shape: {}".format(face_roi, shirt_roi, image_shape))
         return shirt_roi
 
-    def recognize(self, image):
+    def recognize(self, image_msg):
+        image = self._bridge.imgmsg_to_cv2(image_msg)
+
         # OpenPose and OpenFace service calls
-        rospy.loginfo("Starting recognition...")
+        rospy.loginfo("Starting pose and face recognition...")
         start_recognize = time.time()
-        recognitions = self._get_recognitions(image)
+        recognitions = self._get_recognitions(image_msg)
         rospy.logdebug("Recognize took %.4f seconds", time.time() - start_recognize)
 
         rospy.loginfo("_get_face_rois_ids_openpose...")
@@ -290,11 +290,11 @@ class PeopleDetector(object):
                              for openpose_face_roi in openpose_face_rois]
 
         face_labels = [PeopleDetector._get_best_label(r) for r in face_recognitions]
-        face_images = [PeopleDetector._image_from_roi(image, r.roi) for r in face_recognitions]
 
         # Keras service call
         rospy.loginfo("_get_face_properties...")
-        face_properties_array = self._get_face_properties(face_images)
+        face_image_msg_array = [self._bridge.cv2_to_imgmsg(PeopleDetector._image_from_roi(image, r.roi)) for r in face_recognitions]
+        face_properties_array = self._get_face_properties(face_image_msg_array)
 
         # Colour Extractor service call
         shirt_images = [PeopleDetector._image_from_roi(image, PeopleDetector.move_face_roi_to_shirt(r.roi, image)) for r in face_recognitions]
