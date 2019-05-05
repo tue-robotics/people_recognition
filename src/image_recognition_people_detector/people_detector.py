@@ -19,6 +19,12 @@ from image_recognition_msgs.srv import (Recognize, RecognizeResponse,
                                         ExtractColour, ExtractColourResponse)
 
 def _get_and_wait_for_service(srv_name, srv_class):
+    """
+    Function to start and wait for dependent service
+    :param: srv_name: Service name
+    :param: srv_class: Service class
+    :return: started ServiceProxy object
+    """
     service = rospy.ServiceProxy('{}'.format(srv_name), srv_class)
     rospy.loginfo("Waiting for service {} ...".format(service.resolved_name))
     service.wait_for_service()
