@@ -352,7 +352,7 @@ class PeopleDetector3D(object):
 
             # debugging viz
             regions_viz[y_min:y_max, x_min:x_max] = cv_depth[y_min:y_max, x_min:x_max]
-            self.regions_viz_pub.publish(self._bridge.cv2_to_imgmsg(regions_viz))
+            #self.regions_viz_pub.publish(self._bridge.cv2_to_imgmsg(regions_viz))
 
             u = (x_min + x_max) // 2
             v = (y_min + y_max) // 2

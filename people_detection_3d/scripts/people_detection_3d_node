@@ -36,8 +36,8 @@ class PeopleDetection3DNode:
             rgb_sub = message_filters.Subscriber('rgb', Image)
 
             #self._people_pub = rospy.Publisher('people3d', People3D, queue_size=1)
-            self._makers_pub = rospy.Publisher('~viz', MarkerArray, queue_size=1)
-            self._regions_viz_pub = rospy.Publisher('~regions_viz', Image, queue_size=1)
+            self._markers_pub = rospy.Publisher('~viz', MarkerArray, queue_size=1)
+            #self._regions_viz_pub = rospy.Publisher('~regions_viz', Image, queue_size=1)
 
             # self._ts = message_filters.TimeSynchronizer([rgb_sub, depth_sub, depth_info_sub], 1)
             self._ts = message_filters.ApproximateTimeSynchronizer([rgb_sub, depth_sub, depth_info_sub],
@@ -78,7 +78,7 @@ class PeopleDetection3DNode:
     def _topic_callback(self, rgb, depth, depth_info):
         rospy.logdebug("_topic_callback called")
         people3d, markers = self._people_detector_3d.recognize(rgb, depth, depth_info)
-        self._makers_pub.publish(markers)
+        self._markers_pub.publish(markers)
         #self._people_pub.publish(People3D(people=people3d))
 
 if __name__ == '__main__':
