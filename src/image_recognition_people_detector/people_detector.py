@@ -205,7 +205,8 @@ class PeopleDetector(object):
         :return: RegionOfInterest
         """
         shirt_roi = copy.deepcopy(face_roi)
-        shirt_roi.height = face_roi.height
+        shirt_roi.height = max(face_roi.height, 5)
+        shirt_roi.width = max(face_roi.width, 5)
         shirt_roi.y_offset += int(face_roi.height * 1.5)
         shirt_roi.y_offset = min(shirt_roi.y_offset, image_shape[0] - shirt_roi.height)
         rospy.logdebug("face_roi: {}, shirt_roi: {}, img.shape: {}".format(face_roi, shirt_roi, image_shape))
