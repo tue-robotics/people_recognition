@@ -18,7 +18,7 @@ add_message_files(
 # Generate services in the 'srv' folder
 add_service_files(
   FILES
-  DetectPeople3D.srv
+  RecognizePeople3D.srv
 )
 
 # Generate added messages and services with any dependencies listed here
