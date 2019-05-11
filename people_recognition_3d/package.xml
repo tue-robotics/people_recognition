@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <package format="2">
-  <name>people_detection_3d</name>
+  <name>people_recognition_3d</name>
   <version>0.0.0</version>
-  <description>The People Detection 3D package</description>
+  <description>The People Recognition 3D package</description>
 
   <maintainer email="ar13pit@gmail.com">Arpit Aggarwal</maintainer>
 
@@ -15,9 +15,8 @@
   <exec_depend>image_geometry</exec_depend>
   <exec_depend>image_recognition_msgs</exec_depend>
   <exec_depend>message_filters</exec_depend>
-  <exec_depend>people_detection_3d_msgs</exec_depend>
+  <exec_depend>people_recognition_msgs</exec_depend>
   <exec_depend>python-numpy</exec_depend>
-  <exec_depend>tue_msgs</exec_depend>
   <exec_depend>rospy</exec_depend>
 
 </package>

@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(people_detection_3d_msgs)
+project(people_recognition_msgs)
 
 find_package(catkin REQUIRED COMPONENTS
   message_generation
