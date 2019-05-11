@@ -1,4 +1,4 @@
-# people_detector_3d
+# people_detection_3d
 
 Uses the image_recognition package to annotate 2D RGB images with people.
 This package then does the extention to 3D and adds more annotations on the added information.
