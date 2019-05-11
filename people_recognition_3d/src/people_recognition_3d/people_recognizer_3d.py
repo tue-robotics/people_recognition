@@ -17,7 +17,7 @@ from std_msgs.msg import ColorRGBA
 from visualization_msgs.msg import Marker, MarkerArray
 
 from image_recognition_msgs.srv import DetectPeople, DetectPeopleResponse
-from people_detection_3d_msgs.msg import Person3D
+from people_detection_msgs.msg import Person3D
 
 def _get_and_wait_for_service(srv_name, srv_class):
     """
@@ -174,7 +174,7 @@ def color_map(N=256, normalized=False):
     return cmap
 
 
-class PeopleDetector3D(object):
+class PeopleRecognizer3D(object):
 
     def __init__(self, detect_people_srv_name, probability_threshold, link_threshold, heuristic,
             arm_norm_threshold, wave_threshold, vert_threshold, hor_threshold,
@@ -194,7 +194,7 @@ class PeopleDetector3D(object):
         self.hor_threshold = hor_threshold
         self.padding = padding
 
-        rospy.loginfo('People detector 3D initialized')
+        rospy.loginfo('People recognizer 3D initialized')
 
     def recognize(self, rgb, depth, camera_info):
         """

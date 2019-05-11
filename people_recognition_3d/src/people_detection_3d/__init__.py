@@ -1,1 +1,0 @@
-from .people_detector_3d import PeopleDetector3D
