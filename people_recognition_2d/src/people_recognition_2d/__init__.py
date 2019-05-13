@@ -1,1 +1,1 @@
-from .people_detector import PeopleDetector
+from .people_recognizer_2d import PeopleRecognizer2D

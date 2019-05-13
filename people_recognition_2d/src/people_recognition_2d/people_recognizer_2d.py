@@ -45,7 +45,7 @@ def _get_service_response(srv, args):
         return None
     return response
 
-class PeopleDetector(object):
+class PeopleRecognizer2D(object):
     def __init__(self, openpose_srv_name, openface_srv_name,
             keras_srv_name, colour_extractor_srv_name):
 
