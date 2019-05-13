@@ -13,10 +13,13 @@ from sensor_msgs.msg import Image, RegionOfInterest
 
 # Image recognition repository modules
 from image_recognition_util import image_writer
-from image_recognition_msgs.msg import Recognition, FaceProperties, Person
+from image_recognition_msgs.msg import Recognition, FaceProperties
 from image_recognition_msgs.srv import (Recognize, RecognizeResponse,
                                         GetFaceProperties, GetFacePropertiesResponse,
                                         ExtractColour, ExtractColourResponse)
+
+# People recognition repository modules
+from people_recognition_msgs.msg import Person2D
 
 def _get_and_wait_for_service(srv_name, srv_class):
     """
@@ -277,7 +280,7 @@ class PeopleRecognizer2D(object):
             else:
                 image_annotations.append(temp_label)
 
-            people.append(Person(name=face_label,
+            people.append(Person2D(name=face_label,
                                  age=face_properties.age,
                                  gender=face_properties.gender,
                                  gender_confidence=face_properties.gender_confidence,
