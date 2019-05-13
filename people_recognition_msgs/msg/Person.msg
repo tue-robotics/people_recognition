@@ -5,4 +5,4 @@ float64 gender_confidence
 string posture
 string emotion
 string[] shirt_colors
-Recognition[] body_parts
+image_recognition_msgs/Recognition[] body_parts
