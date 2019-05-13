@@ -1,5 +1,5 @@
-# People Detector
-Node for people detection in 2D. Defined as a service and not a publisher/subscriber.
+# People Recognition 2D
+Node for people recognition in 2D. Defined as a service and not a publisher/subscriber.
 
 ## Custom dependencies
 - [image_recognition_openpose](https://github.com/tue-robotics/image_recognition/image_recognition_openpose)
