@@ -2,10 +2,10 @@
 
 import rospy
 
-from image_recognition_people_detector import PeopleDetector
-from image_recognition_msgs.srv import DetectPeople, DetectPeopleResponse
+from peole_recognition_2d import PeopleRecognizer2D
+from people_recognition_msgs.srv import RecognizePeople2D, RecognizePeople2DResponse
 
-class PeopleDetectionNode:
+class PeopleRecognition2DNode:
     def __init__(self):
 
         openpose_srv_name = self._get_param('~openpose_srv_name', "openpose/recognize")
@@ -13,15 +13,15 @@ class PeopleDetectionNode:
         keras_srv_name = self._get_param('~keras_srv_name', "face_recognition/get_face_properties")
         colour_extractor_srv_name = self._get_param('~colour_extractor_srv_name', "extract_colour")
 
-        self._people_detector = PeopleDetector(openpose_srv_name,
+        self._people_detector = PeopleRecognizer2D(openpose_srv_name,
                                                 openface_srv_name,
                                                 keras_srv_name,
                                                 colour_extractor_srv_name)
 
-        # Define the service only after PeopleDetector has initialized
+        # Define the service only after PeopleRecognizer2D has initialized
         # completely else an early service call can be made causing errors
-        self._detect_people_srv = rospy.Service('detect_people', DetectPeople, self._detect_people_srv)
-        rospy.loginfo("PeopleDetectionNode initialized")
+        self._detect_people_srv = rospy.Service('detect_people', RecognizePeople2D, self._detect_people_srv)
+        rospy.loginfo("PeopleRecognitionNode initialized")
 
     def _get_param(self, name, default):
         if rospy.has_param(name):
@@ -32,18 +32,18 @@ class PeopleDetectionNode:
 
     def _detect_people_srv(self, req):
         """
-        Callback when the DetectPeople service is called
-        :param req: DetectPeopleRequest (with a .image attribute)
-        :return: DetectPeopleResponse (with a .people attribute)
+        Callback when the RecognizePeople2D service is called
+        :param req: RecognizePeople2DRequest (with a .image attribute)
+        :return: RecognizePeople2DResponse (with a .people attribute)
         """
         rospy.loginfo("Detecting people in incoming Image message...")
         people, _ = self._people_detector.recognize(req.image)
         rospy.loginfo("Done. Found {} people.".format(len(people)))
 
-        return DetectPeopleResponse(people=people)
+        return RecognizePeople2DResponse(people=people)
 
 if __name__ == '__main__':
-    rospy.init_node('people_detection')
-    node = PeopleDetectionNode()
+    rospy.init_node('people_recognition_2d')
+    node = PeopleRecognition2DNode()
     rospy.spin()
-    rospy.loginfo("people_detection node exited")
+    rospy.loginfo("people_recognition_2d node exited")
