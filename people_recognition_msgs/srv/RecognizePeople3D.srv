@@ -1,4 +1,5 @@
-# Interface that can request Face Properties of an array of face imaegs
+# Interface that can request an array of Person3D from an input RGB-D image and
+# camera_info
 
 # RGB camera
 sensor_msgs/Image image_rgb
