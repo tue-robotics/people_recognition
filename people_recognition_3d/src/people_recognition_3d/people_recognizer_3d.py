@@ -16,8 +16,8 @@ from sensor_msgs.msg import Image, CameraInfo
 from std_msgs.msg import ColorRGBA
 from visualization_msgs.msg import Marker, MarkerArray
 
-from image_recognition_msgs.srv import DetectPeople, DetectPeopleResponse
-from people_detection_msgs.msg import Person3D
+from people_recognition_msgs.srv import RecognizePeople2D, RecognizePeople2DResponse
+from people_recognition_msgs.msg import Person3D
 
 def _get_and_wait_for_service(srv_name, srv_class):
     """
@@ -180,7 +180,7 @@ class PeopleRecognizer3D(object):
             arm_norm_threshold, wave_threshold, vert_threshold, hor_threshold,
             padding):
 
-        self._detect_people_srv = _get_and_wait_for_service(detect_people_srv_name, DetectPeople)
+        self._detect_people_srv = _get_and_wait_for_service(detect_people_srv_name, RecognizePeople2D)
 
         self._bridge = CvBridge()
 
@@ -214,7 +214,7 @@ class PeopleRecognizer3D(object):
         t = rospy.Time.now()
 
         detect_people_response = _get_service_response(self._detect_people_srv, rgb)
-        assert isinstance(detect_people_response, DetectPeopleResponse)
+        assert isinstance(detect_people_response, RecognizePeople2DResponse)
 
         people2d = detect_people_response.people
         rospy.loginfo('PeopleDetector2D took %f seconds', (rospy.Time.now() - t).to_sec())
