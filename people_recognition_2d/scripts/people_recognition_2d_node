@@ -13,7 +13,7 @@ class PeopleRecognition2DNode:
         keras_srv_name = self._get_param('~keras_srv_name', "face_recognition/get_face_properties")
         colour_extractor_srv_name = self._get_param('~colour_extractor_srv_name', "extract_colour")
 
-        self._people_detector = PeopleRecognizer2D(openpose_srv_name,
+        self._people_recognizer = PeopleRecognizer2D(openpose_srv_name,
                                                 openface_srv_name,
                                                 keras_srv_name,
                                                 colour_extractor_srv_name)
@@ -37,10 +37,10 @@ class PeopleRecognition2DNode:
         :return: RecognizePeople2DResponse (with a .people attribute)
         """
         rospy.loginfo("Detecting people in incoming Image message...")
-        people, _ = self._people_detector.recognize(req.image)
-        rospy.loginfo("Done. Found {} people.".format(len(people)))
+        person_2d_array, _ = self._people_recognizer.recognize(req.image)
+        rospy.loginfo("Done. Found {} people.".format(len(person_2d_array)))
 
-        return RecognizePeople2DResponse(people=people)
+        return RecognizePeople2DResponse(people=person_2d_array)
 
 if __name__ == '__main__':
     rospy.init_node('people_recognition_2d')
