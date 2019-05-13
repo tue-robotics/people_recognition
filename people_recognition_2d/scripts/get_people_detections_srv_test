@@ -7,11 +7,9 @@ import time
 import cv2
 import rospy
 from cv_bridge import CvBridge
-from image_recognition_people_detector.people_detector import PeopleDetector
-from image_recognition_msgs.srv import DetectPeople, DetectPeopleRequest
-#from sensor_msgs.msgs import Image
+from people_recognition_msgs.srv import RecognizePeople2D, RecognizePeople2DRequest
 
-parser = argparse.ArgumentParser(description='Get people detections')
+parser = argparse.ArgumentParser(description='Get 2D people recognition')
 parser.add_argument('-v', '--verbose', help="Increase output verbosity", action="store_true")
 parser.add_argument('-s', '--service_name', help="Service name", required=True)
 
@@ -26,9 +24,9 @@ cam_parser.add_argument('--rate', default=3.0, type=float, help='Input image')
 
 args = parser.parse_args()
 
-rospy.init_node('get_people_detections_srv_test')
+rospy.init_node('people_recognition_2d_srv_test')
 
-srv = rospy.ServiceProxy(args.service_name, DetectPeople)
+srv = rospy.ServiceProxy(args.service_name, RecognizePeople2D)
 rospy.loginfo("Waiting for service {} ...".format(srv.resolved_name))
 srv.wait_for_service()
 
@@ -39,7 +37,7 @@ if args.mode == 'image':
     imgmsg = cv_bridge.cv2_to_imgmsg(image, "bgr8")
 
     for i in range(0, 2):
-        resp = srv(DetectPeopleRequest(image=imgmsg))
+        resp = srv(RecognizePeople2DRequest(image=imgmsg))
         rospy.loginfo("Iteration: {}".format(i))
 
 elif args.mode == 'cam':
