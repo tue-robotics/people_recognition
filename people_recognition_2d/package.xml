@@ -19,16 +19,19 @@
   <build_depend>image_recognition_openface</build_depend>
   <build_depend>image_recognition_openpose</build_depend>
   <build_depend>image_recognition_util</build_depend>
+  <build_depend>people_recognition_msgs</build_depend>
   <build_export_depend>image_recognition_keras</build_export_depend>
   <build_export_depend>image_recognition_msgs</build_export_depend>
   <build_export_depend>image_recognition_openface</build_export_depend>
   <build_export_depend>image_recognition_openpose</build_export_depend>
   <build_export_depend>image_recognition_util</build_export_depend>
+  <build_export_depend>people_recognition_msgs</build_export_depend>
   <exec_depend>image_recognition_keras</exec_depend>
   <exec_depend>image_recognition_msgs</exec_depend>
   <exec_depend>image_recognition_openface</exec_depend>
   <exec_depend>image_recognition_openpose</exec_depend>
   <exec_depend>image_recognition_util</exec_depend>
+  <exec_depend>people_recognition_msgs</exec_depend>
 
 
 </package>
