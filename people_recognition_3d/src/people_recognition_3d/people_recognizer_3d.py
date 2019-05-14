@@ -80,28 +80,32 @@ class Skeleton(object):
         :param bodyparts: {name: Joint}
         """
         self.links = [
-            # head
-            ('Nose', 'Neck'),
+            # Head left half
             ('LEar', 'LEye'),
             ('LEye', 'Nose'),
+            # Head right half
             ('REar', 'REye'),
             ('REye', 'Nose'),
+            # Head center
+            ('Nose', 'Neck'),
 
-            # body
-            ('LShoulder', 'Neck'),
+            # Upper body left half
+            ('Neck', 'LShoulder'),
             ('LShoulder', 'LElbow'),
             ('LElbow', 'LWrist'),
-            ('RElbow', 'RWrist'),
-            ('RShoulder', 'Neck'),
+            # Upper body right half
+            ('Neck', 'RShoulder'),
             ('RShoulder', 'RElbow'),
+            ('RElbow', 'RWrist'),
 
-            # legs
-            ('LHip', 'Neck'),
-            ('LAnkle', 'LKnee'),
-            ('LKnee', 'LHip'),
-            ('RHip', 'Neck'),
-            ('RAnkle', 'RKnee'),
-            ('RKnee', 'RHip'),
+            # Lower body left half
+            ('Neck', 'LHip'),
+            ('LHip', 'LKnee'),
+            ('LKnee', 'LAnkle'),
+            # Lower body right half
+            ('Neck', 'RHip'),
+            ('RKnee', 'RAnkle'),
+            ('RHip', 'RKnee'),
         ]
 
         self.bodyparts = bodyparts
