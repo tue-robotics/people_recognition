@@ -70,12 +70,12 @@ class Skeleton(object):
 
     Nose
     Neck
-    nose
-    {L,R}{Shoulder,Elbow,Wrist,Hip,Knee,Ankle,Eye,Ear}
+    {L, R}{Shoulder, Elbow, Wrist, Hip, Knee, Ankle, Eye, Ear}
     """
 
     def __init__(self, bodyparts):
-        """Constructor
+        """
+        Constructor
 
         :param bodyparts: {name: Joint}
         """
@@ -118,7 +118,7 @@ class Skeleton(object):
         :param: threshold: Maximum length of a link
         :return: Skeleton object containing body parts within the threshold
         """
-        filter_list = set()
+        return_list = set()
         for (a, b) in self.links:
             if a in self.bodyparts and b in self.bodyparts:
                 p1 = self.bodyparts[a].point
@@ -126,10 +126,10 @@ class Skeleton(object):
 
                 l = (geometry_msg_point_to_kdl_vector(p1) - geometry_msg_point_to_kdl_vector(p2)).Norm()
                 if l <= threshold:
-                    filter_list.add(a)
-                    filter_list.add(b)
+                    return_list.add(a)
+                    return_list.add(b)
 
-        return Skeleton({name: joint for name, joint in self.bodyparts.items() if name in filter_list})
+        return Skeleton({name: joint for name, joint in self.bodyparts.items() if name in return_list})
 
     # def __iter__(self):
     #     return self.bodyparts.__iter__()
