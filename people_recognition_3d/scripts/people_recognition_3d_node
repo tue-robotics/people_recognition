@@ -6,14 +6,14 @@ import message_filters
 from sensor_msgs.msg import Image, CameraInfo
 from visualization_msgs.msg import MarkerArray
 
-# People detection 3D modules
+# People recognition 3D modules
 from people_recognition_3d import PeopleRecognizer3D
-# from people_detection_3d_msgs.msg import People3D
+# from people_recognition_msgs.msg import People3D
 from people_recognition_msgs.srv import RecognizePeople3D, RecognizePeople3DResponse
 
 class PeopleRecognition3DNode:
     def __init__(self):
-        detect_people_srv_name = self._get_param('~detect_people_srv_name', "detect_people")
+        recognize_people_srv_name = self._get_param('~recognize_people_srv_name', "detect_people")
         probability_threshold = float(self._get_param('~probability_threshold', 0.2))
         link_threshold = float(self._get_param('~link_threshold', 0.5))
         heuristic = self._get_param('~heuristic', 'shoulder')
@@ -25,7 +25,7 @@ class PeopleRecognition3DNode:
 
         enable_topic_mode = self._get_param('~enable_topic_mode', False)
 
-        self._people_detector_3d = PeopleRecognizer3D(detect_people_srv_name,
+        self._people_recognizer_3d = PeopleRecognizer3D(recognize_people_srv_name,
                 probability_threshold, link_threshold, heuristic,
                 arm_norm_threshold, wave_threshold, vert_threshold,
                 hor_threshold, padding)
@@ -48,9 +48,9 @@ class PeopleRecognition3DNode:
 
         # Define the service only after PeopleRecognizer has initialized
         # completely else an early service call can be made causing errors
-        self._detect_people_3d_srv = rospy.Service('detect_people_3d',
+        self._recognize_people_3d_srv = rospy.Service('detect_people_3d',
                 RecognizePeople3D,
-                self._detect_people_3d_srv)
+                self._recognize_people_3d_srv)
 
         rospy.loginfo("PeopleRecognition3DNode initialized:")
 
@@ -61,7 +61,7 @@ class PeopleRecognition3DNode:
             rospy.logwarn('parameter %s not set, using the default value of %s', name, default)
             return rospy.get_param(name, default)
 
-    def _detect_people_3d_srv(self, req):
+    def _recognize_people_3d_srv(self, req):
         """
         Callback when the RecognizePeople3D service is called
         :param req: RecognizePeople3DRequest (with .image_rgb, .image_depth and
@@ -70,18 +70,18 @@ class PeopleRecognition3DNode:
         """
         # Convert to opencv images
         rospy.loginfo("Detecting people in 3D from incoming RGB-D image")
-        people3d, _ = self._people_detector_3d.recognize(req.image_rgb,
+        people3d, _ = self._people_recognizer_3d.recognize(req.image_rgb,
                 req.image_depth, req.camera_info_depth)
 
         return RecognizePeople3DResponse(people=people3d)
 
     def _topic_callback(self, rgb, depth, depth_info):
         rospy.logdebug("_topic_callback called")
-        people3d, markers = self._people_detector_3d.recognize(rgb, depth, depth_info)
+        people3d, markers = self._people_recognizer_3d.recognize(rgb, depth, depth_info)
         self._markers_pub.publish(markers)
         #self._people_pub.publish(People3D(people=people3d))
 
 if __name__ == '__main__':
-    rospy.init_node('people_detection_3d')
+    rospy.init_node('people_recognition_3d')
     node = PeopleRecognition3DNode()
     rospy.spin()
