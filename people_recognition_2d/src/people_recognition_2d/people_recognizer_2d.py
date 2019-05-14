@@ -16,7 +16,7 @@ from image_recognition_util import image_writer
 from image_recognition_msgs.msg import Recognition, FaceProperties
 from image_recognition_msgs.srv import (Recognize, RecognizeResponse,
                                         GetFaceProperties, GetFacePropertiesResponse,
-                                        ExtractColour, ExtractColourResponse)
+                                        ExtractColor, ExtractColorResponse)
 
 # People recognition repository modules
 from people_recognition_msgs.msg import Person2D
@@ -50,12 +50,12 @@ def _get_service_response(srv, args):
 
 class PeopleRecognizer2D(object):
     def __init__(self, openpose_srv_name, openface_srv_name,
-            keras_srv_name, colour_extractor_srv_name):
+            keras_srv_name, color_extractor_srv_name):
 
         self._openpose_srv = _get_and_wait_for_service(openpose_srv_name, Recognize)
         self._openface_srv = _get_and_wait_for_service(openface_srv_name, Recognize)
         self._keras_srv = _get_and_wait_for_service(keras_srv_name, GetFaceProperties)
-        self._colour_extractor_srv = _get_and_wait_for_service(colour_extractor_srv_name, ExtractColour)
+        self._color_extractor_srv = _get_and_wait_for_service(color_extractor_srv_name, ExtractColor)
 
         self._bridge = CvBridge()
 
@@ -194,15 +194,15 @@ class PeopleRecognizer2D(object):
                                         face_properties.age)
 
     @staticmethod
-    def _shirt_colours_to_label(shirt_colours):
+    def _shirt_colors_to_label(shirt_colors):
         """
-        Convert shirt colours array to label string
-        :param: shirt_colours: Array to colours
+        Convert shirt colors array to label string
+        :param: shirt_colors: Array to colors
         :return: string label
         """
-        label = " shirt colours:"
-        for colour in shirt_colours:
-            label += " {}".format(colour)
+        label = " shirt colors:"
+        for color in shirt_colors:
+            label += " {}".format(color)
         return label
 
     @staticmethod
@@ -258,22 +258,22 @@ class PeopleRecognizer2D(object):
         assert isinstance(keras_response, GetFacePropertiesResponse)
         face_properties_array = keras_response.properties_array
 
-        # Colour Extractor service call
-        rospy.loginfo("_get_colour_extractor...")
-        shirt_colours_array = list()
+        # Color Extractor service call
+        rospy.loginfo("_get_color_extractor...")
+        shirt_colors_array = list()
         for r in face_recognitions:
             shirt_roi = PeopleDetector._shirt_roi_from_face_roi(r.roi, image.shape)
             shirt_image_msg = self._bridge.cv2_to_imgmsg(PeopleDetector._image_from_roi(image, shirt_roi))
-            colour_extractor_response = _get_service_response(self._colour_extractor_srv, shirt_image_msg)
-            assert isinstance(colour_extractor_response, ExtractColourResponse)
-            shirt_colours_array.append(colour_extractor_response.colours)
+            color_extractor_response = _get_service_response(self._color_extractor_srv, shirt_image_msg)
+            assert isinstance(color_extractor_response, ExtractColorResponse)
+            shirt_colors_array.append(color_extractor_response.colors)
 
         # Prepare image annotation labels and People message
-        for face_label, face_properties, shirt_colours, body_parts in zip(face_labels,
-                face_properties_array, shirt_colours_array, body_parts_array):
+        for face_label, face_properties, shirt_colors, body_parts in zip(face_labels,
+                face_properties_array, shirt_colors_array, body_parts_array):
 
             temp_label = PeopleDetector._face_properties_to_label(face_properties) + \
-                    PeopleDetector._shirt_colours_to_label(shirt_colours)
+                    PeopleDetector._shirt_colors_to_label(shirt_colors)
 
             if face_label:
                 image_annotations.append(face_label + " " + temp_label)
@@ -284,7 +284,7 @@ class PeopleRecognizer2D(object):
                                  age=face_properties.age,
                                  gender=face_properties.gender,
                                  gender_confidence=face_properties.gender_confidence,
-                                 shirt_colors=shirt_colours,
+                                 shirt_colors=shirt_colors,
                                  body_parts=body_parts))
 
         cv_image = image_writer.get_annotated_cv_image(image,
