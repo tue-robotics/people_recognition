@@ -176,23 +176,23 @@ def color_map(N=256, normalized=False):
 
 class PeopleRecognizer3D(object):
 
-    def __init__(self, detect_people_srv_name, probability_threshold, link_threshold, heuristic,
+    def __init__(self, recognize_people_srv_name, probability_threshold, link_threshold, heuristic,
             arm_norm_threshold, wave_threshold, vert_threshold, hor_threshold,
             padding):
 
-        self._detect_people_srv = _get_and_wait_for_service(detect_people_srv_name, RecognizePeople2D)
+        self._recognize_people_srv = _get_and_wait_for_service(recognize_people_srv_name, RecognizePeople2D)
 
         self._bridge = CvBridge()
 
         # parameters
-        self.threshold = probability_threshold
-        self.link_threshold = link_threshold
-        self.heuristic = heuristic
-        self.arm_norm_threshold = arm_norm_threshold
-        self.wave_threshold = wave_threshold
-        self.vert_threshold = vert_threshold
-        self.hor_threshold = hor_threshold
-        self.padding = padding
+        self._threshold = probability_threshold
+        self._link_threshold = link_threshold
+        self._heuristic = heuristic
+        self._arm_norm_threshold = arm_norm_threshold
+        self._wave_threshold = wave_threshold
+        self._vert_threshold = vert_threshold
+        self._hor_threshold = hor_threshold
+        self._padding = padding
 
         rospy.loginfo('People recognizer 3D initialized')
 
@@ -213,11 +213,11 @@ class PeopleRecognizer3D(object):
 
         t = rospy.Time.now()
 
-        detect_people_response = _get_service_response(self._detect_people_srv, rgb)
-        assert isinstance(detect_people_response, RecognizePeople2DResponse)
+        recognize_people_response = _get_service_response(self._recognize_people_srv, rgb)
+        assert isinstance(recognize_people_response, RecognizePeople2DResponse)
 
-        people2d = detect_people_response.people
-        rospy.loginfo('PeopleDetector2D took %f seconds', (rospy.Time.now() - t).to_sec())
+        people2d = recognize_people_response.people
+        rospy.loginfo('PeopleRecognizer2D took %f seconds', (rospy.Time.now() - t).to_sec())
         rospy.loginfo('Found {} people'.format(len(people2d)))
 
         cmap = color_map(N=len(people2d), normalized=True)
@@ -245,7 +245,7 @@ class PeopleRecognizer3D(object):
                                           color=ColorRGBA(cmap[i, 0], cmap[i, 1], cmap[i, 2], 1.0)))
 
             unfiltered_skeleton = Skeleton({j.name: j for j in joints})
-            skeleton = unfiltered_skeleton.filter_bodyparts(self.link_threshold)
+            skeleton = unfiltered_skeleton.filter_bodyparts(self._link_threshold)
 
             # visualize links
             markers.markers.append(Marker(header=rgb.header,
@@ -287,7 +287,7 @@ class PeopleRecognizer3D(object):
                 tags=self.get_person_tags(skeleton),
             )
 
-            pointing_pose = self.get_pointing_pose(skeleton, self.arm_norm_threshold)
+            pointing_pose = self.get_pointing_pose(skeleton, self._arm_norm_threshold)
             if pointing_pose:
                 person3d.tags.append("is_pointing")
                 person3d.pointing_pose = pointing_pose
@@ -326,14 +326,14 @@ class PeopleRecognizer3D(object):
             label = pl.label
             p = pl.probability
 
-            if p < self.threshold:
+            if p < self._threshold:
                 continue
 
             roi = r.roi
-            x_min = roi.x_offset - self.padding
-            x_max = roi.x_offset + roi.width + self.padding
-            y_min = roi.y_offset - self.padding
-            y_max = roi.y_offset + roi.height + self.padding
+            x_min = roi.x_offset - self._padding
+            x_max = roi.x_offset + roi.width + self._padding
+            y_min = roi.y_offset - self._padding
+            y_max = roi.y_offset + roi.height + self._padding
 
             if rgb.width != depth.width or rgb.height != depth.height:
                 factor = depth.width / rgb.width
@@ -404,9 +404,9 @@ class PeopleRecognizer3D(object):
         tags = list()
         for side in ('L', 'R'):
             try:
-                if self.heuristic == 'shoulder':
+                if self._heuristic == 'shoulder':
                     other = skeleton[side + 'Shoulder'].point
-                elif self.heuristic == 'head':
+                elif self._heuristic == 'head':
                     other = skeleton['Head'].point
                 else:
                     raise ValueError('wrong heuristic')
@@ -415,14 +415,14 @@ class PeopleRecognizer3D(object):
             except KeyError:
                 continue
 
-            if wrist.y < (other.y - self.wave_threshold) and wrist.x < (other.x + self.hor_threshold):
+            if wrist.y < (other.y - self._wave_threshold) and wrist.x < (other.x + self._hor_threshold):
                 tags.append(side + 'Wave')
 
         for side in ('L', 'R'):
             try:
-                if self.heuristic == 'shoulder':
+                if self._heuristic == 'shoulder':
                     other = skeleton[side + 'Shoulder'].point
-                elif self.heuristic == 'head':
+                elif self._heuristic == 'head':
                     other = skeleton['Head'].point
                 else:
                     raise ValueError('wrong heuristic')
@@ -431,14 +431,14 @@ class PeopleRecognizer3D(object):
             except KeyError:
                 continue
 
-            if wrist.x > (other.x + self.hor_threshold):
+            if wrist.x > (other.x + self._hor_threshold):
                 tags.append(side + 'Pointing')
 
         for side in ('L', 'R'):
             try:
-                if self.heuristic == 'shoulder':
+                if self._heuristic == 'shoulder':
                     other = skeleton[side + 'Shoulder'].point
-                elif self.heuristic == 'head':
+                elif self._heuristic == 'head':
                     other = skeleton['Head'].point
                 else:
                     raise ValueError('wrong heuristic')
@@ -447,14 +447,14 @@ class PeopleRecognizer3D(object):
             except KeyError:
                 continue
 
-            if knee.y < (other.y + self.vert_threshold) and knee.x > (other.x + self.hor_threshold):
+            if knee.y < (other.y + self._vert_threshold) and knee.x > (other.x + self._hor_threshold):
                 tags.append(side + 'Laying')
 
         for side in ('L', 'R'):
             try:
-                if self.heuristic == 'shoulder':
+                if self._heuristic == 'shoulder':
                     other = skeleton[side + 'Shoulder'].point
-                elif self.heuristic == 'head':
+                elif self._heuristic == 'head':
                     other = skeleton['Head'].point
                 else:
                     raise ValueError('wrong heuristic')
@@ -463,7 +463,7 @@ class PeopleRecognizer3D(object):
             except KeyError:
                 continue
 
-            if knee.y < (other.y + self.vert_threshold) and knee.x < (other.x + self.hor_threshold):
+            if knee.y < (other.y + self._vert_threshold) and knee.x < (other.x + self._hor_threshold):
                 tags.append(side + 'Sitting')
 
         rospy.logdebug(tags)
