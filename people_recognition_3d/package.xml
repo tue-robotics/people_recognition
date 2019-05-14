@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <package format="2">
   <name>people_recognition_3d</name>
-  <version>0.0.0</version>
+  <version>0.0.1</version>
   <description>The People Recognition 3D package</description>
 
   <maintainer email="ar13pit@gmail.com">Arpit Aggarwal</maintainer>
