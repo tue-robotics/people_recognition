@@ -111,6 +111,13 @@ class Skeleton(object):
         self.bodyparts = bodyparts
 
     def filter_bodyparts(self, threshold):
+        """
+        Method to remove body parts from a Skeleton object based on the
+        maximum length of a link
+
+        :param: threshold: Maximum length of a link
+        :return: Skeleton object containing body parts within the threshold
+        """
         filter_list = set()
         for (a, b) in self.links:
             if a in self.bodyparts and b in self.bodyparts:
@@ -118,11 +125,11 @@ class Skeleton(object):
                 p2 = self.bodyparts[b].point
 
                 l = (geometry_msg_point_to_kdl_vector(p1) - geometry_msg_point_to_kdl_vector(p2)).Norm()
-                if l > threshold:
+                if l <= threshold:
                     filter_list.add(a)
                     filter_list.add(b)
 
-        return Skeleton({name: joint for name, joint in self.bodyparts.items() if name not in filter_list})
+        return Skeleton({name: joint for name, joint in self.bodyparts.items() if name in filter_list})
 
     # def __iter__(self):
     #     return self.bodyparts.__iter__()
