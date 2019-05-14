@@ -2,7 +2,7 @@
 
 import rospy
 
-from peole_recognition_2d import PeopleRecognizer2D
+from people_recognition_2d import PeopleRecognizer2D
 from people_recognition_msgs.srv import RecognizePeople2D, RecognizePeople2DResponse
 
 class PeopleRecognition2DNode:
