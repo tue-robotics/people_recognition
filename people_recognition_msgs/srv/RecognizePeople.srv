@@ -1,0 +1,8 @@
+# Interface that can request a people message from an input RGB-D image and
+# camera_info
+
+# RGB-D camera message
+RGBD rgbd
+---
+# People message
+People people

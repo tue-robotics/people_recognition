@@ -1,5 +1,0 @@
-# Interface that can request an array Person2D from an RGB image
-
-sensor_msgs/Image image
----
-Person2D[] people
