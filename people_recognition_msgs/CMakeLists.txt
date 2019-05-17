@@ -11,16 +11,14 @@ find_package(catkin REQUIRED COMPONENTS
 # Generate messages in the 'msg' folder
 add_message_files(
   FILES
-  Person2D.msg
-  Person3D.msg
-  People3D.msg
+  Person.msg
+  People.msg
 )
 
 # Generate services in the 'srv' folder
 add_service_files(
   FILES
-  RecognizePeople2D.srv
-  RecognizePeople3D.srv
+  RecognizePeople.srv
 )
 
 # Generate added messages and services with any dependencies listed here
