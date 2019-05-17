@@ -13,6 +13,7 @@ add_message_files(
   FILES
   Person.msg
   People.msg
+  RGBD.msg
 )
 
 # Generate services in the 'srv' folder
