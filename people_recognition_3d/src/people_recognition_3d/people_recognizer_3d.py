@@ -73,11 +73,11 @@ class Skeleton(object):
     {L, R}{Shoulder, Elbow, Wrist, Hip, Knee, Ankle, Eye, Ear}
     """
 
-    def __init__(self, bodyparts):
+    def __init__(self, body_parts):
         """
         Constructor
 
-        :param bodyparts: {name: Joint}
+        :param body_parts: {name: Joint}
         """
         self.links = [
             # Head left half
@@ -108,9 +108,9 @@ class Skeleton(object):
             ('RHip', 'RKnee'),
         ]
 
-        self.bodyparts = bodyparts
+        self.body_parts = body_parts
 
-    def filter_bodyparts(self, threshold):
+    def filter_body_parts(self, threshold):
         """
         Method to remove body parts from a Skeleton object based on the
         maximum length of a link
@@ -120,48 +120,48 @@ class Skeleton(object):
         """
         return_list = set()
         for (a, b) in self.links:
-            if a in self.bodyparts and b in self.bodyparts:
-                p1 = self.bodyparts[a].point
-                p2 = self.bodyparts[b].point
+            if a in self.body_parts and b in self.body_parts:
+                p1 = self.body_parts[a].point
+                p2 = self.body_parts[b].point
 
                 l = (geometry_msg_point_to_kdl_vector(p1) - geometry_msg_point_to_kdl_vector(p2)).Norm()
                 if l <= threshold:
                     return_list.add(a)
                     return_list.add(b)
 
-        return Skeleton({name: joint for name, joint in self.bodyparts.items() if name in return_list})
+        return Skeleton({name: joint for name, joint in self.body_parts.items() if name in return_list})
 
     # def __iter__(self):
-    #     return self.bodyparts.__iter__()
+    #     return self.body_parts.__iter__()
     #
     # def __index__(self, value):
-    #     return self.bodyparts.__index__(value)
+    #     return self.body_parts.__index__(value)
     #
     def __getitem__(self, key):
-        return self.bodyparts.__getitem__(key)
+        return self.body_parts.__getitem__(key)
 
     def __contains__(self, item):
-        return self.bodyparts.__contains__(item)
+        return self.body_parts.__contains__(item)
 
     #
     # def items(self):
-    #     return self.bodyparts.items()
+    #     return self.body_parts.items()
 
     def get_links(self):
         """
         :returns [Point], with point pairs for all the links
         """
         for (a, b) in self.links:
-            if a in self.bodyparts and b in self.bodyparts:
+            if a in self.body_parts and b in self.body_parts:
                 # rospy.loginfo("Add link {}".format((a, b)))
-                yield self.bodyparts[a].point
-                yield self.bodyparts[b].point
+                yield self.body_parts[a].point
+                yield self.body_parts[b].point
             else:
-                # rospy.logwarn("Not all bodyparts of link {} found".format((a, b)))
+                # rospy.logwarn("Not all body_parts of link {} found".format((a, b)))
                 pass
 
     def __repr__(self):
-        return '%s(%r)' % (self.__class__.__name__, self.bodyparts)
+        return '%s(%r)' % (self.__class__.__name__, self.body_parts)
 
 
 def color_map(N=256, normalized=False):
@@ -267,7 +267,7 @@ class PeopleRecognizer3D(object):
                                           color=ColorRGBA(cmap[i, 0], cmap[i, 1], cmap[i, 2], 1.0)))
 
             unfiltered_skeleton = Skeleton({j.name: j for j in joints})
-            skeleton = unfiltered_skeleton.filter_bodyparts(self._link_threshold)
+            skeleton = unfiltered_skeleton.filter_body_parts(self._link_threshold)
 
             # visualize links
             markers.markers.append(Marker(header=rgb.header,
@@ -281,16 +281,16 @@ class PeopleRecognizer3D(object):
 
             # If the skeleton has no body parts do not add the recognition in
             # the list of 3D people
-            if any(skeleton.bodyparts):
+            if any(skeleton.body_parts):
                 try:
                     point3d = skeleton['Neck'].point
                 except KeyError:
                     try:
                         point3d = skeleton['Head'].point
                     except KeyError:
-                            x = np.average([joint.point.x for _, joint in skeleton.bodyparts.iteritems()])
-                            y = np.average([joint.point.y for _, joint in skeleton.bodyparts.iteritems()])
-                            z = np.average([joint.point.z for _, joint in skeleton.bodyparts.iteritems()])
+                            x = np.average([joint.point.x for _, joint in skeleton.body_parts.iteritems()])
+                            y = np.average([joint.point.y for _, joint in skeleton.body_parts.iteritems()])
+                            z = np.average([joint.point.z for _, joint in skeleton.body_parts.iteritems()])
                             point3d = Vector3(x, y, z)
             else:
                 rospy.logwarn("3D recognition of {} failed as no body parts found".format(person2d.name))
@@ -533,7 +533,7 @@ class PeopleRecognizer3D(object):
 
                 rospy.logdebug("Left arm norm: %.2f", left_arm_norm)
         else:
-            rospy.logdebug("Left arm not valid because it does not contain all required bodyparts")
+            rospy.logdebug("Left arm not valid because it does not contain all required body parts")
 
         if right_arm_valid:
 
@@ -559,7 +559,7 @@ class PeopleRecognizer3D(object):
 
                 rospy.logdebug("Right arm norm: %.2f", right_arm_norm)
         else:
-            rospy.logdebug("Left arm not valid because it does not contain all required bodyparts")
+            rospy.logdebug("Right arm not valid because it does not contain all required body parts")
 
         rospy.logdebug("Arm norm threshold: %.2f", arm_norm_threshold)
 
