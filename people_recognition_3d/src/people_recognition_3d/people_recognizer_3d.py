@@ -238,10 +238,18 @@ class PeopleRecognizer3D(object):
         delete_all.header.frame_id = rgb.header.frame_id
         markers.markers.append(delete_all)
 
+        cv_depth = self._bridge.imgmsg_to_cv2(depth)
         people3d = []
+        scale = 1.0
+
+        if rgb.width != depth.width or rgb.height != depth.height:
+            scale = depth.width / rgb.width
+            rospy.logdebug("RGB and D don't have same dimensions, using scaling factor '%f' on ROIs", scale)
+
+
         for person2d in people2d:
             i = person2d.body_parts[0].group_id
-            joints = self.recognitions_to_joints(person2d.body_parts, rgb, depth, cam_model)
+            joints = self.recognitions_to_joints(person2d.body_parts, cv_depth, cam_model, scale)
 
             # visualize joints
             rospy.logdebug('found %s objects for group %s', len(joints), i)
@@ -328,8 +336,16 @@ class PeopleRecognizer3D(object):
         rospy.loginfo("Done. Found {} people, {} markers".format(len(people3d), len(markers.markers)))
         return people3d, markers
 
-    def recognitions_to_joints(self, recognitions, rgb, depth, cam_model):
-        cv_depth = self._bridge.imgmsg_to_cv2(depth)
+    def recognitions_to_joints(self, recognitions, cv_depth, cam_model, scale=1.0):
+        """
+        Method to convert 2D recognitions of body parts to Joint named tuple
+        :param: recognitions: List of body part recognitions
+        :param: cv_depth: cv2 Depth image
+        :param: cam_model: Depth camera model
+        :param: scale: Scaling factor of ROIs based on difference in size of RGB
+                and D images
+        :return: joints: List of joints of type Joint
+        """
         regions_viz = np.zeros_like(cv_depth)
 
         joints = list()
@@ -343,21 +359,13 @@ class PeopleRecognizer3D(object):
                 continue
 
             roi = r.roi
-            x_min = roi.x_offset - self._padding
-            x_max = roi.x_offset + roi.width + self._padding
-            y_min = roi.y_offset - self._padding
-            y_max = roi.y_offset + roi.height + self._padding
+            x_min = int((roi.x_offset - self._padding) * scale)
+            x_max = int((roi.x_offset + roi.width + self._padding) * scale)
+            y_min = int((roi.y_offset - self._padding) * scale)
+            y_max = int((roi.y_offset + roi.height + self._padding) * scale)
 
-            if rgb.width != depth.width or rgb.height != depth.height:
-                factor = depth.width / rgb.width
-                rospy.logdebug("using hack for Sjoerd's rgbd stuff, scaling factor %f", factor)
 
-                x_min = int(x_min * factor)
-                x_max = int(x_max * factor)
-                y_min = int(y_min * factor)
-                y_max = int(y_max * factor)
-
-            if x_min < 0 or y_min < 0 or x_max > depth.width or y_max > depth.height:
+            if x_min < 0 or y_min < 0 or x_max > cv_depth.shape[1] or y_max > cv_depth.shape[0]:
                 continue  # outside of the image
             # rospy.loginfo('roi=[%d %d %d %d] in %dx%d', x_min, x_max, y_min, y_max, depth.width, depth.height)
 
