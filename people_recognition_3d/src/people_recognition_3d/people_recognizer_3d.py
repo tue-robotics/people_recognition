@@ -239,7 +239,8 @@ class PeopleRecognizer3D(object):
         markers.markers.append(delete_all)
 
         people3d = []
-        for i, person2d in enumerate(people2d):
+        for person2d in people2d:
+            i = person2d.body_parts[0].group_id
             joints = self.recognitions_to_joints(person2d.body_parts, rgb, depth, cam_model)
 
             # visualize joints
@@ -268,21 +269,22 @@ class PeopleRecognizer3D(object):
                                           scale=Vector3(0.03, 0, 0),
                                           color=ColorRGBA(cmap[i, 0] * 0.9, cmap[i, 1] * 0.9, cmap[i, 2] * 0.9, 1.0)))
 
-            point3d = Vector3(i, i, i)
-            try:
-                point3d = skeleton['Neck'].point
-            except KeyError:
+            # If the skeleton has no body parts do not add the recognition in
+            # the list of 3D people
+            if any(skeleton.bodyparts):
                 try:
-                    point3d = skeleton['Head'].point
+                    point3d = skeleton['Neck'].point
                 except KeyError:
-                    if any(skeleton.bodyparts):
-                        x = np.average([joint.point.x for _, joint in skeleton.bodyparts.iteritems()])
-                        y = np.average([joint.point.y for _, joint in skeleton.bodyparts.iteritems()])
-                        z = np.average([joint.point.z for _, joint in skeleton.bodyparts.iteritems()])
-                        point3d = Vector3(x, y, z)
-                    else:
-                        rospy.logwarn("There are no bodyparts to average")
-            rospy.loginfo('Position: {}'.format(point3d))
+                    try:
+                        point3d = skeleton['Head'].point
+                    except KeyError:
+                            x = np.average([joint.point.x for _, joint in skeleton.bodyparts.iteritems()])
+                            y = np.average([joint.point.y for _, joint in skeleton.bodyparts.iteritems()])
+                            z = np.average([joint.point.z for _, joint in skeleton.bodyparts.iteritems()])
+                            point3d = Vector3(x, y, z)
+            else:
+                rospy.logwarn("3D recognition of {} failed as no body parts found".format(person2d.name))
+                continue
 
             person3d = Person3D(
                 header=rgb.header,
