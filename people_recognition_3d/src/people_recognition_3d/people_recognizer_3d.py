@@ -246,10 +246,12 @@ class PeopleRecognizer3D(object):
             scale = depth.width / rgb.width
             rospy.logdebug("RGB and D don't have same dimensions, using scaling factor '%f' on ROIs", scale)
 
+        regions_viz = np.zeros_like(cv_depth)
 
         for person2d in people2d:
             i = person2d.body_parts[0].group_id
-            joints = self.recognitions_to_joints(person2d.body_parts, cv_depth, cam_model, scale)
+            joints = self.recognitions_to_joints(person2d.body_parts, cv_depth,
+                    cam_model, regions_viz, scale)
 
             # visualize joints
             rospy.logdebug('found %s objects for group %s', len(joints), i)
@@ -333,21 +335,22 @@ class PeopleRecognizer3D(object):
         # self.person_pub.publish(People(header=rgb.header, people=people3d))
         # publish all markers in one go
         # self.markers_pub.publish(markers)
+        regions_viz = self._bridge.cv2_to_imgmsg(regions_viz)
         rospy.loginfo("Done. Found {} people, {} markers".format(len(people3d), len(markers.markers)))
-        return people3d, markers
+        return people3d, markers, regions_viz
 
-    def recognitions_to_joints(self, recognitions, cv_depth, cam_model, scale=1.0):
+    def recognitions_to_joints(self, recognitions, cv_depth, cam_model, regions_viz, scale):
         """
         Method to convert 2D recognitions of body parts to Joint named tuple
         :param: recognitions: List of body part recognitions
         :param: cv_depth: cv2 Depth image
         :param: cam_model: Depth camera model
+        :param: regions_viz: numpy array the size of cv_depth to store depth
+                values of the ROIs
         :param: scale: Scaling factor of ROIs based on difference in size of RGB
                 and D images
         :return: joints: List of joints of type Joint
         """
-        regions_viz = np.zeros_like(cv_depth)
-
         joints = list()
         for r in recognitions:
             assert len(r.categorical_distribution.probabilities) == 1
@@ -373,25 +376,24 @@ class PeopleRecognizer3D(object):
 
             # debugging viz
             regions_viz[y_min:y_max, x_min:x_max] = cv_depth[y_min:y_max, x_min:x_max]
-            #self.regions_viz_pub.publish(self._bridge.cv2_to_imgmsg(regions_viz))
-
-            u = (x_min + x_max) // 2
-            v = (y_min + y_max) // 2
 
             # skip fully nan
             if np.all(np.isnan(region)):
                 continue
+
+            u = (x_min + x_max) // 2
+            v = (y_min + y_max) // 2
+
 
             # Sjoerd's rgbd implementation returns 0 on invalid
             if not np.all(region):
                 joints.append(Joint(r.group_id, label, p, Point(x=u, y=v, z=None)))
                 continue
 
-            median = np.nanmedian(region)
-            rospy.logdebug('region p=%f min=%f, max=%f, median=%f', p, np.nanmin(region), np.nanmax(region), median)
+            d = np.nanmedian(region)
+            rospy.logdebug('region p=%f min=%f, max=%f, median=%f', p, np.nanmin(region), np.nanmax(region), d)
 
             # project to 3d
-            d = median
             ray = np.array(cam_model.projectPixelTo3dRay((u, v)))
             point3d = ray * d
 
