@@ -351,7 +351,7 @@ class PeopleRecognizer3D(object):
                 and D images
         :return: joints: List of joints of type Joint
         """
-        joints = list()
+        joints = []
         for r in recognitions:
             assert len(r.categorical_distribution.probabilities) == 1
             pl = r.categorical_distribution.probabilities[0]
@@ -401,12 +401,12 @@ class PeopleRecognizer3D(object):
             point = Point(*point3d)
             joints.append(Joint(r.group_id, label, p, point))
 
-        new_joints = list()
+        new_joints = []
         for joint in joints:
             if joint.point.z:
                 new_joints.append(joint)
             else:
-                zs = list()
+                zs = []
                 for j in joints:
                     if j.group_id == joint.group_id and j.name != joint.name and j.point.z:
                         zs.append(j.point.z)
@@ -424,7 +424,7 @@ class PeopleRecognizer3D(object):
         return new_joints
 
     def get_person_tags(self, skeleton):
-        tags = list()
+        tags = []
         for side in ('L', 'R'):
             try:
                 if self._heuristic == 'shoulder':
