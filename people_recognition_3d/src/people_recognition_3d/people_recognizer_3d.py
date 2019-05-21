@@ -19,6 +19,7 @@ from visualization_msgs.msg import Marker, MarkerArray
 from people_recognition_msgs.srv import RecognizePeople2D, RecognizePeople2DResponse
 from people_recognition_msgs.msg import Person3D
 
+
 def _get_and_wait_for_service(srv_name, srv_class):
     """
     Function to start and wait for dependent service
@@ -31,6 +32,7 @@ def _get_and_wait_for_service(srv_name, srv_class):
     service.wait_for_service()
     return service
 
+
 def _get_service_response(srv, args):
     """
     Method to get service response with checks
@@ -42,11 +44,14 @@ def _get_service_response(srv, args):
     try:
         response = srv(args)
     except rospy.ServiceException as e:
-        rospy.logwarn("{} service call failed: {}".format(srv.resolved_name, e))
+        rospy.logwarn("{} service call failed: {}".format(
+            srv.resolved_name, e))
         return None
     return response
 
+
 Joint = namedtuple('Joint', ['group_id', 'name', 'p', 'point'])
+
 
 def geometry_msg_point_to_kdl_vector(msg):
     return kdl.Vector(msg.x, msg.y, msg.z)
@@ -124,12 +129,16 @@ class Skeleton(object):
                 p1 = self.body_parts[a].point
                 p2 = self.body_parts[b].point
 
-                l = (geometry_msg_point_to_kdl_vector(p1) - geometry_msg_point_to_kdl_vector(p2)).Norm()
+                l = (geometry_msg_point_to_kdl_vector(p1) -
+                     geometry_msg_point_to_kdl_vector(p2)).Norm()
                 if l <= threshold:
                     return_list.add(a)
                     return_list.add(b)
 
-        return Skeleton({name: joint for name, joint in self.body_parts.items() if name in return_list})
+        return Skeleton({
+            name: joint
+            for name, joint in self.body_parts.items() if name in return_list
+        })
 
     # def __iter__(self):
     #     return self.body_parts.__iter__()
@@ -186,12 +195,12 @@ def color_map(N=256, normalized=False):
 
 
 class PeopleRecognizer3D(object):
+    def __init__(self, recognize_people_srv_name, probability_threshold,
+                 link_threshold, heuristic, arm_norm_threshold, wave_threshold,
+                 vert_threshold, hor_threshold, padding):
 
-    def __init__(self, recognize_people_srv_name, probability_threshold, link_threshold, heuristic,
-            arm_norm_threshold, wave_threshold, vert_threshold, hor_threshold,
-            padding):
-
-        self._recognize_people_srv = _get_and_wait_for_service(recognize_people_srv_name, RecognizePeople2D)
+        self._recognize_people_srv = _get_and_wait_for_service(
+            recognize_people_srv_name, RecognizePeople2D)
 
         self._bridge = CvBridge()
 
@@ -224,11 +233,13 @@ class PeopleRecognizer3D(object):
 
         t = rospy.Time.now()
 
-        recognize_people_response = _get_service_response(self._recognize_people_srv, rgb)
+        recognize_people_response = _get_service_response(
+            self._recognize_people_srv, rgb)
         assert isinstance(recognize_people_response, RecognizePeople2DResponse)
 
         people2d = recognize_people_response.people
-        rospy.loginfo('PeopleRecognizer2D took %f seconds', (rospy.Time.now() - t).to_sec())
+        rospy.loginfo('PeopleRecognizer2D took %f seconds',
+                      (rospy.Time.now() - t).to_sec())
         rospy.loginfo('Found {} people'.format(len(people2d)))
 
         cmap = color_map(N=len(people2d), normalized=True)
@@ -244,40 +255,47 @@ class PeopleRecognizer3D(object):
 
         if rgb.width != depth.width or rgb.height != depth.height:
             scale = depth.width / rgb.width
-            rospy.logdebug("RGB and D don't have same dimensions, using scaling factor '%f' on ROIs", scale)
+            rospy.logdebug(
+                "RGB and D don't have same dimensions, using scaling factor '%f' on ROIs",
+                scale)
 
         regions_viz = np.zeros_like(cv_depth)
 
         for person2d in people2d:
             i = person2d.body_parts[0].group_id
             joints = self.recognitions_to_joints(person2d.body_parts, cv_depth,
-                    cam_model, regions_viz, scale)
+                                                 cam_model, regions_viz, scale)
 
             # visualize joints
             rospy.logdebug('found %s objects for group %s', len(joints), i)
 
             points = [j.point for j in joints]
-            markers.markers.append(Marker(header=rgb.header,
-                                          ns='joints',
-                                          id=i,
-                                          type=Marker.SPHERE_LIST,
-                                          action=Marker.ADD,
-                                          points=points,
-                                          scale=Vector3(0.07, 0.07, 0.07),
-                                          color=ColorRGBA(cmap[i, 0], cmap[i, 1], cmap[i, 2], 1.0)))
+            markers.markers.append(
+                Marker(header=rgb.header,
+                       ns='joints',
+                       id=i,
+                       type=Marker.SPHERE_LIST,
+                       action=Marker.ADD,
+                       points=points,
+                       scale=Vector3(0.07, 0.07, 0.07),
+                       color=ColorRGBA(cmap[i, 0], cmap[i, 1], cmap[i, 2],
+                                       1.0)))
 
             unfiltered_skeleton = Skeleton({j.name: j for j in joints})
-            skeleton = unfiltered_skeleton.filter_body_parts(self._link_threshold)
+            skeleton = unfiltered_skeleton.filter_body_parts(
+                self._link_threshold)
 
             # visualize links
-            markers.markers.append(Marker(header=rgb.header,
-                                          ns='links',
-                                          id=i,
-                                          type=Marker.LINE_LIST,
-                                          action=Marker.ADD,
-                                          points=list(skeleton.get_links()),
-                                          scale=Vector3(0.03, 0, 0),
-                                          color=ColorRGBA(cmap[i, 0] * 0.9, cmap[i, 1] * 0.9, cmap[i, 2] * 0.9, 1.0)))
+            markers.markers.append(
+                Marker(header=rgb.header,
+                       ns='links',
+                       id=i,
+                       type=Marker.LINE_LIST,
+                       action=Marker.ADD,
+                       points=list(skeleton.get_links()),
+                       scale=Vector3(0.03, 0, 0),
+                       color=ColorRGBA(cmap[i, 0] * 0.9, cmap[i, 1] * 0.9,
+                                       cmap[i, 2] * 0.9, 1.0)))
 
             # If the skeleton has no body parts do not add the recognition in
             # the list of 3D people
@@ -288,12 +306,23 @@ class PeopleRecognizer3D(object):
                     try:
                         point3d = skeleton['Head'].point
                     except KeyError:
-                            x = np.average([joint.point.x for _, joint in skeleton.body_parts.iteritems()])
-                            y = np.average([joint.point.y for _, joint in skeleton.body_parts.iteritems()])
-                            z = np.average([joint.point.z for _, joint in skeleton.body_parts.iteritems()])
-                            point3d = Vector3(x, y, z)
+                        x = np.average([
+                            joint.point.x
+                            for _, joint in skeleton.body_parts.iteritems()
+                        ])
+                        y = np.average([
+                            joint.point.y
+                            for _, joint in skeleton.body_parts.iteritems()
+                        ])
+                        z = np.average([
+                            joint.point.z
+                            for _, joint in skeleton.body_parts.iteritems()
+                        ])
+                        point3d = Vector3(x, y, z)
             else:
-                rospy.logwarn("3D recognition of {} failed as no body parts found".format(person2d.name))
+                rospy.logwarn(
+                    "3D recognition of {} failed as no body parts found".
+                    format(person2d.name))
                 continue
 
             person3d = Person3D(
@@ -310,7 +339,8 @@ class PeopleRecognizer3D(object):
                 tags=self.get_person_tags(skeleton),
             )
 
-            pointing_pose = self.get_pointing_pose(skeleton, self._arm_norm_threshold)
+            pointing_pose = self.get_pointing_pose(skeleton,
+                                                   self._arm_norm_threshold)
             if pointing_pose:
                 person3d.tags.append("is_pointing")
                 person3d.pointing_pose = pointing_pose
@@ -323,23 +353,27 @@ class PeopleRecognizer3D(object):
 
             # q = tf.transformations.quaternion_from_euler(-math.pi / 2, 0, 0)
             if "is_pointing" in person3d.tags:
-                markers.markers.append(Marker(header=rgb.header,
-                                              ns='pointing_pose',
-                                              id=i,
-                                              type=Marker.ARROW,
-                                              action=Marker.ADD,
-                                              pose=person3d.pointing_pose,
-                                              scale=Vector3(0.5, 0.05, 0.05),
-                                              color=ColorRGBA(cmap[i, 0], cmap[i, 1], cmap[i, 2], 1.0)))
+                markers.markers.append(
+                    Marker(header=rgb.header,
+                           ns='pointing_pose',
+                           id=i,
+                           type=Marker.ARROW,
+                           action=Marker.ADD,
+                           pose=person3d.pointing_pose,
+                           scale=Vector3(0.5, 0.05, 0.05),
+                           color=ColorRGBA(cmap[i, 0], cmap[i, 1], cmap[i, 2],
+                                           1.0)))
 
         # self.person_pub.publish(People(header=rgb.header, people=people3d))
         # publish all markers in one go
         # self.markers_pub.publish(markers)
         regions_viz = self._bridge.cv2_to_imgmsg(regions_viz)
-        rospy.loginfo("Done. Found {} people, {} markers".format(len(people3d), len(markers.markers)))
+        rospy.loginfo("Done. Found {} people, {} markers".format(
+            len(people3d), len(markers.markers)))
         return people3d, markers, regions_viz
 
-    def recognitions_to_joints(self, recognitions, cv_depth, cam_model, regions_viz, scale):
+    def recognitions_to_joints(self, recognitions, cv_depth, cam_model,
+                               regions_viz, scale):
         """
         Method to convert 2D recognitions of body parts to Joint named tuple
         :param: recognitions: List of body part recognitions
@@ -367,15 +401,16 @@ class PeopleRecognizer3D(object):
             y_min = int((roi.y_offset - self._padding) * scale)
             y_max = int((roi.y_offset + roi.height + self._padding) * scale)
 
-
-            if x_min < 0 or y_min < 0 or x_max > cv_depth.shape[1] or y_max > cv_depth.shape[0]:
+            if x_min < 0 or y_min < 0 or x_max > cv_depth.shape[
+                    1] or y_max > cv_depth.shape[0]:
                 continue  # outside of the image
             # rospy.loginfo('roi=[%d %d %d %d] in %dx%d', x_min, x_max, y_min, y_max, depth.width, depth.height)
 
             region = cv_depth[y_min:y_max, x_min:x_max]
 
             # debugging viz
-            regions_viz[y_min:y_max, x_min:x_max] = cv_depth[y_min:y_max, x_min:x_max]
+            regions_viz[y_min:y_max, x_min:x_max] = cv_depth[y_min:y_max,
+                                                             x_min:x_max]
 
             # skip fully nan
             if np.all(np.isnan(region)):
@@ -384,14 +419,15 @@ class PeopleRecognizer3D(object):
             u = (x_min + x_max) // 2
             v = (y_min + y_max) // 2
 
-
             # Sjoerd's rgbd implementation returns 0 on invalid
             if not np.all(region):
-                joints.append(Joint(r.group_id, label, p, Point(x=u, y=v, z=None)))
+                joints.append(
+                    Joint(r.group_id, label, p, Point(x=u, y=v, z=None)))
                 continue
 
             d = np.nanmedian(region)
-            rospy.logdebug('region p=%f min=%f, max=%f, median=%f', p, np.nanmin(region), np.nanmax(region), d)
+            rospy.logdebug('region p=%f min=%f, max=%f, median=%f', p,
+                           np.nanmin(region), np.nanmax(region), d)
 
             # project to 3d
             ray = np.array(cam_model.projectPixelTo3dRay((u, v)))
@@ -413,10 +449,13 @@ class PeopleRecognizer3D(object):
 
                 if zs:
                     mean_z = np.mean(zs)
-                    ray = np.array(cam_model.projectPixelTo3dRay((joint.point.x, joint.point.y)))
+                    ray = np.array(
+                        cam_model.projectPixelTo3dRay(
+                            (joint.point.x, joint.point.y)))
                     point3d = ray * mean_z
 
-                    new_joint = Joint(joint.group_id, joint.name, joint.p, Point(*point3d))
+                    new_joint = Joint(joint.group_id, joint.name, joint.p,
+                                      Point(*point3d))
                     new_joints.append(new_joint)
                 else:
                     new_joints.append(joint)
@@ -424,76 +463,57 @@ class PeopleRecognizer3D(object):
         return new_joints
 
     def get_person_tags(self, skeleton):
+        """
+        Method to get tags for a skeleton. The possible elements of the tag
+        list are:
+            1. LWave/LPointing | RWave/RPointing
+            2. LLaying/LSitting | RLaying/RSitting
+
+        :param: skeleton: The filtered skeleton of a person
+        :return: tags: List of tags for the person
+        """
         tags = []
+
+        if self._heuristic == 'shoulder':
+            other = skeleton[side + 'Shoulder'].point
+        elif self._heuristic == 'head':
+            other = skeleton['Head'].point
+        else:
+            raise ValueError('wrong heuristic')
+
         for side in ('L', 'R'):
             try:
-                if self._heuristic == 'shoulder':
-                    other = skeleton[side + 'Shoulder'].point
-                elif self._heuristic == 'head':
-                    other = skeleton['Head'].point
-                else:
-                    raise ValueError('wrong heuristic')
-
                 wrist = skeleton[side + 'Wrist'].point
             except KeyError:
-                continue
+                pass
+            else:
+                if wrist.y < (other.y - self._wave_threshold) and wrist.x < (
+                        other.x + self._hor_threshold):
+                    tags.append(side + 'Wave')
 
-            if wrist.y < (other.y - self._wave_threshold) and wrist.x < (other.x + self._hor_threshold):
-                tags.append(side + 'Wave')
+                elif wrist.x > (other.x + self._hor_threshold):
+                    tags.append(side + 'Pointing')
 
-        for side in ('L', 'R'):
             try:
-                if self._heuristic == 'shoulder':
-                    other = skeleton[side + 'Shoulder'].point
-                elif self._heuristic == 'head':
-                    other = skeleton['Head'].point
-                else:
-                    raise ValueError('wrong heuristic')
-
-                wrist = skeleton[side + 'Wrist'].point
-            except KeyError:
-                continue
-
-            if wrist.x > (other.x + self._hor_threshold):
-                tags.append(side + 'Pointing')
-
-        for side in ('L', 'R'):
-            try:
-                if self._heuristic == 'shoulder':
-                    other = skeleton[side + 'Shoulder'].point
-                elif self._heuristic == 'head':
-                    other = skeleton['Head'].point
-                else:
-                    raise ValueError('wrong heuristic')
-
                 knee = skeleton[side + 'Knee'].point
             except KeyError:
-                continue
+                pass
+            else:
+                if knee.y < (other.y + self._vert_threshold) and knee.x > (
+                        other.x + self._hor_threshold):
+                    tags.append(side + 'Laying')
 
-            if knee.y < (other.y + self._vert_threshold) and knee.x > (other.x + self._hor_threshold):
-                tags.append(side + 'Laying')
-
-        for side in ('L', 'R'):
-            try:
-                if self._heuristic == 'shoulder':
-                    other = skeleton[side + 'Shoulder'].point
-                elif self._heuristic == 'head':
-                    other = skeleton['Head'].point
-                else:
-                    raise ValueError('wrong heuristic')
-
-                knee = skeleton[side + 'Knee'].point
-            except KeyError:
-                continue
-
-            if knee.y < (other.y + self._vert_threshold) and knee.x < (other.x + self._hor_threshold):
-                tags.append(side + 'Sitting')
+                elif knee.y < (other.y + self._vert_threshold) and knee.x < (
+                        other.x + self._hor_threshold):
+                    tags.append(side + 'Sitting')
 
         rospy.logdebug(tags)
         return tags
 
     @staticmethod
-    def get_pointing_pose(skeleton, arm_norm_threshold=0.3, neck_norm_threshold=0.7):
+    def get_pointing_pose(skeleton,
+                          arm_norm_threshold=0.3,
+                          neck_norm_threshold=0.7):
         # We do required the shoulders for pointing calculation
         # if "Neck" not in skeleton or "Nose" not in skeleton:
         #     return None
@@ -511,64 +531,88 @@ class PeopleRecognizer3D(object):
 
         if left_arm_valid:
 
-            left_elbow = geometry_msg_point_to_kdl_vector(skeleton['LElbow'].point)
-            left_shoulder = geometry_msg_point_to_kdl_vector(skeleton['LShoulder'].point)
+            left_elbow = geometry_msg_point_to_kdl_vector(
+                skeleton['LElbow'].point)
+            left_shoulder = geometry_msg_point_to_kdl_vector(
+                skeleton['LShoulder'].point)
 
-            left_upper_arm_vector = (left_elbow - left_shoulder) / (left_elbow - left_shoulder).Norm()
-            left_frame = get_frame_from_vector(left_upper_arm_vector, left_elbow)
+            left_upper_arm_vector = (left_elbow - left_shoulder) / (
+                left_elbow - left_shoulder).Norm()
+            left_frame = get_frame_from_vector(left_upper_arm_vector,
+                                               left_elbow)
 
             left_arm_neck_norm = (neck_vector * left_upper_arm_vector).Norm()
 
             if "LWrist" in skeleton:
-                left_wrist = geometry_msg_point_to_kdl_vector(skeleton['LWrist'].point)
-                left_lower_arm_vector = (left_wrist - left_elbow) / (left_wrist - left_elbow).Norm()
+                left_wrist = geometry_msg_point_to_kdl_vector(
+                    skeleton['LWrist'].point)
+                left_lower_arm_vector = (left_wrist - left_elbow) / (
+                    left_wrist - left_elbow).Norm()
 
-                left_arm_norm = (left_lower_arm_vector * left_upper_arm_vector).Norm()
+                left_arm_norm = (left_lower_arm_vector *
+                                 left_upper_arm_vector).Norm()
 
                 if left_arm_norm > arm_norm_threshold:
                     left_arm_valid = False
                 else:
-                    left_arm_vector = (left_wrist - left_shoulder) / (left_wrist - left_shoulder).Norm()
-                    left_frame = get_frame_from_vector(left_arm_vector, left_wrist)
+                    left_arm_vector = (left_wrist - left_shoulder) / (
+                        left_wrist - left_shoulder).Norm()
+                    left_frame = get_frame_from_vector(left_arm_vector,
+                                                       left_wrist)
 
                 rospy.logdebug("Left arm norm: %.2f", left_arm_norm)
         else:
-            rospy.logdebug("Left arm not valid because it does not contain all required body parts")
+            rospy.logdebug(
+                "Left arm not valid because it does not contain all required body parts"
+            )
 
         if right_arm_valid:
 
-            right_elbow = geometry_msg_point_to_kdl_vector(skeleton['RElbow'].point)
-            right_shoulder = geometry_msg_point_to_kdl_vector(skeleton['RShoulder'].point)
+            right_elbow = geometry_msg_point_to_kdl_vector(
+                skeleton['RElbow'].point)
+            right_shoulder = geometry_msg_point_to_kdl_vector(
+                skeleton['RShoulder'].point)
 
-            right_upper_arm_vector = (right_elbow - right_shoulder) / (right_elbow - right_shoulder).Norm()
-            right_frame = get_frame_from_vector(right_upper_arm_vector, right_elbow)
+            right_upper_arm_vector = (right_elbow - right_shoulder) / (
+                right_elbow - right_shoulder).Norm()
+            right_frame = get_frame_from_vector(right_upper_arm_vector,
+                                                right_elbow)
 
             right_arm_neck_norm = (neck_vector * right_upper_arm_vector).Norm()
 
             if "RWrist" in skeleton:
-                right_wrist = geometry_msg_point_to_kdl_vector(skeleton['RWrist'].point)
-                right_lower_arm_vector = (right_wrist - right_elbow) / (right_wrist - right_elbow).Norm()
+                right_wrist = geometry_msg_point_to_kdl_vector(
+                    skeleton['RWrist'].point)
+                right_lower_arm_vector = (right_wrist - right_elbow) / (
+                    right_wrist - right_elbow).Norm()
 
-                right_arm_norm = (right_lower_arm_vector * right_upper_arm_vector).Norm()
+                right_arm_norm = (right_lower_arm_vector *
+                                  right_upper_arm_vector).Norm()
 
                 if right_arm_norm > arm_norm_threshold:
                     right_arm_valid = False
                 else:
-                    right_arm_vector = (right_wrist - right_shoulder) / (right_wrist - right_shoulder).Norm()
-                    right_frame = get_frame_from_vector(right_arm_vector, right_wrist)
+                    right_arm_vector = (right_wrist - right_shoulder) / (
+                        right_wrist - right_shoulder).Norm()
+                    right_frame = get_frame_from_vector(
+                        right_arm_vector, right_wrist)
 
                 rospy.logdebug("Right arm norm: %.2f", right_arm_norm)
         else:
-            rospy.logdebug("Right arm not valid because it does not contain all required body parts")
+            rospy.logdebug(
+                "Right arm not valid because it does not contain all required body parts"
+            )
 
         rospy.logdebug("Arm norm threshold: %.2f", arm_norm_threshold)
 
         # Constraint based on parralelliness arm and neck
         if left_arm_valid and left_arm_neck_norm < neck_norm_threshold:
-            rospy.logdebug("Rejecting left arm because of neck norm threshold ...")
+            rospy.logdebug(
+                "Rejecting left arm because of neck norm threshold ...")
             left_arm_valid = False
         if right_arm_valid and right_arm_neck_norm < neck_norm_threshold:
-            rospy.logdebug("Rejecting right arm because of neck norm threshold ...")
+            rospy.logdebug(
+                "Rejecting right arm because of neck norm threshold ...")
             right_arm_valid = False
 
         # Optimize
@@ -597,4 +641,5 @@ class PeopleRecognizer3D(object):
             rospy.logdebug("No valid arms found ...")
             return None
 
-        return Pose(position=Point(*frame.p), orientation=Quaternion(*frame.M.GetQuaternion()))
+        return Pose(position=Point(*frame.p),
+                    orientation=Quaternion(*frame.M.GetQuaternion()))
