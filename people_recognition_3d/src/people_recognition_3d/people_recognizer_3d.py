@@ -196,8 +196,9 @@ def color_map(N=256, normalized=False):
 
 class PeopleRecognizer3D(object):
     def __init__(self, recognize_people_srv_name, probability_threshold,
-                 link_threshold, heuristic, arm_norm_threshold, wave_threshold,
-                 vert_threshold, hor_threshold, padding):
+                 link_threshold, heuristic, arm_norm_threshold,
+                 neck_norm_threshold, wave_threshold, vert_threshold,
+                 hor_threshold, padding):
 
         self._recognize_people_srv = _get_and_wait_for_service(
             recognize_people_srv_name, RecognizePeople2D)
@@ -209,6 +210,7 @@ class PeopleRecognizer3D(object):
         self._link_threshold = link_threshold
         self._heuristic = heuristic
         self._arm_norm_threshold = arm_norm_threshold
+        self._neck_norm_threshold = neck_norm_threshold
         self._wave_threshold = wave_threshold
         self._vert_threshold = vert_threshold
         self._hor_threshold = hor_threshold
@@ -339,8 +341,8 @@ class PeopleRecognizer3D(object):
                 tags=self.get_person_tags(skeleton),
             )
 
-            pointing_pose = self.get_pointing_pose(skeleton,
-                                                   self._arm_norm_threshold)
+            pointing_pose = self.get_pointing_pose(skeleton)
+
             if pointing_pose:
                 person3d.tags.append("is_pointing")
                 person3d.pointing_pose = pointing_pose
@@ -510,10 +512,7 @@ class PeopleRecognizer3D(object):
         rospy.logdebug(tags)
         return tags
 
-    @staticmethod
-    def get_pointing_pose(skeleton,
-                          arm_norm_threshold=0.3,
-                          neck_norm_threshold=0.7):
+    def get_pointing_pose(self, skeleton)
         # We do required the shoulders for pointing calculation
         # if "Neck" not in skeleton or "Nose" not in skeleton:
         #     return None
@@ -552,7 +551,7 @@ class PeopleRecognizer3D(object):
                 left_arm_norm = (left_lower_arm_vector *
                                  left_upper_arm_vector).Norm()
 
-                if left_arm_norm > arm_norm_threshold:
+                if left_arm_norm > self._arm_norm_threshold:
                     left_arm_valid = False
                 else:
                     left_arm_vector = (left_wrist - left_shoulder) / (
@@ -589,7 +588,7 @@ class PeopleRecognizer3D(object):
                 right_arm_norm = (right_lower_arm_vector *
                                   right_upper_arm_vector).Norm()
 
-                if right_arm_norm > arm_norm_threshold:
+                if right_arm_norm > self._arm_norm_threshold:
                     right_arm_valid = False
                 else:
                     right_arm_vector = (right_wrist - right_shoulder) / (
@@ -603,14 +602,14 @@ class PeopleRecognizer3D(object):
                 "Right arm not valid because it does not contain all required body parts"
             )
 
-        rospy.logdebug("Arm norm threshold: %.2f", arm_norm_threshold)
+        rospy.logdebug("Arm norm threshold: %.2f", self._arm_norm_threshold)
 
         # Constraint based on parralelliness arm and neck
-        if left_arm_valid and left_arm_neck_norm < neck_norm_threshold:
+        if left_arm_valid and left_arm_neck_norm < self._neck_norm_threshold:
             rospy.logdebug(
                 "Rejecting left arm because of neck norm threshold ...")
             left_arm_valid = False
-        if right_arm_valid and right_arm_neck_norm < neck_norm_threshold:
+        if right_arm_valid and right_arm_neck_norm < self._neck_norm_threshold:
             rospy.logdebug(
                 "Rejecting right arm because of neck norm threshold ...")
             right_arm_valid = False
