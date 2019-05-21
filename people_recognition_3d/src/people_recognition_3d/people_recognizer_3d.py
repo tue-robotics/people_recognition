@@ -57,14 +57,31 @@ def geometry_msg_point_to_kdl_vector(msg):
     return kdl.Vector(msg.x, msg.y, msg.z)
 
 
-def get_frame_from_vector(x_vector, origin):
-    unit_z = kdl.Vector(0, 0, 1)
-    unit_z_cross_diff = (unit_z * x_vector) / (unit_z * x_vector).Norm()
-    y_vector = x_vector * unit_z_cross_diff
-    z_vector = x_vector * y_vector
+def get_frame_from_vector(x_vector, translation, z_direction=kdl.Vector(0, 0, 1)):
+    """
+    Function to generate an affine transformation frame given the x_vector, z_direction and
+    translation of the frame.
 
-    rotation = kdl.Rotation(x_vector, y_vector, z_vector)
-    translation = origin
+    How this works:
+        Any two given vectors form a plane so, x_vector and z_direction can be
+        considered as such vectors. Taking vector cross-product of these two
+        vectors will give a vector perpendicular to the plane.
+
+        1. First normalize the x_vector to get a unit_x vector.
+        2. Take cross product of z_direction and unit_x, the will give the
+            y_direction. Normalize y_direction to get the unit_y vector.
+        3. Take the cross product between unit_x and unit_y to get unit_z
+
+    :param: x_vector: The x_vector in some coordinate frame.
+    :param: origin: The origin of the frame to be created
+    :param: z_direction (default kdl.Vector(0, 0, 1)): The direction of z
+    :return: frame: KDL frame
+    """
+    unit_x = x_vector/x_vector.Norm()
+    unit_y = (z_direction * unit_x)/(z_direction * unit_x).Norm()
+    unit_z = unit_x * unit_y
+
+    rotation = kdl.Rotation(unit_x, unit_y, unit_z)
 
     return kdl.Frame(rotation, translation)
 
