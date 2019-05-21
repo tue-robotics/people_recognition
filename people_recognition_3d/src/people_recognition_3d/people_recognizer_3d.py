@@ -4,7 +4,6 @@ from __future__ import print_function, division
 import math
 import PyKDL as kdl
 from collections import namedtuple
-from itertools import groupby
 import numpy as np
 
 import image_geometry
