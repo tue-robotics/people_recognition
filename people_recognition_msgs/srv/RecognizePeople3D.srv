@@ -1,0 +1,10 @@
+# Interface that can request an array of Person3D from an input RGB-D image and
+# camera_info
+
+# RGB camera
+sensor_msgs/Image image_rgb
+# Depth camera
+sensor_msgs/Image image_depth
+sensor_msgs/CameraInfo camera_info_depth
+---
+Person3D[] people

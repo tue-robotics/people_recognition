@@ -1,0 +1,87 @@
+#!/usr/bin/env python
+
+# ROS modules
+import rospy
+import message_filters
+from sensor_msgs.msg import Image, CameraInfo
+from visualization_msgs.msg import MarkerArray
+
+# People recognition 3D modules
+from people_recognition_3d import PeopleRecognizer3D
+# from people_recognition_msgs.msg import People3D
+from people_recognition_msgs.srv import RecognizePeople3D, RecognizePeople3DResponse
+
+class PeopleRecognition3DNode:
+    def __init__(self):
+        recognize_people_srv_name = self._get_param('~recognize_people_srv_name', "detect_people")
+        probability_threshold = float(self._get_param('~probability_threshold', 0.2))
+        link_threshold = float(self._get_param('~link_threshold', 0.5))
+        heuristic = self._get_param('~heuristic', 'shoulder')
+        arm_norm_threshold = self._get_param('~arm_norm_threshold', 0.5)
+        wave_threshold = self._get_param('~wave_threshold', 0.2)
+        vert_threshold = self._get_param('~vert_threshold', 0.7)
+        hor_threshold = self._get_param('~hor_threshold', 0.4)
+        padding = self._get_param('~padding', 5)
+
+        enable_topic_mode = self._get_param('~enable_topic_mode', False)
+
+        self._people_recognizer_3d = PeopleRecognizer3D(recognize_people_srv_name,
+                probability_threshold, link_threshold, heuristic,
+                arm_norm_threshold, wave_threshold, vert_threshold,
+                hor_threshold, padding)
+
+        if enable_topic_mode:
+            depth_info_sub = message_filters.Subscriber('camera_info', CameraInfo)
+            depth_sub = message_filters.Subscriber('depth', Image)
+            rgb_sub = message_filters.Subscriber('rgb', Image)
+
+            #self._people_pub = rospy.Publisher('people3d', People3D, queue_size=1)
+            self._markers_pub = rospy.Publisher('~viz', MarkerArray, queue_size=1)
+            #self._regions_viz_pub = rospy.Publisher('~regions_viz', Image, queue_size=1)
+
+            # self._ts = message_filters.TimeSynchronizer([rgb_sub, depth_sub, depth_info_sub], 1)
+            self._ts = message_filters.ApproximateTimeSynchronizer([rgb_sub, depth_sub, depth_info_sub],
+                                                                   queue_size=1,
+                                                                   slop=10)
+
+            self._ts.registerCallback(self._topic_callback)
+
+        # Define the service only after PeopleRecognizer has initialized
+        # completely else an early service call can be made causing errors
+        self._recognize_people_3d_srv = rospy.Service('detect_people_3d',
+                RecognizePeople3D,
+                self._recognize_people_3d_srv)
+
+        rospy.loginfo("PeopleRecognition3DNode initialized:")
+
+    def _get_param(self, name, default):
+        if rospy.has_param(name):
+            return rospy.get_param(name)
+        else:
+            rospy.logwarn('parameter %s not set, using the default value of %s', name, default)
+            return rospy.get_param(name, default)
+
+    def _recognize_people_3d_srv(self, req):
+        """
+        Callback when the RecognizePeople3D service is called
+        :param req: RecognizePeople3DRequest (with .image_rgb, .image_depth and
+            .camera_info_depth attributes)
+        :return: RecognizePeople3DResponse (with a .people attribute)
+        """
+        # Convert to opencv images
+        rospy.loginfo("Detecting people in 3D from incoming RGB-D image")
+        people3d, _ = self._people_recognizer_3d.recognize(req.image_rgb,
+                req.image_depth, req.camera_info_depth)
+
+        return RecognizePeople3DResponse(people=people3d)
+
+    def _topic_callback(self, rgb, depth, depth_info):
+        rospy.logdebug("_topic_callback called")
+        people3d, markers = self._people_recognizer_3d.recognize(rgb, depth, depth_info)
+        self._markers_pub.publish(markers)
+        #self._people_pub.publish(People3D(people=people3d))
+
+if __name__ == '__main__':
+    rospy.init_node('people_recognition_3d')
+    node = PeopleRecognition3DNode()
+    rospy.spin()

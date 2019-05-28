@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>people_recognition_2d</name>
+  <version>0.0.1</version>
+  <description>The people_recogniton_2d package</description>
+
+  <maintainer email="ar13pit@gmail.com">Arpit Aggarwal</maintainer>
+
+  <license>MIT</license>
+  <url type="repository">https://github.com/tue-robotics/people_recognition/people_recognition_2d</url>
+
+  <author email="ar13pit@gmail.com">Arpit Aggarwal</author>
+
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <depend>image_recognition_keras</depend>
+  <depend>image_recognition_msgs</depend>
+  <depend>image_recognition_openface</depend>
+  <depend>image_recognition_openpose</depend>
+  <depend>image_recognition_util</depend>
+  <depend>people_recognition_msgs</depend>
+  <depend>rospy</depend>
+
+
+</package>

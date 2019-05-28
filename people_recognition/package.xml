@@ -1,0 +1,19 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>people_recognition</name>
+  <version>0.0.1</version>
+  <description>The people_recognition packages for recognizing people from RGB-D images.</description>
+
+  <maintainer email="ar13pit@gmail.com">Arpit Aggarwal</maintainer>
+
+  <license>MIT</license>
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <exec_depend>people_recognition_2d</exec_depend>
+  <exec_depend>people_recognition_3d</exec_depend>
+  <exec_depend>people_recognition_msgs</exec_depend>
+
+  <export>
+    <metapackage/>
+  </export>
+</package>

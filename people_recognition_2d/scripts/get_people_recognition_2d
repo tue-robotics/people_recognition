@@ -1,0 +1,63 @@
+#!/usr/bin/env python
+from __future__ import print_function
+
+import argparse
+import time
+
+import cv2
+from cv_bridge import CvBridge
+import rospy
+from people_recognition_2d import PeopleRecognizer2D
+
+parser = argparse.ArgumentParser(description='Get 2D people recognition')
+parser.add_argument('-v', '--verbose', help="Increase output verbosity", action="store_true")
+parser.add_argument('--openpose_srv_name', default="openpose/recognize")
+parser.add_argument('--openface_srv_name', default="face_recognition/recognize")
+parser.add_argument('--keras_srv_name', default="face_recognition/get_face_properties")
+parser.add_argument('--color_extractor_srv_name', default="extract_color")
+
+mode_parser = parser.add_subparsers(help='Mode')
+image_parser = mode_parser.add_parser('image', help='Use image mode')
+image_parser.set_defaults(mode='image')
+image_parser.add_argument('image', help='Input image')
+
+cam_parser = mode_parser.add_parser('cam', help='Use cam mode')
+cam_parser.set_defaults(mode='cam')
+cam_parser.add_argument('--rate', default=3.0, type=float, help='Input image')
+
+args = parser.parse_args()
+
+rospy.init_node('get_people_recognition_2d')
+
+recognizer = PeopleRecognizer2D(args.openpose_srv_name,
+                            args.openface_srv_name,
+                            args.keras_srv_name,
+                            args.color_extractor_srv_name)
+
+cv_bridge = CvBridge()
+
+if args.mode == 'image':
+    image = cv2.imread(args.image)
+    image_msg = cv_bridge.cv2_to_imgmsg(image, "bgr8")
+    recognitions, overlayed_image = recognizer.recognize(image_msg)
+    rospy.loginfo(recognitions)
+    cv2.imshow("overlayed_image", overlayed_image)
+    cv2.waitKey()
+elif args.mode == 'cam':
+    cap = cv2.VideoCapture(0)
+    prev = 0
+    while not rospy.is_shutdown():
+
+        time_elapsed = time.time() - prev
+        res, image = cap.read()
+        image_msg = cv_brige.cv2_to_imgmsg(image, "bgr8")
+
+        if time_elapsed > 1. / args.rate:
+            prev = time.time()
+
+            recognitions, overlayed_image = recognizer.recognize(image_msg)
+            cv2.imshow("overlayed_image", overlayed_image)
+
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                break
+

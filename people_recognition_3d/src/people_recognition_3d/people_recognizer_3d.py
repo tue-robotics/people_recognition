@@ -1,26 +1,52 @@
 #!/usr/bin/env python
-from __future__ import division
+from __future__ import print_function, division
 
 import math
 import PyKDL as kdl
 from collections import namedtuple
 from itertools import groupby
+import numpy as np
 
 import image_geometry
-import message_filters
-import numpy as np
 import rospy
 import tf
 from cv_bridge import CvBridge
 from geometry_msgs.msg import Point, Vector3, Pose, Quaternion
-from image_recognition_msgs.srv import Recognize
-from tue_msgs.msg import Person, People
 from sensor_msgs.msg import Image, CameraInfo
 from std_msgs.msg import ColorRGBA
 from visualization_msgs.msg import Marker, MarkerArray
 
-Joint = namedtuple('Joint', ['group_id', 'name', 'p', 'point'])
+from people_recognition_msgs.srv import RecognizePeople2D, RecognizePeople2DResponse
+from people_recognition_msgs.msg import Person3D
 
+def _get_and_wait_for_service(srv_name, srv_class):
+    """
+    Function to start and wait for dependent service
+    :param: srv_name: Service name
+    :param: srv_class: Service class
+    :return: started ServiceProxy object
+    """
+    service = rospy.ServiceProxy('{}'.format(srv_name), srv_class)
+    rospy.loginfo("Waiting for service {} ...".format(service.resolved_name))
+    service.wait_for_service()
+    return service
+
+def _get_service_response(srv, args):
+    """
+    Method to get service response with checks
+    :param: srv: service
+    :param: args: Input arguments of the service request
+    :return: response
+    """
+    response = None
+    try:
+        response = srv(args)
+    except rospy.ServiceException as e:
+        rospy.logwarn("{} service call failed: {}".format(srv.resolved_name, e))
+        return None
+    return response
+
+Joint = namedtuple('Joint', ['group_id', 'name', 'p', 'point'])
 
 def geometry_msg_point_to_kdl_vector(msg):
     return kdl.Vector(msg.x, msg.y, msg.z)
@@ -148,85 +174,67 @@ def color_map(N=256, normalized=False):
     return cmap
 
 
-def get_param(name, default):
-    if rospy.has_param(name):
-        return rospy.get_param(name)
-    else:
-        rospy.logwarn('parameter %s not set, using the default value of %s', name, default)
-        return rospy.get_param(name, default)
+class PeopleRecognizer3D(object):
 
+    def __init__(self, recognize_people_srv_name, probability_threshold, link_threshold, heuristic,
+            arm_norm_threshold, wave_threshold, vert_threshold, hor_threshold,
+            padding):
 
-class PeopleDetector(object):
-    padding = 5
+        self._recognize_people_srv = _get_and_wait_for_service(recognize_people_srv_name, RecognizePeople2D)
 
-    def __init__(self):
-        rospy.loginfo('starting people_detector')
-        self.bridge = CvBridge()
+        self._bridge = CvBridge()
 
         # parameters
-        self.threshold = float(get_param('~probability_threshold', 0.2))
-        self.link_threshold = float(get_param('~link_threshold', 0.5))
-        self.heuristic = get_param('~heuristic', 'shoulder')
-        self.arm_norm_threshold = get_param('~arm_norm_threshold', 0.5)
-        self.wave_threshold = get_param('~wave_threshold', 0.2)
-        self.vert_threshold = get_param('~vert_threshold', 0.7)
-        self.hor_threshold = get_param('~hor_threshold', 0.4)
+        self._threshold = probability_threshold
+        self._link_threshold = link_threshold
+        self._heuristic = heuristic
+        self._arm_norm_threshold = arm_norm_threshold
+        self._wave_threshold = wave_threshold
+        self._vert_threshold = vert_threshold
+        self._hor_threshold = hor_threshold
+        self._padding = padding
 
-        # camera topics
-        depth_info_sub = message_filters.Subscriber('camera/depth/camera_info', CameraInfo)
-        depth_sub = message_filters.Subscriber('camera/depth/image', Image)
-        rgb_sub = message_filters.Subscriber('camera/rgb/image', Image)
+        rospy.loginfo('People recognizer 3D initialized')
 
-        # openpose
-        self.recognize = rospy.ServiceProxy('pose_detector/recognize', Recognize)
+    def recognize(self, rgb, depth, camera_info):
+        """
+        Service call function
+        :param: rgb: RGB Image msg
+        :param: depth: Depth Image_msg
+        :param: depth_info: Depth CameraInfo msg
+        """
+        assert isinstance(rgb, Image)
+        assert isinstance(depth, Image)
+        assert isinstance(camera_info, CameraInfo)
 
-        # published topics
-        self.person_pub = rospy.Publisher('persons', People, queue_size=1)
-        self.markers_pub = rospy.Publisher('~viz', MarkerArray, queue_size=1)
-        self.regions_viz_pub = rospy.Publisher('~regions_viz', Image, queue_size=1)
-
-        # before subscribing, wait for services
-        rospy.loginfo('wait for service [%s]', self.recognize.resolved_name)
-        self.recognize.wait_for_service()
-
-        # private variables
-
-        self._ts = message_filters.TimeSynchronizer([rgb_sub, depth_sub, depth_info_sub], 1)
-        # self._ts = message_filters.ApproximateTimeSynchronizer([rgb_sub, depth_sub, depth_info_sub], queue_size=3,
-        #                                                        slop=0.1)
-        self._ts.registerCallback(self.callback)
-        rospy.loginfo('people_detector started')
-
-    def callback(self, rgb, depth, depth_info):
-        rospy.loginfo('got image cb')
-
+        rospy.loginfo('Got recognize service call')
         cam_model = image_geometry.PinholeCameraModel()
-        cam_model.fromCameraInfo(depth_info)
+        cam_model.fromCameraInfo(camera_info)
 
         t = rospy.Time.now()
-        try:
-            data = self.recognize(image=rgb)
-        except rospy.ServiceException as e:
-            rospy.logwarn('openpose call failed: %s', e)
-            return
-        rospy.loginfo('openpose took %f seconds', (rospy.Time.now() - t).to_sec())
 
-        joints = self.recognitions_to_joints(data.recognitions, rgb, depth, cam_model)
+        recognize_people_response = _get_service_response(self._recognize_people_srv, rgb)
+        assert isinstance(recognize_people_response, RecognizePeople2DResponse)
 
-        # groupby group_id
-        groups = []
-        for group_id, js in groupby(joints, lambda j: j.group_id):
-            groups.append(list(js))
+        people2d = recognize_people_response.people
+        rospy.loginfo('PeopleRecognizer2D took %f seconds', (rospy.Time.now() - t).to_sec())
+        rospy.loginfo('Found {} people'.format(len(people2d)))
+
+        cmap = color_map(N=len(people2d), normalized=True)
 
         markers = MarkerArray()
-        markers.markers.append(Marker(action=Marker.DELETEALL))
+        delete_all = Marker(action=Marker.DELETEALL)
+        delete_all.header.frame_id = rgb.header.frame_id
+        markers.markers.append(delete_all)
 
-        # visualize joints
-        cmap = color_map(N=len(groups), normalized=True)
-        for i, js in enumerate(groups):
-            rospy.loginfo('found %s objects for group %s', len(js), i)
+        people3d = []
+        for i, person2d in enumerate(people2d):
+            joints = self.recognitions_to_joints(person2d.body_parts, rgb, depth, cam_model)
 
-            points = [j.point for j in js]
+            # visualize joints
+            rospy.logdebug('found %s objects for group %s', len(joints), i)
+
+            points = [j.point for j in joints]
             markers.markers.append(Marker(header=rgb.header,
                                           ns='joints',
                                           id=i,
@@ -236,102 +244,96 @@ class PeopleDetector(object):
                                           scale=Vector3(0.07, 0.07, 0.07),
                                           color=ColorRGBA(cmap[i, 0], cmap[i, 1], cmap[i, 2], 1.0)))
 
-        skeletons = [Skeleton({j.name: j for j in js}) for js in groups]
-        skeletons = [s.filter_bodyparts(self.link_threshold) for s in skeletons]
+            unfiltered_skeleton = Skeleton({j.name: j for j in joints})
+            skeleton = unfiltered_skeleton.filter_bodyparts(self._link_threshold)
 
-        # visualize links
-        for i, s in enumerate(skeletons):
+            # visualize links
             markers.markers.append(Marker(header=rgb.header,
                                           ns='links',
                                           id=i,
                                           type=Marker.LINE_LIST,
                                           action=Marker.ADD,
-                                          points=list(s.get_links()),
+                                          points=list(skeleton.get_links()),
                                           scale=Vector3(0.03, 0, 0),
                                           color=ColorRGBA(cmap[i, 0] * 0.9, cmap[i, 1] * 0.9, cmap[i, 2] * 0.9, 1.0)))
 
-        # create persons
-        persons = []
-        for s in skeletons:
-            if 'Neck' not in s:
-                continue
-            point3d = s['Neck'].point
+            point3d = Vector3(i, i, i)
+            try:
+                point3d = skeleton['Neck'].point
+            except KeyError:
+                try:
+                    point3d = skeleton['Head'].point
+                except KeyError:
+                    if any(skeleton.bodyparts):
+                        x = np.average([joint.point.x for _, joint in skeleton.bodyparts.iteritems()])
+                        y = np.average([joint.point.y for _, joint in skeleton.bodyparts.iteritems()])
+                        z = np.average([joint.point.z for _, joint in skeleton.bodyparts.iteritems()])
+                        point3d = Vector3(x, y, z)
+                    else:
+                        rospy.logwarn("There are no bodyparts to average")
+            rospy.loginfo('Position: {}'.format(point3d))
 
-            person = Person(
+            person3d = Person3D(
+                header=rgb.header,
+                name=person2d.name,
+                age=person2d.age,
+                gender=person2d.gender,
+                gender_confidence=person2d.gender_confidence,
+                posture=person2d.posture,
+                emotion=person2d.emotion,
+                shirt_colors=person2d.shirt_colors,
+                body_parts_pose=person2d.body_parts,
                 position=point3d,
-                tags=self.get_person_tags(s),
+                tags=self.get_person_tags(skeleton),
             )
 
-            pointing_pose = self.get_pointing_pose(s, self.arm_norm_threshold)
+            pointing_pose = self.get_pointing_pose(skeleton, self._arm_norm_threshold)
             if pointing_pose:
-                person.tags.append("is_pointing")
-                person.pointing_pose = pointing_pose
+                person3d.tags.append("is_pointing")
+                person3d.pointing_pose = pointing_pose
 
-            persons.append(person)
+            people3d.append(person3d)
 
-        # visualize persons
-        height = 1.8
-        head = 0.2
+            # visualize persons
+            # height = 1.8
+            # head = 0.2
 
-        q = tf.transformations.quaternion_from_euler(-math.pi / 2, 0, 0)
-        for i, p in enumerate(persons):
-            text = ','.join(p.tags)
-            y_max = p.position.y - 2 * head
-            y_avg = p.position.y - head + height / 2
-            p_avg = Point(p.position.x, y_avg, p.position.z)
-            p_head = Point(p.position.x, y_max, p.position.z)
-            # markers.markers.append(Marker(header=rgb.header,
-            #                               ns='persons',
-            #                               id=i,
-            #                               type=Marker.CYLINDER,
-            #                               action=Marker.ADD,
-            #                               pose=Pose(position=p_avg, orientation=Quaternion(*q)),
-            #                               scale=Vector3(0.2, 0.2, height),
-            #                               color=ColorRGBA(cmap[i, 0], cmap[i, 1], cmap[i, 2], 0.5)))
-            if "is_pointing" in p.tags:
+            # q = tf.transformations.quaternion_from_euler(-math.pi / 2, 0, 0)
+            if "is_pointing" in person3d.tags:
                 markers.markers.append(Marker(header=rgb.header,
                                               ns='pointing_pose',
                                               id=i,
                                               type=Marker.ARROW,
                                               action=Marker.ADD,
-                                              pose=p.pointing_pose,
+                                              pose=person3d.pointing_pose,
                                               scale=Vector3(0.5, 0.05, 0.05),
                                               color=ColorRGBA(cmap[i, 0], cmap[i, 1], cmap[i, 2], 1.0)))
 
-            # markers.markers.append(Marker(header=rgb.header,
-            #                               ns='labels',
-            #                               id=i,
-            #                               type=Marker.TEXT_VIEW_FACING,
-            #                               action=Marker.ADD,
-            #                               lifetime=rospy.Duration(1.5),
-            #                               pose=Pose(position=p_head, orientation=Quaternion(*q)),
-            #                               text=text,
-            #                               scale=Vector3(0, 0, 0.2),
-            #                               color=ColorRGBA(cmap[i, 0], cmap[i, 1], cmap[i, 2], 1)))
-
-        self.person_pub.publish(People(header=rgb.header, people=persons))
+        # self.person_pub.publish(People(header=rgb.header, people=people3d))
         # publish all markers in one go
-        self.markers_pub.publish(markers)
+        # self.markers_pub.publish(markers)
+        rospy.loginfo("Done. Found {} people, {} markers".format(len(people3d), len(markers.markers)))
+        return people3d, markers
 
     def recognitions_to_joints(self, recognitions, rgb, depth, cam_model):
-        cv_depth = self.bridge.imgmsg_to_cv2(depth)
+        cv_depth = self._bridge.imgmsg_to_cv2(depth)
         regions_viz = np.zeros_like(cv_depth)
 
-        joints = []
+        joints = list()
         for r in recognitions:
             assert len(r.categorical_distribution.probabilities) == 1
             pl = r.categorical_distribution.probabilities[0]
             label = pl.label
             p = pl.probability
 
-            if p < self.threshold:
+            if p < self._threshold:
                 continue
 
             roi = r.roi
-            x_min = roi.x_offset - self.padding
-            x_max = roi.x_offset + roi.width + self.padding
-            y_min = roi.y_offset - self.padding
-            y_max = roi.y_offset + roi.height + self.padding
+            x_min = roi.x_offset - self._padding
+            x_max = roi.x_offset + roi.width + self._padding
+            y_min = roi.y_offset - self._padding
+            y_max = roi.y_offset + roi.height + self._padding
 
             if rgb.width != depth.width or rgb.height != depth.height:
                 factor = depth.width / rgb.width
@@ -350,7 +352,7 @@ class PeopleDetector(object):
 
             # debugging viz
             regions_viz[y_min:y_max, x_min:x_max] = cv_depth[y_min:y_max, x_min:x_max]
-            self.regions_viz_pub.publish(self.bridge.cv2_to_imgmsg(regions_viz))
+            #self.regions_viz_pub.publish(self._bridge.cv2_to_imgmsg(regions_viz))
 
             u = (x_min + x_max) // 2
             v = (y_min + y_max) // 2
@@ -376,12 +378,12 @@ class PeopleDetector(object):
             point = Point(*point3d)
             joints.append(Joint(r.group_id, label, p, point))
 
-        new_joints = []
+        new_joints = list()
         for joint in joints:
             if joint.point.z:
                 new_joints.append(joint)
             else:
-                zs = []
+                zs = list()
                 for j in joints:
                     if j.group_id == joint.group_id and j.name != joint.name and j.point.z:
                         zs.append(j.point.z)
@@ -399,12 +401,12 @@ class PeopleDetector(object):
         return new_joints
 
     def get_person_tags(self, skeleton):
-        tags = []
+        tags = list()
         for side in ('L', 'R'):
             try:
-                if self.heuristic == 'shoulder':
+                if self._heuristic == 'shoulder':
                     other = skeleton[side + 'Shoulder'].point
-                elif self.heuristic == 'head':
+                elif self._heuristic == 'head':
                     other = skeleton['Head'].point
                 else:
                     raise ValueError('wrong heuristic')
@@ -413,14 +415,14 @@ class PeopleDetector(object):
             except KeyError:
                 continue
 
-            if wrist.y < (other.y - self.wave_threshold) and wrist.x < (other.x + self.hor_threshold):
+            if wrist.y < (other.y - self._wave_threshold) and wrist.x < (other.x + self._hor_threshold):
                 tags.append(side + 'Wave')
 
         for side in ('L', 'R'):
             try:
-                if self.heuristic == 'shoulder':
+                if self._heuristic == 'shoulder':
                     other = skeleton[side + 'Shoulder'].point
-                elif self.heuristic == 'head':
+                elif self._heuristic == 'head':
                     other = skeleton['Head'].point
                 else:
                     raise ValueError('wrong heuristic')
@@ -429,14 +431,14 @@ class PeopleDetector(object):
             except KeyError:
                 continue
 
-            if wrist.x > (other.x + self.hor_threshold):
+            if wrist.x > (other.x + self._hor_threshold):
                 tags.append(side + 'Pointing')
 
         for side in ('L', 'R'):
             try:
-                if self.heuristic == 'shoulder':
+                if self._heuristic == 'shoulder':
                     other = skeleton[side + 'Shoulder'].point
-                elif self.heuristic == 'head':
+                elif self._heuristic == 'head':
                     other = skeleton['Head'].point
                 else:
                     raise ValueError('wrong heuristic')
@@ -445,14 +447,14 @@ class PeopleDetector(object):
             except KeyError:
                 continue
 
-            if knee.y < (other.y + self.vert_threshold) and knee.x > (other.x + self.hor_threshold):
+            if knee.y < (other.y + self._vert_threshold) and knee.x > (other.x + self._hor_threshold):
                 tags.append(side + 'Laying')
 
         for side in ('L', 'R'):
             try:
-                if self.heuristic == 'shoulder':
+                if self._heuristic == 'shoulder':
                     other = skeleton[side + 'Shoulder'].point
-                elif self.heuristic == 'head':
+                elif self._heuristic == 'head':
                     other = skeleton['Head'].point
                 else:
                     raise ValueError('wrong heuristic')
@@ -461,10 +463,10 @@ class PeopleDetector(object):
             except KeyError:
                 continue
 
-            if knee.y < (other.y + self.vert_threshold) and knee.x < (other.x + self.hor_threshold):
+            if knee.y < (other.y + self._vert_threshold) and knee.x < (other.x + self._hor_threshold):
                 tags.append(side + 'Sitting')
 
-        rospy.loginfo(tags)
+        rospy.logdebug(tags)
         return tags
 
     @staticmethod
@@ -506,9 +508,9 @@ class PeopleDetector(object):
                     left_arm_vector = (left_wrist - left_shoulder) / (left_wrist - left_shoulder).Norm()
                     left_frame = get_frame_from_vector(left_arm_vector, left_wrist)
 
-                rospy.loginfo("Left arm norm: %.2f", left_arm_norm)
+                rospy.logdebug("Left arm norm: %.2f", left_arm_norm)
         else:
-            rospy.loginfo("Left arm not valid because it does not contain all required bodyparts")
+            rospy.logdebug("Left arm not valid because it does not contain all required bodyparts")
 
         if right_arm_valid:
 
@@ -532,18 +534,18 @@ class PeopleDetector(object):
                     right_arm_vector = (right_wrist - right_shoulder) / (right_wrist - right_shoulder).Norm()
                     right_frame = get_frame_from_vector(right_arm_vector, right_wrist)
 
-                rospy.loginfo("Right arm norm: %.2f", right_arm_norm)
+                rospy.logdebug("Right arm norm: %.2f", right_arm_norm)
         else:
-            rospy.loginfo("Left arm not valid because it does not contain all required bodyparts")
+            rospy.logdebug("Left arm not valid because it does not contain all required bodyparts")
 
-        rospy.loginfo("Arm norm threshold: %.2f", arm_norm_threshold)
+        rospy.logdebug("Arm norm threshold: %.2f", arm_norm_threshold)
 
         # Constraint based on parralelliness arm and neck
         if left_arm_valid and left_arm_neck_norm < neck_norm_threshold:
-            rospy.loginfo("Rejecting left arm because of neck norm threshold ...")
+            rospy.logdebug("Rejecting left arm because of neck norm threshold ...")
             left_arm_valid = False
         if right_arm_valid and right_arm_neck_norm < neck_norm_threshold:
-            rospy.loginfo("Rejecting right arm because of neck norm threshold ...")
+            rospy.logdebug("Rejecting right arm because of neck norm threshold ...")
             right_arm_valid = False
 
         # Optimize
@@ -569,13 +571,7 @@ class PeopleDetector(object):
             frame = right_frame
 
         if not frame:
-            rospy.loginfo("No valid arms found ...")
+            rospy.logdebug("No valid arms found ...")
             return None
 
         return Pose(position=Point(*frame.p), orientation=Quaternion(*frame.M.GetQuaternion()))
-
-
-if __name__ == '__main__':
-    rospy.init_node('people_detector')
-    PeopleDetector()
-    rospy.spin()

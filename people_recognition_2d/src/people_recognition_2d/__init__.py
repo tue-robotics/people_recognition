@@ -1,0 +1,1 @@
+from .people_recognizer_2d import PeopleRecognizer2D
