@@ -269,20 +269,21 @@ class PeopleRecognizer3D(object):
 
         cv_depth = self._bridge.imgmsg_to_cv2(depth)
         people3d = []
-        scale = 1.0
+        depth_image_scaling = 1.0
 
         if rgb.width != depth.width or rgb.height != depth.height:
-            scale = depth.width / rgb.width
+            depth_image_scaling = depth.width / rgb.width
             rospy.logdebug(
                 "RGB and D don't have same dimensions, using scaling factor '%f' on ROIs",
-                scale)
+                depth_image_scaling)
 
         regions_viz = np.zeros_like(cv_depth)
 
         for person2d in people2d:
             i = person2d.body_parts[0].group_id
             joints = self.recognitions_to_joints(person2d.body_parts, cv_depth,
-                                                 cam_model, regions_viz, scale)
+                                                 cam_model, regions_viz,
+                                                 depth_image_scaling)
 
             # visualize joints
             rospy.logdebug('found %s objects for group %s', len(joints), i)
@@ -324,18 +325,17 @@ class PeopleRecognizer3D(object):
                     try:
                         point3d = skeleton['Head'].point
                     except KeyError:
-                        x = np.average([
-                            joint.point.x
-                            for _, joint in skeleton.body_parts.iteritems()
-                        ])
-                        y = np.average([
-                            joint.point.y
-                            for _, joint in skeleton.body_parts.iteritems()
-                        ])
-                        z = np.average([
-                            joint.point.z
-                            for _, joint in skeleton.body_parts.iteritems()
-                        ])
+                        x = []
+                        y = []
+                        z = []
+                        for _, joint in skeleton.body_parts.iteritems():
+                            x.append(joint.point.x)
+                            y.append(joint.point.y)
+                            z.append(joint.point.z)
+
+                        x = np.average(x)
+                        y = np.average(y)
+                        z = np.average(z)
                         point3d = Vector3(x, y, z)
             else:
                 rospy.logwarn(
