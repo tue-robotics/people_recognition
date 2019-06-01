@@ -396,6 +396,8 @@ class PeopleRecognizer3D(object):
         :return: joints: List of joints of type Joint
         """
         joints = []
+        joints_with_invalid_3D_roi = []
+
         for r in recognitions:
             assert len(r.categorical_distribution.probabilities) == 1
             pl = r.categorical_distribution.probabilities[0]
@@ -422,17 +424,15 @@ class PeopleRecognizer3D(object):
             regions_viz[y_min:y_max, x_min:x_max] = cv_depth[y_min:y_max,
                                                              x_min:x_max]
 
-            # skip fully nan
-            if np.all(np.isnan(region)):
-                continue
-
             u = (x_min + x_max) // 2
             v = (y_min + y_max) // 2
 
-            # Sjoerd's rgbd implementation returns 0 on invalid
-            if not np.all(region):
-                joints.append(
-                    Joint(r.group_id, label, p, Point(x=u, y=v, z=None)))
+            ray = np.array(cam_model.projectPixelTo3dRay((u, v)))
+
+            # skip fully nan
+            if np.all(np.isnan(region)):
+                joints_with_invalid_3D_roi.append(
+                    Joint(r.group_id, label, p, Point(*ray)))
                 continue
 
             d = np.nanmedian(region)
@@ -440,7 +440,6 @@ class PeopleRecognizer3D(object):
                            np.nanmin(region), np.nanmax(region), d)
 
             # project to 3d
-            ray = np.array(cam_model.projectPixelTo3dRay((u, v)))
             point3d = ray * d
 
             rospy.logdebug('3d point of %s is %d,%d: %s', label, u, v, point3d)
@@ -448,27 +447,19 @@ class PeopleRecognizer3D(object):
             joints.append(Joint(r.group_id, label, p, point))
 
         new_joints = []
-        for joint in joints:
-            if joint.point.z:
-                new_joints.append(joint)
+        if joints:
+            if joints_with_invalid_3D_roi:
+                mean_z = np.mean([j.point.z for j in joints])
+
+                for j in joints_with_invalid_3D_roi:
+                    j.point.x *= mean_z
+                    j.point.y *= mean_z
+                    j.point.z *= mean_z
+
+                new_joints = joints + joints_with_invalid_3D_roi
+
             else:
-                zs = []
-                for j in joints:
-                    if j.group_id == joint.group_id and j.name != joint.name and j.point.z:
-                        zs.append(j.point.z)
-
-                if zs:
-                    mean_z = np.mean(zs)
-                    ray = np.array(
-                        cam_model.projectPixelTo3dRay(
-                            (joint.point.x, joint.point.y)))
-                    point3d = ray * mean_z
-
-                    new_joint = Joint(joint.group_id, joint.name, joint.p,
-                                      Point(*point3d))
-                    new_joints.append(new_joint)
-                else:
-                    new_joints.append(joint)
+                new_joints = joints
 
         return new_joints
 
