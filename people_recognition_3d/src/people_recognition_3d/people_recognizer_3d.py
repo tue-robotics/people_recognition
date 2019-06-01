@@ -623,7 +623,6 @@ class PeopleRecognizer3D(object):
             right_arm_valid = False
 
         # Optimize
-        frame = None
         if left_arm_valid and right_arm_valid:
             if left_arm_neck_norm > right_arm_neck_norm:
                 rospy.loginfo("Right arm is pointing the most, using this one")
@@ -638,13 +637,11 @@ class PeopleRecognizer3D(object):
         #     else:
         #         rospy.loginfo("Left arm is pointing the most, using this one")
         #         frame = left_frame
-
-        if left_arm_valid:
+        elif left_arm_valid:
             frame = left_frame
-        if right_arm_valid:
+        elif right_arm_valid:
             frame = right_frame
-
-        if not frame:
+        else:
             rospy.logdebug("No valid arms found ...")
             return None
 
