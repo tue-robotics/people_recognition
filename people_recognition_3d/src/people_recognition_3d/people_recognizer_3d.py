@@ -358,9 +358,6 @@ class PeopleRecognizer3D(object):
                 person3d.tags.append("is_pointing")
                 person3d.pointing_pose = pointing_pose
 
-            people3d.append(person3d)
-
-            if "is_pointing" in person3d.tags:
                 markers.markers.append(
                     Marker(header=rgb.header,
                            ns='pointing_pose',
@@ -371,6 +368,8 @@ class PeopleRecognizer3D(object):
                            scale=Vector3(0.5, 0.05, 0.05),
                            color=ColorRGBA(cmap[i, 0], cmap[i, 1], cmap[i, 2],
                                            1.0)))
+
+            people3d.append(person3d)
 
         # After completion of people recognition, the regions_viz matrix is
         # populated with the depth data of all recognized people
