@@ -54,7 +54,9 @@ def geometry_msg_point_to_kdl_vector(msg):
     return kdl.Vector(msg.x, msg.y, msg.z)
 
 
-def get_frame_from_vector(x_vector, translation, z_direction=kdl.Vector(0, 0, 1)):
+def get_frame_from_vector(x_vector,
+                          translation,
+                          z_direction=kdl.Vector(0, 0, 1)):
     """
     Function to generate an affine transformation frame given the x_vector, z_direction and
     translation of the frame.
@@ -74,8 +76,8 @@ def get_frame_from_vector(x_vector, translation, z_direction=kdl.Vector(0, 0, 1)
     :param: z_direction (default kdl.Vector(0, 0, 1)): The direction of z
     :return: frame: KDL frame
     """
-    unit_x = x_vector/x_vector.Norm()
-    unit_y = (z_direction * unit_x)/(z_direction * unit_x).Norm()
+    unit_x = x_vector / x_vector.Norm()
+    unit_y = (z_direction * unit_x) / (z_direction * unit_x).Norm()
     unit_z = unit_x * unit_y
 
     rotation = kdl.Rotation(unit_x, unit_y, unit_z)
@@ -518,7 +520,7 @@ class PeopleRecognizer3D(object):
         rospy.logdebug(tags)
         return tags
 
-    def get_pointing_pose(self, skeleton)
+    def get_pointing_pose(self, skeleton):
         # We do required the shoulders for pointing calculation
         # if "Neck" not in skeleton or "Nose" not in skeleton:
         #     return None
