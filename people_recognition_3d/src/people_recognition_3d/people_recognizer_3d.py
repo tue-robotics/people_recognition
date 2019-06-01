@@ -285,6 +285,10 @@ class PeopleRecognizer3D(object):
             # visualize joints
             rospy.logdebug('found %s objects for group %s', len(joints), i)
 
+            # Skip the person for who has no 3D joints
+            if not joints:
+                continue
+
             points = [j.point for j in joints]
             markers.markers.append(
                 Marker(header=rgb.header,
@@ -421,28 +425,25 @@ class PeopleRecognizer3D(object):
             region = cv_depth[y_min:y_max, x_min:x_max]
 
             # debugging viz
-            regions_viz[y_min:y_max, x_min:x_max] = cv_depth[y_min:y_max,
-                                                             x_min:x_max]
+            regions_viz[y_min:y_max, x_min:x_max] = region
 
             u = (x_min + x_max) // 2
             v = (y_min + y_max) // 2
 
             ray = np.array(cam_model.projectPixelTo3dRay((u, v)))
 
-            # skip fully nan
+            # Create a dummy joint for full nan and correct the position if non
+            # nan regions based joints exist
             if np.all(np.isnan(region)):
                 joints_with_invalid_3D_roi.append(
                     Joint(r.group_id, label, p, Point(*ray)))
                 continue
 
             d = np.nanmedian(region)
-            rospy.logdebug('region p=%f min=%f, max=%f, median=%f', p,
-                           np.nanmin(region), np.nanmax(region), d)
 
             # project to 3d
             point3d = ray * d
 
-            rospy.logdebug('3d point of %s is %d,%d: %s', label, u, v, point3d)
             point = Point(*point3d)
             joints.append(Joint(r.group_id, label, p, point))
 
