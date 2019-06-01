@@ -78,10 +78,14 @@ class PeopleRecognition3DNode:
         """
         # Convert to opencv images
         rospy.loginfo("Detecting people in 3D from incoming RGB-D image")
-        people3d, _ = self._people_recognizer_3d.recognize(
-            req.image_rgb, req.image_depth, req.camera_info_depth)
-
-        return RecognizePeople3DResponse(people=people3d)
+        try:
+            people3d, _, _ = self._people_recognizer_3d.recognize(
+                req.image_rgb, req.image_depth, req.camera_info_depth)
+        except Exception as e:
+            rospy.logerr("Exception while recognizing people in 3D")
+            raise
+        else:
+            return RecognizePeople3DResponse(people=people3d)
 
     def _topic_callback(self, rgb, depth, depth_info):
         rospy.logdebug("_topic_callback called")
