@@ -1,14 +1,12 @@
 #!/usr/bin/env python
 from __future__ import print_function, division
 
-import math
 import PyKDL as kdl
 from collections import namedtuple
 import numpy as np
 
 import image_geometry
 import rospy
-import tf
 from cv_bridge import CvBridge
 from geometry_msgs.msg import Point, Vector3, Pose, Quaternion
 from sensor_msgs.msg import Image, CameraInfo
@@ -178,11 +176,9 @@ class Skeleton(object):
         """
         for (a, b) in self.links:
             if a in self.body_parts and b in self.body_parts:
-                # rospy.loginfo("Add link {}".format((a, b)))
                 yield self.body_parts[a].point
                 yield self.body_parts[b].point
             else:
-                # rospy.logwarn("Not all body_parts of link {} found".format((a, b)))
                 pass
 
     def __repr__(self):
@@ -253,7 +249,6 @@ class PeopleRecognizer3D(object):
 
         recognize_people_response = _get_service_response(
             self._recognize_people_srv, rgb)
-        assert isinstance(recognize_people_response, RecognizePeople2DResponse)
 
         people2d = recognize_people_response.people
         rospy.loginfo('PeopleRecognizer2D took %f seconds',
@@ -365,11 +360,6 @@ class PeopleRecognizer3D(object):
 
             people3d.append(person3d)
 
-            # visualize persons
-            # height = 1.8
-            # head = 0.2
-
-            # q = tf.transformations.quaternion_from_euler(-math.pi / 2, 0, 0)
             if "is_pointing" in person3d.tags:
                 markers.markers.append(
                     Marker(header=rgb.header,
@@ -382,10 +372,11 @@ class PeopleRecognizer3D(object):
                            color=ColorRGBA(cmap[i, 0], cmap[i, 1], cmap[i, 2],
                                            1.0)))
 
-        # self.person_pub.publish(People(header=rgb.header, people=people3d))
-        # publish all markers in one go
-        # self.markers_pub.publish(markers)
+        # After completion of people recognition, the regions_viz matrix is
+        # populated with the depth data of all recognized people
         regions_viz = self._bridge.cv2_to_imgmsg(regions_viz)
+        regions_viz.header = rgb.header
+
         rospy.loginfo("Done. Found {} people, {} markers".format(
             len(people3d), len(markers.markers)))
         return people3d, markers, regions_viz
