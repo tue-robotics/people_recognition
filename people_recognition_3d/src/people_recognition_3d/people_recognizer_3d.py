@@ -39,14 +39,14 @@ def _get_service_response(srv, args):
     :param: args: Input arguments of the service request
     :return: response
     """
-    response = None
     try:
         response = srv(args)
-    except rospy.ServiceException as e:
+    except Exception as e:
         rospy.logwarn("{} service call failed: {}".format(
             srv.resolved_name, e))
-        return None
-    return response
+        raise
+    else:
+        return response
 
 
 Joint = namedtuple('Joint', ['group_id', 'name', 'p', 'point'])
