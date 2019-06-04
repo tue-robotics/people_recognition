@@ -43,10 +43,11 @@ def _get_service_response(srv, args):
     response = None
     try:
         response = srv(args)
-    except rospy.ServiceException as e:
+    except Exception as e:
         rospy.logwarn("{} service call failed: {}".format(srv.resolved_name, e))
-        return None
-    return response
+        raise
+    else:
+        return response
 
 class PeopleRecognizer2D(object):
     def __init__(self, openpose_srv_name, openface_srv_name,
@@ -232,10 +233,8 @@ class PeopleRecognizer2D(object):
         rospy.loginfo("Starting pose and face recognition...")
         start_recognize = time.time()
         openpose_response = _get_service_response(self._openpose_srv, image_msg)
-        assert isinstance(openpose_response, RecognizeResponse)
 
         openface_response = _get_service_response(self._openface_srv, image_msg)
-        assert isinstance(openface_response, RecognizeResponse)
         rospy.logdebug("Recognize took %.4f seconds", time.time() - start_recognize)
         rospy.loginfo("_get_face_rois_ids_openpose...")
 
@@ -255,7 +254,6 @@ class PeopleRecognizer2D(object):
         rospy.loginfo("_get_face_properties...")
         face_image_msg_array = [self._bridge.cv2_to_imgmsg(PeopleDetector._image_from_roi(image, r.roi), "bgr8") for r in face_recognitions]
         keras_response = _get_service_response(self._keras_srv, face_image_msg_array)
-        assert isinstance(keras_response, GetFacePropertiesResponse)
         face_properties_array = keras_response.properties_array
 
         # Color Extractor service call
@@ -265,7 +263,6 @@ class PeopleRecognizer2D(object):
             shirt_roi = PeopleDetector._shirt_roi_from_face_roi(r.roi, image.shape)
             shirt_image_msg = self._bridge.cv2_to_imgmsg(PeopleDetector._image_from_roi(image, shirt_roi))
             color_extractor_response = _get_service_response(self._color_extractor_srv, shirt_image_msg)
-            assert isinstance(color_extractor_response, ExtractColorResponse)
             shirt_colors_array.append(color_extractor_response.colors)
 
         # Prepare image annotation labels and People message
