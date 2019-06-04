@@ -344,6 +344,8 @@ class PeopleRecognizer3D(object):
                     format(person2d.name))
                 continue
 
+            # rospy.loginfo("Skeleton: {}".format(skeleton))
+
             person3d = Person3D(
                 header=rgb.header,
                 name=person2d.name,
@@ -478,9 +480,16 @@ class PeopleRecognizer3D(object):
 
         for side in ('L', 'R'):
             if self._heuristic == 'shoulder':
-                other = skeleton[side + 'Shoulder'].point
+                try:
+                    other = skeleton[side + 'Shoulder'].point
+                except KeyError:
+                    return tags
+
             elif self._heuristic == 'head':
-                other = skeleton['Head'].point
+                try:
+                    other = skeleton['Head'].point
+                except KeyError:
+                    return tags
             else:
                 raise ValueError('wrong heuristic')
 
