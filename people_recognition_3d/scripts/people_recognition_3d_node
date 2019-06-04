@@ -38,6 +38,10 @@ class PeopleRecognition3DNode:
             vert_threshold, hor_threshold, padding)
 
         if enable_topic_mode:
+            rospy.loginfo("Topic mode enabled")
+            rospy.loginfo("Subscribing to: {}".format(depth_info_sub_name))
+            rospy.loginfo("Subscribing to: {}".format(depth_sub_name))
+            rospy.loginfo("Subscribing to: {}".format(rgb_sub_name))
             depth_info_sub = message_filters.Subscriber(
                 depth_info_sub_name, CameraInfo)
             depth_sub = message_filters.Subscriber(depth_sub_name, Image)
@@ -82,7 +86,7 @@ class PeopleRecognition3DNode:
         :return: RecognizePeople3DResponse (with a .people attribute)
         """
         # Convert to opencv images
-        rospy.loginfo("Detecting people in 3D from incoming RGB-D image")
+        rospy.loginfo("[Service Call] Detecting people in 3D from incoming RGB-D image...")
         try:
             people3d, _, _ = self._people_recognizer_3d.recognize(
                 req.image_rgb, req.image_depth, req.camera_info_depth)
@@ -94,7 +98,7 @@ class PeopleRecognition3DNode:
             return RecognizePeople3DResponse(people=people3d)
 
     def _topic_callback(self, rgb, depth, depth_info):
-        rospy.logdebug("_topic_callback called")
+        rospy.loginfo("[Topic Mode] Detecting people in 3D from incoming RGB-D image...")
         try:
             people3d, markers, regions_viz = self._people_recognizer_3d.recognize(
                 rgb, depth, depth_info)
