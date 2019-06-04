@@ -28,6 +28,9 @@ class PeopleRecognition3DNode:
         padding = self._get_param('~padding', 5)
 
         enable_topic_mode = self._get_param('~enable_topic_mode', False)
+        depth_info_sub_name = self._get_param('~camera_info_depth', 'camera_info')
+        depth_sub_name = self._get_param('~image_depth', 'depth')
+        rgb_sub_name = self._get_param('~image_rgb', 'rgb')
 
         self._people_recognizer_3d = PeopleRecognizer3D(
             recognize_people_srv_name, probability_threshold, link_threshold,
@@ -36,9 +39,9 @@ class PeopleRecognition3DNode:
 
         if enable_topic_mode:
             depth_info_sub = message_filters.Subscriber(
-                'camera_info', CameraInfo)
-            depth_sub = message_filters.Subscriber('depth', Image)
-            rgb_sub = message_filters.Subscriber('rgb', Image)
+                depth_info_sub_name, CameraInfo)
+            depth_sub = message_filters.Subscriber(depth_sub_name, Image)
+            rgb_sub = message_filters.Subscriber(rgb_sub_name, Image)
 
             #self._people_pub = rospy.Publisher('people3d', People3D, queue_size=1)
             self._markers_pub = rospy.Publisher('~viz',
