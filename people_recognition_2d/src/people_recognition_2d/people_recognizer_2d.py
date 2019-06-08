@@ -81,8 +81,8 @@ class PeopleRecognizer2D(object):
         left_ear_recognitions = PeopleRecognizer2D._get_recognitions_with_label("LEar", recognitions)
         right_ear_recognitions = PeopleRecognizer2D._get_recognitions_with_label("REar", recognitions)
 
-        rois = list()
-        group_ids = list()
+        rois = []
+        group_ids = []
         for nose_recognition in nose_recognitions:
             # We assume a vertical head here
             left_size = 50
@@ -224,8 +224,8 @@ class PeopleRecognizer2D(object):
         assert isinstance(image_msg, Image)
         image = self._bridge.imgmsg_to_cv2(image_msg)
 
-        image_annotations = list()
-        people = list()
+        image_annotations = []
+        people = []
 
         # OpenPose and OpenFace service calls
         rospy.loginfo("Starting pose and face recognition...")
@@ -256,7 +256,7 @@ class PeopleRecognizer2D(object):
 
         # Color Extractor service call
         rospy.loginfo("_get_color_extractor...")
-        shirt_colors_array = list()
+        shirt_colors_array = []
         for r in face_recognitions:
             shirt_roi = PeopleRecognizer2D._shirt_roi_from_face_roi(r.roi, image.shape)
             shirt_image_msg = self._bridge.cv2_to_imgmsg(PeopleRecognizer2D._image_from_roi(image, shirt_roi))
