@@ -43,10 +43,11 @@ def _get_service_response(srv, args):
     response = None
     try:
         response = srv(args)
-    except rospy.ServiceException as e:
+    except Exception as e:
         rospy.logwarn("{} service call failed: {}".format(srv.resolved_name, e))
-        return None
-    return response
+        raise
+    else:
+        return response
 
 class PeopleRecognizer2D(object):
     def __init__(self, openpose_srv_name, openface_srv_name,
@@ -78,9 +79,9 @@ class PeopleRecognizer2D(object):
         and right ear
         :param: recognitions from openpose
         """
-        nose_recognitions = PeopleDetector._get_recognitions_with_label("Nose", recognitions)
-        left_ear_recognitions = PeopleDetector._get_recognitions_with_label("LEar", recognitions)
-        right_ear_recognitions = PeopleDetector._get_recognitions_with_label("REar", recognitions)
+        nose_recognitions = PeopleRecognizer2D._get_recognitions_with_label("Nose", recognitions)
+        left_ear_recognitions = PeopleRecognizer2D._get_recognitions_with_label("LEar", recognitions)
+        right_ear_recognitions = PeopleRecognizer2D._get_recognitions_with_label("REar", recognitions)
 
         rois = list()
         group_ids = list()
@@ -232,48 +233,44 @@ class PeopleRecognizer2D(object):
         rospy.loginfo("Starting pose and face recognition...")
         start_recognize = time.time()
         openpose_response = _get_service_response(self._openpose_srv, image_msg)
-        assert isinstance(openpose_response, RecognizeResponse)
 
         openface_response = _get_service_response(self._openface_srv, image_msg)
-        assert isinstance(openface_response, RecognizeResponse)
         rospy.logdebug("Recognize took %.4f seconds", time.time() - start_recognize)
         rospy.loginfo("_get_face_rois_ids_openpose...")
 
         # Extract face ROIs and their corresponding group ids from recognitions of openpose
-        openpose_face_rois, openpose_face_group_ids = PeopleDetector._get_face_rois_ids_openpose(openpose_response.recognitions)
+        openpose_face_rois, openpose_face_group_ids = PeopleRecognizer2D._get_face_rois_ids_openpose(openpose_response.recognitions)
 
-        body_parts_array = [PeopleDetector._get_body_parts_openpose(group_id,
+        body_parts_array = [PeopleRecognizer2D._get_body_parts_openpose(group_id,
             openpose_response.recognitions) for group_id in openpose_face_group_ids]
 
-        face_recognitions = [PeopleDetector._get_container_recognition(openpose_face_roi,
+        face_recognitions = [PeopleRecognizer2D._get_container_recognition(openpose_face_roi,
                                                                        openface_response.recognitions)
                              for openpose_face_roi in openpose_face_rois]
 
-        face_labels = [PeopleDetector._get_best_label(r) for r in face_recognitions]
+        face_labels = [PeopleRecognizer2D._get_best_label(r) for r in face_recognitions]
 
         # Keras service call
         rospy.loginfo("_get_face_properties...")
-        face_image_msg_array = [self._bridge.cv2_to_imgmsg(PeopleDetector._image_from_roi(image, r.roi), "bgr8") for r in face_recognitions]
+        face_image_msg_array = [self._bridge.cv2_to_imgmsg(PeopleRecognizer2D._image_from_roi(image, r.roi), "bgr8") for r in face_recognitions]
         keras_response = _get_service_response(self._keras_srv, face_image_msg_array)
-        assert isinstance(keras_response, GetFacePropertiesResponse)
         face_properties_array = keras_response.properties_array
 
         # Color Extractor service call
         rospy.loginfo("_get_color_extractor...")
         shirt_colors_array = list()
         for r in face_recognitions:
-            shirt_roi = PeopleDetector._shirt_roi_from_face_roi(r.roi, image.shape)
-            shirt_image_msg = self._bridge.cv2_to_imgmsg(PeopleDetector._image_from_roi(image, shirt_roi))
+            shirt_roi = PeopleRecognizer2D._shirt_roi_from_face_roi(r.roi, image.shape)
+            shirt_image_msg = self._bridge.cv2_to_imgmsg(PeopleRecognizer2D._image_from_roi(image, shirt_roi))
             color_extractor_response = _get_service_response(self._color_extractor_srv, shirt_image_msg)
-            assert isinstance(color_extractor_response, ExtractColorResponse)
             shirt_colors_array.append(color_extractor_response.colors)
 
         # Prepare image annotation labels and People message
         for face_label, face_properties, shirt_colors, body_parts in zip(face_labels,
                 face_properties_array, shirt_colors_array, body_parts_array):
 
-            temp_label = PeopleDetector._face_properties_to_label(face_properties) + \
-                    PeopleDetector._shirt_colors_to_label(shirt_colors)
+            temp_label = PeopleRecognizer2D._face_properties_to_label(face_properties) + \
+                    PeopleRecognizer2D._shirt_colors_to_label(shirt_colors)
 
             if face_label:
                 image_annotations.append(face_label + " " + temp_label)
