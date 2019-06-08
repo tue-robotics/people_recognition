@@ -484,12 +484,6 @@ class PeopleRecognizer3D(object):
                     other = skeleton[side + 'Shoulder'].point
                 except KeyError:
                     return tags
-
-            elif self._heuristic == 'head':
-                try:
-                    other = skeleton['Head'].point
-                except KeyError:
-                    return tags
             else:
                 raise ValueError('wrong heuristic')
 
