@@ -323,21 +323,18 @@ class PeopleRecognizer3D(object):
                 try:
                     point3d = skeleton['Neck'].point
                 except KeyError:
-                    try:
-                        point3d = skeleton['Head'].point
-                    except KeyError:
-                        x = []
-                        y = []
-                        z = []
-                        for _, joint in skeleton.body_parts.iteritems():
-                            x.append(joint.point.x)
-                            y.append(joint.point.y)
-                            z.append(joint.point.z)
+                    x = []
+                    y = []
+                    z = []
+                    for _, joint in skeleton.body_parts.iteritems():
+                        x.append(joint.point.x)
+                        y.append(joint.point.y)
+                        z.append(joint.point.z)
 
-                        x = np.average(x)
-                        y = np.average(y)
-                        z = np.average(z)
-                        point3d = Vector3(x, y, z)
+                    x = np.average(x)
+                    y = np.average(y)
+                    z = np.average(z)
+                    point3d = Vector3(x, y, z)
             else:
                 rospy.logwarn(
                     "3D recognition of {} failed as no body parts found".
