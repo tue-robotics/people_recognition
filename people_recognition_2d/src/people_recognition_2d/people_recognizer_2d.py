@@ -14,9 +14,7 @@ from sensor_msgs.msg import Image, RegionOfInterest
 # Image recognition repository modules
 from image_recognition_util import image_writer
 from image_recognition_msgs.msg import Recognition, FaceProperties
-from image_recognition_msgs.srv import (Recognize, RecognizeResponse,
-                                        GetFaceProperties, GetFacePropertiesResponse,
-                                        ExtractColor, ExtractColorResponse)
+from image_recognition_msgs.srv import Recognize, GetFaceProperties
 
 # People recognition repository modules
 from people_recognition_msgs.msg import Person2D
@@ -56,11 +54,11 @@ class PeopleRecognizer2D(object):
         self._openpose_srv = _get_and_wait_for_service(openpose_srv_name, Recognize)
         self._openface_srv = _get_and_wait_for_service(openface_srv_name, Recognize)
         self._keras_srv = _get_and_wait_for_service(keras_srv_name, GetFaceProperties)
-        self._color_extractor_srv = _get_and_wait_for_service(color_extractor_srv_name, ExtractColor)
+        self._color_extractor_srv = _get_and_wait_for_service(color_extractor_srv_name, Recognize)
 
         self._bridge = CvBridge()
 
-        rospy.loginfo("People detector initialized")
+        rospy.loginfo("People recognizer 2D initialized")
 
     @staticmethod
     def _get_recognitions_with_label(label, recognitions):
@@ -263,7 +261,8 @@ class PeopleRecognizer2D(object):
             shirt_roi = PeopleRecognizer2D._shirt_roi_from_face_roi(r.roi, image.shape)
             shirt_image_msg = self._bridge.cv2_to_imgmsg(PeopleRecognizer2D._image_from_roi(image, shirt_roi))
             color_extractor_response = _get_service_response(self._color_extractor_srv, shirt_image_msg)
-            shirt_colors_array.append(color_extractor_response.colors)
+            shirt_colors = [p.label for p in color_extractor_response.recognitions[0].categorical_distribution.probabilities]
+            shirt_colors_array.append(shirt_colors)
 
         # Prepare image annotation labels and People message
         for face_label, face_properties, shirt_colors, body_parts in zip(face_labels,
