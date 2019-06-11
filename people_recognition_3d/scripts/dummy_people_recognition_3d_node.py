@@ -8,7 +8,7 @@ import random
 # People recognition 3D modules
 from people_recognition_msgs.msg import Person3D, People3D
 from people_recognition_msgs.srv import RecognizePeople3D, RecognizePeople3DResponse
-from geometry_msgs.msg import Pose
+from geometry_msgs.msg import Point, Pose
 
 
 class DummyPeopleRecognition3DNode:
@@ -21,10 +21,10 @@ class DummyPeopleRecognition3DNode:
 
         rospy.loginfo("PeopleRecognition3DNode initialized:")
 
-    def _generate_dummy_person3d(self, rgb, depth, cam_info):
+    def _generate_dummy_person3d(self, rgb, depth, cam_info, name=None):
         person = Person3D()
         person.header = rgb.header
-        person.name = "Person{}".format(self._counter)
+        person.name = name if name else "Person{}".format(self._counter)
         person.age = 20 + self._counter
         person.gender = random.choice([0, 1])
         person.gender_confidence = random.normalvariate(mu=0.75, sigma=0.2)
@@ -34,8 +34,10 @@ class DummyPeopleRecognition3DNode:
         random.shuffle(colors)
         person.shirt_colors = colors
         # person.body_parts_pose
-        person.position = Pose()
-        person.position.position.z = 3.0
+        person.position = Point()
+        person.position.z = 3.0
+
+        return person
 
 
     def _recognize_people_3d_srv(self, req):
@@ -48,8 +50,13 @@ class DummyPeopleRecognition3DNode:
         """
         # Convert to opencv images
         rospy.loginfo("Detecting people in 3D from incoming RGB-D image")
-        people3d, _ = self._people_recognizer_3d.recognize(req.image_rgb,
-                req.image_depth, req.camera_info_depth)
+        names_str = raw_input("Please enter the names of the people the robot should see, comma-separated: ")
+
+        names = [name.strip() for name in names_str.split(",")]
+        people3d = [self._generate_dummy_person3d(req.image_rgb,
+                                                  req.image_depth,
+                                                  req.camera_info_depth,
+                                                  name) for name in names]
 
         return RecognizePeople3DResponse(people=people3d)
 
