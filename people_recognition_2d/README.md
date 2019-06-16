@@ -5,7 +5,7 @@ Node for people recognition in 2D. Defined as a service and not a publisher/subs
 - [image_recognition_openpose](https://github.com/tue-robotics/image_recognition/tree/master/image_recognition_openpose)
 - [image_recognition_openface](https://github.com/tue-robotics/image_recognition/tree/master/image_recognition_openpose)
 - [image_recognition_keras](https://github.com/tue-robotics/image_recognition/tree/master/image_recognition_keras)
-- [image_recognition_util](https://github.com/tue-robotics/image_recognition/tree/master/image_recognition_util)
+- [image_recognition_color_extractor](https://github.com/tue-robotics/image_recognition/tree/master/image_recognition_color_extractor)
 - [image_recognition_msgs](https://github.com/tue-robotics/image_recognition/tree/master/image_recognition_msgs)
 
 # How To
@@ -18,7 +18,7 @@ rosrun image_recognition_openface face_recognition_node __ns:=face_recognition
 
 rosrun image_recognition_keras face_properties_node __ns:=face_recognition
 
-rosrun image_recognition_util color_extractor_node
+rosrun image_recognition_color_extractor color_extractor_node
 ```
 
 ### Run the people recognition node and service
