@@ -2,11 +2,11 @@
 Node for people recognition in 2D. Defined as a service and not a publisher/subscriber.
 
 ## Custom dependencies
-- [image_recognition_openpose](https://github.com/tue-robotics/image_recognition/image_recognition_openpose)
-- [image_recognition_openface](https://github.com/tue-robotics/image_recognition/image_recognition_openpose)
-- [image_recognition_keras](https://github.com/tue-robotics/image_recognition/image_recognition_keras)
-- [image_recognition_util](https://github.com/tue-robotics/image_recognition/image_recognition_util)
-- [image_recognition_msgs](https://github.com/tue-robotics/image_recognition/image_recognition_msgs)
+- [image_recognition_openpose](https://github.com/tue-robotics/image_recognition/tree/master/image_recognition_openpose)
+- [image_recognition_openface](https://github.com/tue-robotics/image_recognition/tree/master/image_recognition_openpose)
+- [image_recognition_keras](https://github.com/tue-robotics/image_recognition/tree/master/image_recognition_keras)
+- [image_recognition_util](https://github.com/tue-robotics/image_recognition/tree/master/image_recognition_util)
+- [image_recognition_msgs](https://github.com/tue-robotics/image_recognition/tree/master/image_recognition_msgs)
 
 # How To
 ### Start the dependent nodes
