@@ -280,7 +280,7 @@ class PeopleRecognizer3D(object):
 
         for person2d in people2d:
             i = person2d.body_parts[0].group_id
-            rgb = cmap[i, 0], cmap[i, 1], cmap[i, 2]
+            color_i = cmap[i, 0], cmap[i, 1], cmap[i, 2]
             joints = self.recognitions_to_joints(person2d.body_parts, cv_depth,
                                                  cam_model, regions_viz,
                                                  depth_image_scaling)
@@ -301,7 +301,7 @@ class PeopleRecognizer3D(object):
                        action=Marker.ADD,
                        points=points,
                        scale=Vector3(0.07, 0.07, 0.07),
-                       color=ColorRGBA(rgb[0], rgb[1], rgb[2], 1.0)))
+                       color=ColorRGBA(color_i[0], color_i[1], color_i[2], 1.0)))
 
             unfiltered_skeleton = Skeleton({j.name: j for j in joints})
             skeleton = unfiltered_skeleton.filter_body_parts(
@@ -316,7 +316,7 @@ class PeopleRecognizer3D(object):
                        action=Marker.ADD,
                        points=list(skeleton.get_links()),
                        scale=Vector3(0.03, 0, 0),
-                       color=ColorRGBA(rgb[0] * 0.9, rgb[1] * 0.9, rgb[2] * 0.9, 1.0)))
+                       color=ColorRGBA(color_i[0] * 0.9, color_i[1] * 0.9, color_i[2] * 0.9, 1.0)))
 
             # If the skeleton has no body parts do not add the recognition in
             # the list of 3D people
@@ -372,7 +372,7 @@ class PeopleRecognizer3D(object):
                            action=Marker.ADD,
                            pose=person3d.pointing_pose,
                            scale=Vector3(0.5, 0.05, 0.05),
-                           color=ColorRGBA(rgb[0], rgb[1], rgb[2], 1.0)))
+                           color=ColorRGBA(color_i[0], color_i[1], color_i[2], 1.0)))
 
             people3d.append(person3d)
 
