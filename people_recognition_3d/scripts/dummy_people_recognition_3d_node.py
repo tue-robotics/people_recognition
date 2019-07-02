@@ -12,11 +12,12 @@ from geometry_msgs.msg import Point, Pose
 
 
 class DummyPeopleRecognition3DNode:
-    def __init__(self):
+    def __init__(self, prompt):
         self._recognize_people_3d_srv = rospy.Service('detect_people_3d',
                 RecognizePeople3D,
                 self._recognize_people_3d_srv)
 
+        self._prompt = prompt
         self._counter = 0
 
         rospy.loginfo("PeopleRecognition3DNode initialized:")
@@ -24,7 +25,7 @@ class DummyPeopleRecognition3DNode:
     def _generate_dummy_person3d(self, rgb, depth, cam_info, name=None):
         person = Person3D()
         person.header = rgb.header
-        person.name = name if name else "Person{}".format(self._counter)
+        person.name = name if name else ""  # Empty name makes this person unknwown
         person.age = 20 + self._counter
         person.gender = random.choice([0, 1])
         person.gender_confidence = random.normalvariate(mu=0.75, sigma=0.2)
@@ -58,9 +59,12 @@ class DummyPeopleRecognition3DNode:
         """
         # Convert to opencv images
         rospy.loginfo("Detecting people in 3D from incoming RGB-D image")
-        names_str = raw_input("Please enter the names of the people the robot should see, comma-separated: ")
+        if self._prompt:
+            names_str = raw_input("Please enter the names of the people the robot should see, comma-separated: ")
+            names = [name.strip() for name in names_str.split(",")]
+        else:
+            names = [""] * random.randint(0, 2)  # Randomly insert 0, 1, 2 people without a name
 
-        names = [name.strip() for name in names_str.split(",")]
         people3d = [self._generate_dummy_person3d(req.image_rgb,
                                                   req.image_depth,
                                                   req.camera_info_depth,
@@ -71,5 +75,8 @@ class DummyPeopleRecognition3DNode:
 
 if __name__ == '__main__':
     rospy.init_node('people_recognition_3d')
-    node = DummyPeopleRecognition3DNode()
+    prompt = rospy.get_param('~prompt', False)
+    if prompt:
+        rospy.logwarn("{} will ask for persons to be 'found'".format(rospy.get_name()))
+    node = DummyPeopleRecognition3DNode(prompt)
     rospy.spin()
