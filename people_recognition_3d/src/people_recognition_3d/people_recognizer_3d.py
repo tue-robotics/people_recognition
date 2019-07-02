@@ -257,7 +257,7 @@ class PeopleRecognizer3D(object):
                       (rospy.Time.now() - t).to_sec())
         rospy.loginfo('Found {} people'.format(len(people2d)))
 
-        max_group = max(person2d.body_parts[0].group_id for person2d in people2d)
+        max_group = max(person2d.body_parts[0].group_id for person2d in people2d) if people2d else 0
         rospy.loginfo("max_group = {}".format(max_group))
         cmap = color_map(N=max_group+1, normalized=True)
 
