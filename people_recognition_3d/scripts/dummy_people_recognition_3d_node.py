@@ -35,11 +35,14 @@ class DummyPeopleRecognition3DNode:
         person.shirt_colors = colors
         # person.body_parts_pose
         person.position = Point()
-        person.position.z = 3.0
 
         xs = [-2, -1, -0.5, 0.5, 1, 2]
         random.shuffle(xs)
         person.position.x = xs.pop()
+
+        zs = [0.5, 1, 2, 3]
+        random.shuffle(zs)
+        person.position.z = zs.pop()
 
         return person
 
