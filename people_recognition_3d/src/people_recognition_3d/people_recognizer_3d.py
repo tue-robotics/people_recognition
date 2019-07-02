@@ -374,6 +374,7 @@ class PeopleRecognizer3D(object):
                            scale=Vector3(0.5, 0.05, 0.05),
                            color=ColorRGBA(color_i[0], color_i[1], color_i[2], 1.0)))
 
+            rospy.loginfo("Found person with tags: {}".format(person3d.tags))
             people3d.append(person3d)
 
         # After completion of people recognition, the regions_viz matrix is
