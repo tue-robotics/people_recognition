@@ -257,7 +257,7 @@ class PeopleRecognizer3D(object):
                       (rospy.Time.now() - t).to_sec())
         rospy.loginfo('Found {} people'.format(len(people2d)))
 
-        cmap = color_map(N=len(people2d), normalized=True)
+        cmap = color_map(N=max(person2d.body_parts[0].group_id for person2d in people2d), normalized=True)
 
         markers = MarkerArray()
         delete_all = Marker(action=Marker.DELETEALL)
