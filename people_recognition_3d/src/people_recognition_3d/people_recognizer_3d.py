@@ -358,19 +358,6 @@ class PeopleRecognizer3D(object):
                 tags=self.get_person_tags(skeleton),
             )
 
-            markers.markers.append(
-                Marker(header=rgb.header,
-                       ns='tags',
-                       id=i,
-                       type=Marker.TEXT_VIEW_FACING,
-                       action=Marker.ADD,
-                       pose=Pose(
-                           position=point3d,
-                           orientation=Quaternion(w=1)
-                       ),
-                       scale=Vector3(0.1, 0.1, 0.1),
-                       color=ColorRGBA(r=1, g=1, b=1, a=1)))
-
             pointing_pose = self.get_pointing_pose(skeleton)
 
             if pointing_pose:
@@ -386,6 +373,20 @@ class PeopleRecognizer3D(object):
                            pose=person3d.pointing_pose,
                            scale=Vector3(0.5, 0.05, 0.05),
                            color=ColorRGBA(color_i[0], color_i[1], color_i[2], 1.0)))
+
+            markers.markers.append(
+                Marker(header=rgb.header,
+                       ns='tags',
+                       text=",".join(person3d.tags),
+                       id=i,
+                       type=Marker.TEXT_VIEW_FACING,
+                       action=Marker.ADD,
+                       pose=Pose(
+                           position=point3d,
+                           orientation=Quaternion(w=1)
+                       ),
+                       scale=Vector3(0.1, 0.1, 0.1),
+                       color=ColorRGBA(r=1, g=1, b=1, a=1)))
 
             rospy.loginfo("Found person with tags: {}".format(person3d.tags))
             people3d.append(person3d)
