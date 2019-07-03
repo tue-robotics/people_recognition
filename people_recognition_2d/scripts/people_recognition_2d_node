@@ -50,7 +50,7 @@ class PeopleRecognition2DNode:
             raise
         else:
             rospy.loginfo("Done. Found {} people.".format(len(person_2d_array)))
-            self._result_image_publisher.publish(self._cv_bridge.cv2_to_imgmsg(result_image))
+            self._result_image_publisher.publish(self._cv_bridge.cv2_to_imgmsg(result_image, "bgr8"))
             return RecognizePeople2DResponse(people=person_2d_array)
 
 if __name__ == '__main__':
