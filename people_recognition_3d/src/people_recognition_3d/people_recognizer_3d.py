@@ -483,6 +483,8 @@ class PeopleRecognizer3D(object):
         list are:
             1. LWave/LPointing | RWave/RPointing
             2. LLaying/LSitting | RLaying/RSitting
+            3. LHolding | RHolding
+            4. LNotHolding | RNotHolding
 
         :param: skeleton: The filtered skeleton of a person
         :return: tags: List of tags for the person
@@ -509,6 +511,16 @@ class PeopleRecognizer3D(object):
 
                 elif wrist.x > (other.x + self._hor_threshold):
                     tags.append(side + 'Pointing')
+
+                try:
+                    elbow = skeleton[side + 'Elbow'].point
+                except KeyError:
+                    pass
+                else:
+                    if other.y < wrist.y < elbow.y:
+                        tags.append(side + 'Holding')
+                    else:
+                        tags.append(side + 'NotHolding')
 
             try:
                 knee = skeleton[side + 'Knee'].point
