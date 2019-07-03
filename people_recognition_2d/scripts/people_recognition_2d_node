@@ -1,9 +1,12 @@
 #!/usr/bin/env python
 
 import rospy
+from cv_bridge import CvBridge
 
 from people_recognition_2d import PeopleRecognizer2D
 from people_recognition_msgs.srv import RecognizePeople2D, RecognizePeople2DResponse
+from sensor_msgs.msg import Image
+
 
 class PeopleRecognition2DNode:
     def __init__(self):
@@ -21,6 +24,9 @@ class PeopleRecognition2DNode:
         # Define the service only after PeopleRecognizer2D has initialized
         # completely else an early service call can be made causing errors
         self._detect_people_srv = rospy.Service('detect_people', RecognizePeople2D, self._detect_people_srv)
+
+        self._cv_bridge = CvBridge()
+        self._result_image_publisher = rospy.Publisher('~result_image', Image, queue_size=1)
         rospy.loginfo("PeopleRecognitionNode initialized")
 
     def _get_param(self, name, default):
@@ -38,12 +44,13 @@ class PeopleRecognition2DNode:
         """
         rospy.loginfo("Detecting people in incoming Image message...")
         try:
-            person_2d_array, _ = self._people_recognizer.recognize(req.image)
+            person_2d_array, result_image = self._people_recognizer.recognize(req.image)
         except Exception as e:
             rospy.logerr("[Service Call] Exception while recognizing people in 2D")
             raise
         else:
             rospy.loginfo("Done. Found {} people.".format(len(person_2d_array)))
+            self._result_image_publisher.publish(self._cv_bridge.cv2_to_imgmsg(result_image))
             return RecognizePeople2DResponse(people=person_2d_array)
 
 if __name__ == '__main__':
