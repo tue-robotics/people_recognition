@@ -171,7 +171,9 @@ class PeopleRecognizer2D(object):
 
     @staticmethod
     def _image_from_roi(image, roi):
-        return image[roi.y_offset:roi.y_offset + roi.height, roi.x_offset:roi.x_offset + roi.width]
+        # ROI needs to be at least 1 pixel in size
+        return image[roi.y_offset:roi.y_offset + max(roi.height, 1),
+                     roi.x_offset:roi.x_offset + max(roi.width, 1)]
 
     @staticmethod
     def _get_best_label(recognition):
