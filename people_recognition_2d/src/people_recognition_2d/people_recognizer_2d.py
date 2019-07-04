@@ -274,9 +274,11 @@ class PeopleRecognizer2D(object):
             shirt_colors_array.append(shirt_colors)
 
         # Prepare image annotation labels and People message
-        for face_label, face_properties, shirt_colors, body_parts in zip(face_labels,
-                                                                         face_properties_array, shirt_colors_array,
-                                                                         body_parts_array):
+        for face_label, face_properties, shirt_colors, body_parts, face_recognition in zip(face_labels,
+                                                                                           face_properties_array,
+                                                                                           shirt_colors_array,
+                                                                                           body_parts_array,
+                                                                                           face_recognitions):
 
             temp_label = PeopleRecognizer2D._face_properties_to_label(face_properties) + \
                          PeopleRecognizer2D._shirt_colors_to_label(shirt_colors)
@@ -291,7 +293,8 @@ class PeopleRecognizer2D(object):
                                    gender=face_properties.gender,
                                    gender_confidence=face_properties.gender_confidence,
                                    shirt_colors=shirt_colors,
-                                   body_parts=body_parts))
+                                   body_parts=body_parts,
+                                   face=face_recognition))
 
         cv_image = image_writer.get_annotated_cv_image(image,
                                                        recognitions=face_recognitions,

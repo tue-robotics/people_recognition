@@ -356,6 +356,7 @@ class PeopleRecognizer3D(object):
                 body_parts_pose=person2d.body_parts,
                 position=point3d,
                 tags=self.get_person_tags(skeleton),
+                face=person2d.face
             )
 
             pointing_pose = self.get_pointing_pose(skeleton)

@@ -6,3 +6,4 @@ string posture
 string emotion
 string[] shirt_colors
 image_recognition_msgs/Recognition[] body_parts
+image_recognition_msgs/Recognition face
