@@ -1,14 +1,18 @@
 #!/usr/bin/env python
 
 # ROS modules
+import math
+
 import rospy
+from tf.transformations import quaternion_from_euler
 from visualization_msgs.msg import MarkerArray
 import random
 
 # People recognition 3D modules
 from people_recognition_msgs.msg import Person3D, People3D
 from people_recognition_msgs.srv import RecognizePeople3D, RecognizePeople3DResponse
-from geometry_msgs.msg import Point, Pose
+from geometry_msgs.msg import Point, Pose, Quaternion
+from sensor_msgs.msg import RegionOfInterest
 
 
 class DummyPeopleRecognition3DNode:
@@ -34,9 +38,10 @@ class DummyPeopleRecognition3DNode:
         colors = ['black', 'orange', 'yellow']
         random.shuffle(colors)
         person.shirt_colors = colors
-        person.tags = ['LWave', 'RWave']
+        person.tags = ['LWave', 'RWave'] + random.choice([[], ["is_pointing"]])
         # person.body_parts_pose
         person.position = Point()
+        person.face.roi = RegionOfInterest(width=200, height=200)
 
         xs = [-2, -1, -0.5, 0.5, 1, 2]
         random.shuffle(xs)
@@ -46,8 +51,12 @@ class DummyPeopleRecognition3DNode:
         random.shuffle(zs)
         person.position.z = zs.pop()
 
-        return person
+        person.pointing_pose = Pose(
+            position=person.position,
+            orientation=Quaternion(*quaternion_from_euler(0, 0, math.pi / 2))
+        )
 
+        return person
 
     def _recognize_people_3d_srv(self, req):
         """
