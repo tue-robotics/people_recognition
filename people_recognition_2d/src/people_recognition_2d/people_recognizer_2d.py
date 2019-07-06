@@ -141,16 +141,17 @@ class PeopleRecognizer2D(object):
             return roi.x_offset <= x <= roi.x_offset + roi.width and roi.y_offset <= y <= roi.y_offset + roi.height
 
         best = None
-        for r in recognitions:
-            if _point_in_roi(x, y, r.roi):
-                if best:
-                    avg_x = r.roi.x_offset + .5 * r.roi.width
-                    avg_y = r.roi.y_offset + .5 * r.roi.height
-                    best_avg_x = best.roi.x_offset + .5 * best.roi.width
-                    best_avg_y = best.roi.y_offset + .5 * best.roi.height
-                    if math.hypot(avg_x - x, avg_y - y) > math.hypot(best_avg_x - x, best_avg_y - y):
-                        continue
-                best = r
+        if not recognitions:
+            for r in recognitions:
+                if _point_in_roi(x, y, r.roi):
+                    if best:
+                        avg_x = r.roi.x_offset + .5 * r.roi.width
+                        avg_y = r.roi.y_offset + .5 * r.roi.height
+                        best_avg_x = best.roi.x_offset + .5 * best.roi.width
+                        best_avg_y = best.roi.y_offset + .5 * best.roi.height
+                        if math.hypot(avg_x - x, avg_y - y) > math.hypot(best_avg_x - x, best_avg_y - y):
+                            continue
+                    best = r
         if not best:
             best = Recognition(roi=roi)
 
