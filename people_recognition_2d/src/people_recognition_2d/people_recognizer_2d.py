@@ -141,7 +141,7 @@ class PeopleRecognizer2D(object):
             return roi.x_offset <= x <= roi.x_offset + roi.width and roi.y_offset <= y <= roi.y_offset + roi.height
 
         best = None
-        if not recognitions:
+        if recognitions:
             for r in recognitions:
                 if _point_in_roi(x, y, r.roi):
                     if best:
