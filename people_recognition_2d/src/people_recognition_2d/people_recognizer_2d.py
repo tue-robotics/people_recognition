@@ -128,7 +128,7 @@ class PeopleRecognizer2D(object):
         return [r for r in recognitions if r.group_id == group_id]
 
     @staticmethod
-    def _get_container_recognition(roi, recognitions, padding_factor=0.1):
+    def _get_container_recognition(roi, recognitions=None, padding_factor=0.1):
         """
         Associate OpenPose ROI with best OpenPose face ROI
         :param: roi: openpose face roi
@@ -232,7 +232,7 @@ class PeopleRecognizer2D(object):
         rospy.loginfo("Starting pose and face recognition...")
         start_recognize = time.time()
         openpose_response = _get_service_response(self._openpose_srv, image_msg)
-        openface_response = _get_service_response(self._openface_srv, image_msg)
+        # openface_response = _get_service_response(self._openface_srv, image_msg)
         rospy.logdebug("Recognize took %.4f seconds", time.time() - start_recognize)
         rospy.loginfo("_get_face_rois_ids_openpose...")
 
@@ -244,60 +244,58 @@ class PeopleRecognizer2D(object):
                                                                         openpose_response.recognitions) for group_id in
                             openpose_face_group_ids]
 
-        face_recognitions = [PeopleRecognizer2D._get_container_recognition(openpose_face_roi,
-                                                                           openface_response.recognitions)
-                             for openpose_face_roi in openpose_face_rois]
+        # face_recognitions = [PeopleRecognizer2D._get_container_recognition(openpose_face_roi,
+        #                                                                     openface_response.recognitions)
+        #                       for openpose_face_roi in openpose_face_rois]
+        face_recognitions = [PeopleRecognizer2D._get_container_recognition(openpose_face_roi)
+                              for openpose_face_roi in openpose_face_rois]
 
-        face_labels = [PeopleRecognizer2D._get_best_label(r) for r in face_recognitions]
+        # face_labels = [PeopleRecognizer2D._get_best_label(r) for r in face_recognitions]
 
         # Keras service call
-        rospy.loginfo("_get_face_properties...")
-        face_image_msg_array = [self._bridge.cv2_to_imgmsg(PeopleRecognizer2D._image_from_roi(image, r.roi), "bgr8") for
-                                r in face_recognitions]
-        keras_response = _get_service_response(self._keras_srv, face_image_msg_array)
-        face_properties_array = keras_response.properties_array
-
+        # rospy.loginfo("_get_face_properties...")
+        # face_image_msg_array = [self._bridge.cv2_to_imgmsg(PeopleRecognizer2D._image_from_roi(image, r.roi), "bgr8") for
+        #                         r in face_recognitions]
+        # keras_response = _get_service_response(self._keras_srv, face_image_msg_array)
+        # face_properties_array = keras_response.properties_array
+        #
         # Color Extractor service call
-        rospy.loginfo("_get_color_extractor...")
-        shirt_colors_array = []
-        for r in face_recognitions:
-            shirt_roi = PeopleRecognizer2D._shirt_roi_from_face_roi(r.roi, image.shape)
-            shirt_image_msg = self._bridge.cv2_to_imgmsg(PeopleRecognizer2D._image_from_roi(image, shirt_roi))
-            try:
-                color_extractor_response = _get_service_response(self._color_extractor_srv, shirt_image_msg)
-            except ServiceException as e:
-                rospy.logerr("Color extractor service request failed: {}".format(e))
-                shirt_colors = []
-            else:
-                shirt_colors = [p.label for p in
-                                color_extractor_response.recognitions[0].categorical_distribution.probabilities]
-            shirt_colors_array.append(shirt_colors)
+        # rospy.loginfo("_get_color_extractor...")
+        # shirt_colors_array = []
+        # for r in face_recognitions:
+        #     shirt_roi = PeopleRecognizer2D._shirt_roi_from_face_roi(r.roi, image.shape)
+        #     shirt_image_msg = self._bridge.cv2_to_imgmsg(PeopleRecognizer2D._image_from_roi(image, shirt_roi))
+        #     try:
+        #         color_extractor_response = _get_service_response(self._color_extractor_srv, shirt_image_msg)
+        #     except ServiceException as e:
+        #         rospy.logerr("Color extractor service request failed: {}".format(e))
+        #         shirt_colors = []
+        #     else:
+        #         shirt_colors = [p.label for p in
+        #                         color_extractor_response.recognitions[0].categorical_distribution.probabilities]
+        #     shirt_colors_array.append(shirt_colors)
 
         # Prepare image annotation labels and People message
-        for face_label, face_properties, shirt_colors, body_parts, face_recognition in zip(face_labels,
-                                                                                           face_properties_array,
-                                                                                           shirt_colors_array,
-                                                                                           body_parts_array,
-                                                                                           face_recognitions):
+        # for face_label, face_properties, shirt_colors, body_parts, face_recognition in zip(face_labels,
+        #                                                                                    face_properties_array,
+        #                                                                                    shirt_colors_array,
+        #                                                                                    body_parts_array,
+        #                                                                                    face_recognitions):
+        #
+        for body_parts, face_recognition in zip(body_parts_array, face_recognitions):
+            # temp_label = PeopleRecognizer2D._face_properties_to_label(face_properties) + \
+            #              PeopleRecognizer2D._shirt_colors_to_label(shirt_colors)
+            #
+            # if face_label:
+            #     image_annotations.append(face_label + " " + temp_label)
+            # else:
+            #     image_annotations.append(temp_label)
 
-            temp_label = PeopleRecognizer2D._face_properties_to_label(face_properties) + \
-                         PeopleRecognizer2D._shirt_colors_to_label(shirt_colors)
-
-            if face_label:
-                image_annotations.append(face_label + " " + temp_label)
-            else:
-                image_annotations.append(temp_label)
-
-            people.append(Person2D(name=face_label,
-                                   age=face_properties.age,
-                                   gender=face_properties.gender,
-                                   gender_confidence=face_properties.gender_confidence,
-                                   shirt_colors=shirt_colors,
-                                   body_parts=body_parts,
+            people.append(Person2D(body_parts=body_parts,
                                    face=face_recognition))
 
         cv_image = image_writer.get_annotated_cv_image(image,
                                                        recognitions=face_recognitions,
-                                                       labels=image_annotations)
+                                                       labels="")
 
         return people, cv_image
