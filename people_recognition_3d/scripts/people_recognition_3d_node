@@ -41,6 +41,7 @@ class PeopleRecognition3DNode:
                                                 Image,
                                                 queue_size=1)
 
+        self._people_pub = rospy.Publisher('people3d', People3D, queue_size=1)
         if enable_topic_mode:
             rospy.loginfo("Topic mode enabled")
 
@@ -57,7 +58,6 @@ class PeopleRecognition3DNode:
             rospy.loginfo("Subscribing to: {}".format(
                 rgb_sub.sub.resolved_name))
 
-            self._people_pub = rospy.Publisher('people3d', People3D, queue_size=1)
 
             # self._ts = message_filters.TimeSynchronizer([rgb_sub, depth_sub, depth_info_sub], 1)
             self._ts = message_filters.ApproximateTimeSynchronizer(
@@ -103,6 +103,7 @@ class PeopleRecognition3DNode:
         else:
             self._markers_pub.publish(markers)
             self._regions_viz_pub.publish(regions_viz)
+            self._people_pub.publish(People3D(image_rgb=rgb, image_depth=depth, camera_info_depth=depth_info, people=people3d))
             return RecognizePeople3DResponse(people=people3d)
 
     def _topic_callback(self, rgb, depth, depth_info):
