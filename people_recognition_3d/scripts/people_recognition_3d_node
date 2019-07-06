@@ -103,7 +103,7 @@ class PeopleRecognition3DNode:
         else:
             self._markers_pub.publish(markers)
             self._regions_viz_pub.publish(regions_viz)
-            self._people_pub.publish(People3D(image_rgb=rgb, image_depth=depth, camera_info_depth=depth_info, people=people3d))
+            self._people_pub.publish(People3D(image_rgb=req.image_rgb, image_depth=req.image_depth, camera_info_depth=req.camera_info_depth, people=people3d))
             return RecognizePeople3DResponse(people=people3d)
 
     def _topic_callback(self, rgb, depth, depth_info):
