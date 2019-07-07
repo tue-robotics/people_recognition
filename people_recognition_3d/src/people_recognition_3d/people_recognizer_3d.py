@@ -285,6 +285,8 @@ class PeopleRecognizer3D(object):
                                                  cam_model, regions_viz,
                                                  depth_image_scaling)
 
+            self.face_recognitions_to_depth(person2d.face, cv_depth, regions_viz, depth_image_scaling)
+
             # visualize joints
             rospy.logdebug('found %s objects for group %s', len(joints), i)
 
@@ -400,6 +402,31 @@ class PeopleRecognizer3D(object):
         rospy.loginfo("Done. Found {} people, {} markers".format(
             len(people3d), len(markers.markers)))
         return people3d, markers, regions_viz
+
+    def face_recognitions_to_depth(self, face_recognition, cv_depth, regions_viz, scale):
+        """
+        Face recognition ROI extraction from depth image into regions_viz
+        :param face_recognition:
+        :param cv_depth:
+        :param regions_viz:
+        :param scale:
+        :return: None
+        """
+        roi = face_recognition.roi
+        x_min = int((roi.x_offset - self._padding) * scale)
+        x_max = int((roi.x_offset + roi.width + self._padding) * scale)
+        y_min = int((roi.y_offset - self._padding) * scale)
+        y_max = int((roi.y_offset + roi.height + self._padding) * scale)
+
+        if x_min < 0 or y_min < 0 or x_max > cv_depth.shape[
+                1] or y_max > cv_depth.shape[0]:
+            return  # outside of the image
+        # rospy.loginfo('roi=[%d %d %d %d] in %dx%d', x_min, x_max, y_min, y_max, depth.width, depth.height)
+
+        region = cv_depth[y_min:y_max, x_min:x_max]
+
+        # debugging viz
+        regions_viz[y_min:y_max, x_min:x_max] = region
 
     def recognitions_to_joints(self, recognitions, cv_depth, cam_model,
                                regions_viz, scale):
