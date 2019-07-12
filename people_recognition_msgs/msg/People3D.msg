@@ -1,1 +1,0 @@
-Person3D[] people
