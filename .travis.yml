@@ -13,7 +13,6 @@ before_install:
   - source packages.sh # add all folders which need to be excluded as an argument
 
 env:
-  - PACKAGE=people_recognition
   - PACKAGE=people_recognition_2d
   - PACKAGE=people_recognition_3d
   - PACKAGE=people_recognition_msgs
