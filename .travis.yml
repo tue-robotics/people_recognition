@@ -22,4 +22,3 @@ install:
 
 script:
   - bash build-package.sh --package=$PACKAGE
-
