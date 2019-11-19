@@ -51,9 +51,9 @@ class PeopleRecognizer2D(object):
                  keras_srv_name, color_extractor_srv_name):
 
         self._openpose_srv = _get_and_wait_for_service(openpose_srv_name, Recognize)
-#        self._openface_srv = _get_and_wait_for_service(openface_srv_name, Recognize)
-#        self._keras_srv = _get_and_wait_for_service(keras_srv_name, GetFaceProperties)
-#        self._color_extractor_srv = _get_and_wait_for_service(color_extractor_srv_name, Recognize)
+        self._openface_srv = _get_and_wait_for_service(openface_srv_name, Recognize)
+        self._keras_srv = _get_and_wait_for_service(keras_srv_name, GetFaceProperties)
+        self._color_extractor_srv = _get_and_wait_for_service(color_extractor_srv_name, Recognize)
 
         self._bridge = CvBridge()
 
