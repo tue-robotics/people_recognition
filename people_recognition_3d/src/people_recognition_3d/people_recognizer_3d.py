@@ -365,6 +365,7 @@ class PeopleRecognizer3D(object):
                 person3d.tags.append("is_pointing")
                 person3d.pointing_pose = pointing_pose
 
+#               Commented to reduce number of markers, which causes RVIZ to crash
 #                markers.markers.append(
 #                    Marker(header=rgb.header,
 #                           ns='pointing_pose',
