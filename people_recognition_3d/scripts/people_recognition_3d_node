@@ -113,10 +113,8 @@ class PeopleRecognition3DNode:
                 def is_valid_q(q):
                     return q.x ** 2 + q.y ** 2 + q.z ** 2 + q.w ** 2 == 1.
 
-                if is_valid_q(marker.pose.orientation) and is_valid_vector(marker.pose.position) and is_valid_vector(marker.scale):
-                    return True
+                return is_valid_q(marker.pose.orientation) and is_valid_vector(marker.pose.position) and is_valid_vector(marker.scale)
 
-                return False
 #            markers.markers = [m for m in markers.markers if validate_marker(m)]
             self._markers_pub.publish(markers)
             self._regions_viz_pub.publish(regions_viz)
