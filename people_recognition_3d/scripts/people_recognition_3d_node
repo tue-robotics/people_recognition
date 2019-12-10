@@ -103,19 +103,6 @@ class PeopleRecognition3DNode:
                 "[Service Call] Exception while recognizing people in 3D")
             raise
         else:
-            def validate_marker(marker):
-                def is_valid_float(f):
-                    return -1e3 < f < 1e3
-
-                def is_valid_vector(v):
-                    return is_valid_float(v.x) and is_valid_float(v.y) and is_valid_float(v.z)
-
-                def is_valid_q(q):
-                    return q.x ** 2 + q.y ** 2 + q.z ** 2 + q.w ** 2 == 1.
-
-                return is_valid_q(marker.pose.orientation) and is_valid_vector(marker.pose.position) and is_valid_vector(marker.scale)
-
-#            markers.markers = [m for m in markers.markers if validate_marker(m)]
             self._markers_pub.publish(markers)
             self._regions_viz_pub.publish(regions_viz)
             self._people_pub.publish(People3D(image_rgb=req.image_rgb, image_depth=req.image_depth, camera_info_depth=req.camera_info_depth, people=people3d))
