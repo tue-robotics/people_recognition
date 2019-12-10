@@ -500,7 +500,7 @@ class PeopleRecognizer3D(object):
         for side in ('L', 'R'):
             if self._heuristic == 'shoulder':
                 try:
-                    other = skeleton[side + 'Shoulder'].point
+                    shoulder = skeleton[side + 'Shoulder'].point
                 except KeyError:
                     return tags
             else:
@@ -511,11 +511,11 @@ class PeopleRecognizer3D(object):
             except KeyError:
                 pass
             else:
-                if wrist.y < (other.y - self._wave_threshold) and wrist.x < (
-                        other.x + self._hor_threshold):
+                if wrist.y < (shoulder.y - self._wave_threshold) and wrist.x < (
+                        shoulder.x + self._hor_threshold):
                     tags.append(side + 'Wave')
 
-                elif wrist.x > (other.x + self._hor_threshold):
+                elif wrist.x > (shoulder.x + self._hor_threshold):
                     tags.append(side + 'Pointing')
 
                 try:
@@ -523,7 +523,7 @@ class PeopleRecognizer3D(object):
                 except KeyError:
                     pass
                 else:
-                    if other.y < wrist.y < elbow.y:
+                    if shoulder.y < wrist.y < elbow.y:
                         tags.append(side + 'Holding')
                     else:
                         tags.append(side + 'NotHolding')
@@ -533,12 +533,12 @@ class PeopleRecognizer3D(object):
             except KeyError:
                 pass
             else:
-                if knee.y < (other.y + self._vert_threshold) and knee.x > (
-                        other.x + self._hor_threshold):
+                if knee.y < (shoulder.y + self._vert_threshold) and knee.x > (
+                        shoulder.x + self._hor_threshold):
                     tags.append(side + 'Laying')
 
-                elif knee.y < (other.y + self._vert_threshold) and knee.x < (
-                        other.x + self._hor_threshold):
+                elif knee.y < (shoulder.y + self._vert_threshold) and knee.x < (
+                        shoulder.x + self._hor_threshold):
                     tags.append(side + 'Sitting')
 
         rospy.logdebug(tags)
