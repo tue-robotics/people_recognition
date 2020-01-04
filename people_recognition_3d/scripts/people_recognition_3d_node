@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 
 # ROS modules
+import math
+
 import rospy
 import message_filters
 from sensor_msgs.msg import Image, CameraInfo
@@ -8,7 +10,7 @@ from visualization_msgs.msg import MarkerArray
 
 # People recognition 3D modules
 from people_recognition_3d import PeopleRecognizer3D
-# from people_recognition_msgs.msg import People3D
+from people_recognition_msgs.msg import People3D
 from people_recognition_msgs.srv import RecognizePeople3D, RecognizePeople3DResponse
 
 
@@ -34,6 +36,14 @@ class PeopleRecognition3DNode:
             heuristic, arm_norm_threshold, neck_norm_threshold, wave_threshold,
             vert_threshold, hor_threshold, padding)
 
+        self._markers_pub = rospy.Publisher('~viz',
+                                            MarkerArray,
+                                            queue_size=1)
+        self._regions_viz_pub = rospy.Publisher('~regions_viz',
+                                                Image,
+                                                queue_size=1)
+
+        self._people_pub = rospy.Publisher('people3d', People3D, queue_size=1)
         if enable_topic_mode:
             rospy.loginfo("Topic mode enabled")
 
@@ -50,13 +60,6 @@ class PeopleRecognition3DNode:
             rospy.loginfo("Subscribing to: {}".format(
                 rgb_sub.sub.resolved_name))
 
-            #self._people_pub = rospy.Publisher('people3d', People3D, queue_size=1)
-            self._markers_pub = rospy.Publisher('~viz',
-                                                MarkerArray,
-                                                queue_size=1)
-            self._regions_viz_pub = rospy.Publisher('~regions_viz',
-                                                    Image,
-                                                    queue_size=1)
 
             # self._ts = message_filters.TimeSynchronizer([rgb_sub, depth_sub, depth_info_sub], 1)
             self._ts = message_filters.ApproximateTimeSynchronizer(
@@ -93,13 +96,16 @@ class PeopleRecognition3DNode:
             "[Service Call] Detecting people in 3D from incoming RGB-D image..."
         )
         try:
-            people3d, _, _ = self._people_recognizer_3d.recognize(
+            people3d, markers, regions_viz = self._people_recognizer_3d.recognize(
                 req.image_rgb, req.image_depth, req.camera_info_depth)
         except Exception as e:
             rospy.logerr(
                 "[Service Call] Exception while recognizing people in 3D")
             raise
         else:
+            self._markers_pub.publish(markers)
+            self._regions_viz_pub.publish(regions_viz)
+            self._people_pub.publish(People3D(image_rgb=req.image_rgb, image_depth=req.image_depth, camera_info_depth=req.camera_info_depth, people=people3d))
             return RecognizePeople3DResponse(people=people3d)
 
     def _topic_callback(self, rgb, depth, depth_info):
@@ -115,7 +121,7 @@ class PeopleRecognition3DNode:
         else:
             self._markers_pub.publish(markers)
             self._regions_viz_pub.publish(regions_viz)
-            #self._people_pub.publish(People3D(people=people3d))
+            self._people_pub.publish(People3D(image_rgb=rgb, image_depth=depth, camera_info_depth=depth_info, people=people3d))
 
 
 if __name__ == '__main__':

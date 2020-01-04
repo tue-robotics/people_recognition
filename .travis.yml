@@ -10,11 +10,15 @@ before_install:
   - wget https://raw.githubusercontent.com/tue-robotics/tue-env/master/ci/build-package.sh
   - wget https://raw.githubusercontent.com/tue-robotics/tue-env/master/ci/packages.sh
   # Determine packages modified in this commit
-  - source packages.sh --pullrequest=$TRAVIS_PULL_REQUEST --branch=$TRAVIS_BRANCH
+  - source packages.sh --commit-range=$TRAVIS_COMMIT_RANGE
+
+env:
+  - PACKAGE=people_recognition_2d
+  - PACKAGE=people_recognition_3d
+  - PACKAGE=people_recognition_msgs
+
+install:
+  - bash install-package.sh --package=$PACKAGE --branch=${TRAVIS_PULL_REQUEST_BRANCH:-$TRAVIS_BRANCH} --commit=$TRAVIS_COMMIT --pullrequest=$TRAVIS_PULL_REQUEST
 
 script:
-  - 'for PACKAGE in $PACKAGES;
-     do
-     bash install-package.sh --package=$PACKAGE --branch=${TRAVIS_PULL_REQUEST_BRANCH:-$TRAVIS_BRANCH} --commit=$TRAVIS_COMMIT --pullrequest=$TRAVIS_PULL_REQUEST &&
-     bash build-package.sh --package=$PACKAGE;
-     done'
+  - bash build-package.sh --package=$PACKAGE

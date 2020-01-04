@@ -8,6 +8,7 @@ string posture
 string emotion
 string[] shirt_colors
 image_recognition_msgs/Recognition[] body_parts_pose
+image_recognition_msgs/Recognition face
 
 geometry_msgs/Point position
 geometry_msgs/Point velocity

@@ -257,7 +257,12 @@ class PeopleRecognizer3D(object):
                       (rospy.Time.now() - t).to_sec())
         rospy.loginfo('Found {} people'.format(len(people2d)))
 
-        cmap = color_map(N=len(people2d), normalized=True)
+        # Max group is the maximum of the group ids assigned to the body parts of people. This may not be
+        # consecutive ids as some identified people might be rejected in people recognition 2d
+        # Starting value of group_id is 1
+        max_group = max(person2d.body_parts[0].group_id for person2d in people2d) if people2d else 0
+        rospy.debug("Creating {} color maps for 3D skeleton visualization".format(max_group + 1))
+        cmap = color_map(N=max_group+1, normalized=True)
 
         markers = MarkerArray()
         delete_all = Marker(action=Marker.DELETEALL)
@@ -278,6 +283,7 @@ class PeopleRecognizer3D(object):
 
         for person2d in people2d:
             i = person2d.body_parts[0].group_id
+            color_i = cmap[i, 0], cmap[i, 1], cmap[i, 2]
             joints = self.recognitions_to_joints(person2d.body_parts, cv_depth,
                                                  cam_model, regions_viz,
                                                  depth_image_scaling)
@@ -298,8 +304,7 @@ class PeopleRecognizer3D(object):
                        action=Marker.ADD,
                        points=points,
                        scale=Vector3(0.07, 0.07, 0.07),
-                       color=ColorRGBA(cmap[i, 0], cmap[i, 1], cmap[i, 2],
-                                       1.0)))
+                       color=ColorRGBA(color_i[0], color_i[1], color_i[2], 1.0)))
 
             unfiltered_skeleton = Skeleton({j.name: j for j in joints})
             skeleton = unfiltered_skeleton.filter_body_parts(
@@ -314,8 +319,7 @@ class PeopleRecognizer3D(object):
                        action=Marker.ADD,
                        points=list(skeleton.get_links()),
                        scale=Vector3(0.03, 0, 0),
-                       color=ColorRGBA(cmap[i, 0] * 0.9, cmap[i, 1] * 0.9,
-                                       cmap[i, 2] * 0.9, 1.0)))
+                       color=ColorRGBA(color_i[0] * 0.9, color_i[1] * 0.9, color_i[2] * 0.9, 1.0)))
 
             # If the skeleton has no body parts do not add the recognition in
             # the list of 3D people
@@ -355,6 +359,7 @@ class PeopleRecognizer3D(object):
                 body_parts_pose=person2d.body_parts,
                 position=point3d,
                 tags=self.get_person_tags(skeleton),
+                face=person2d.face
             )
 
             pointing_pose = self.get_pointing_pose(skeleton)
@@ -363,17 +368,32 @@ class PeopleRecognizer3D(object):
                 person3d.tags.append("is_pointing")
                 person3d.pointing_pose = pointing_pose
 
-                markers.markers.append(
-                    Marker(header=rgb.header,
-                           ns='pointing_pose',
-                           id=i,
-                           type=Marker.ARROW,
-                           action=Marker.ADD,
-                           pose=person3d.pointing_pose,
-                           scale=Vector3(0.5, 0.05, 0.05),
-                           color=ColorRGBA(cmap[i, 0], cmap[i, 1], cmap[i, 2],
-                                           1.0)))
+#               Commented to reduce number of markers, which causes RVIZ to crash
+#                markers.markers.append(
+#                    Marker(header=rgb.header,
+#                           ns='pointing_pose',
+#                           id=i,
+#                           type=Marker.ARROW,
+#                           action=Marker.ADD,
+#                           pose=person3d.pointing_pose,
+#                           scale=Vector3(0.5, 0.05, 0.05),
+#                           color=ColorRGBA(color_i[0], color_i[1], color_i[2], 1.0)))
 
+#            markers.markers.append(
+#                Marker(header=rgb.header,
+#                       ns='tags',
+#                       text=",".join(person3d.tags),
+#                       id=i,
+#                       type=Marker.TEXT_VIEW_FACING,
+#                       action=Marker.ADD,
+#                       pose=Pose(
+#                           position=point3d,
+#                           orientation=Quaternion(w=1)
+#                       ),
+#                       scale=Vector3(0.1, 0.1, 0.1),
+#                       color=ColorRGBA(r=1, g=1, b=1, a=1)))
+
+            rospy.loginfo("Found person with tags: {}".format(person3d.tags))
             people3d.append(person3d)
 
         # After completion of people recognition, the regions_viz matrix is
@@ -469,6 +489,8 @@ class PeopleRecognizer3D(object):
         list are:
             1. LWave/LPointing | RWave/RPointing
             2. LLaying/LSitting | RLaying/RSitting
+            3. LHolding | RHolding
+            4. LNotHolding | RNotHolding
 
         :param: skeleton: The filtered skeleton of a person
         :return: tags: List of tags for the person
@@ -478,7 +500,7 @@ class PeopleRecognizer3D(object):
         for side in ('L', 'R'):
             if self._heuristic == 'shoulder':
                 try:
-                    other = skeleton[side + 'Shoulder'].point
+                    shoulder = skeleton[side + 'Shoulder'].point
                 except KeyError:
                     return tags
             else:
@@ -489,24 +511,34 @@ class PeopleRecognizer3D(object):
             except KeyError:
                 pass
             else:
-                if wrist.y < (other.y - self._wave_threshold) and wrist.x < (
-                        other.x + self._hor_threshold):
+                if wrist.y < (shoulder.y - self._wave_threshold) and wrist.x < (
+                        shoulder.x + self._hor_threshold):
                     tags.append(side + 'Wave')
 
-                elif wrist.x > (other.x + self._hor_threshold):
+                elif wrist.x > (shoulder.x + self._hor_threshold):
                     tags.append(side + 'Pointing')
+
+                try:
+                    elbow = skeleton[side + 'Elbow'].point
+                except KeyError:
+                    pass
+                else:
+                    if shoulder.y < wrist.y < elbow.y:
+                        tags.append(side + 'Holding')
+                    else:
+                        tags.append(side + 'NotHolding')
 
             try:
                 knee = skeleton[side + 'Knee'].point
             except KeyError:
                 pass
             else:
-                if knee.y < (other.y + self._vert_threshold) and knee.x > (
-                        other.x + self._hor_threshold):
+                if knee.y < (shoulder.y + self._vert_threshold) and knee.x > (
+                        shoulder.x + self._hor_threshold):
                     tags.append(side + 'Laying')
 
-                elif knee.y < (other.y + self._vert_threshold) and knee.x < (
-                        other.x + self._hor_threshold):
+                elif knee.y < (shoulder.y + self._vert_threshold) and knee.x < (
+                        shoulder.x + self._hor_threshold):
                     tags.append(side + 'Sitting')
 
         rospy.logdebug(tags)
