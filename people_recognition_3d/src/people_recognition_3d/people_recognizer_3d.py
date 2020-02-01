@@ -261,7 +261,7 @@ class PeopleRecognizer3D(object):
         # consecutive ids as some identified people might be rejected in people recognition 2d
         # Starting value of group_id is 1
         max_group = max(person2d.body_parts[0].group_id for person2d in people2d) if people2d else 0
-        rospy.debug("Creating {} color maps for 3D skeleton visualization".format(max_group + 1))
+        rospy.logdebug("Creating {} color maps for 3D skeleton visualization".format(max_group + 1))
         cmap = color_map(N=max_group+1, normalized=True)
 
         markers = MarkerArray()
