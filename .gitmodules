@@ -1,0 +1,6 @@
+[submodule "people_recognition_2d/docs"]
+	path = people_recognition_2d/docs
+	url = https://github.com/tue-robotics/tue_documentation_python.git
+[submodule "people_recognition_3d/docs"]
+	path = people_recognition_3d/docs
+	url = https://github.com/tue-robotics/tue_documentation_python.git
