@@ -145,9 +145,9 @@ class Skeleton(object):
                 p1 = self.body_parts[a].point
                 p2 = self.body_parts[b].point
 
-                l = (geometry_msg_point_to_kdl_vector(p1) -
+                length = (geometry_msg_point_to_kdl_vector(p1) -
                      geometry_msg_point_to_kdl_vector(p2)).Norm()
-                if l <= threshold:
+                if length <= threshold:
                     return_list.add(a)
                     return_list.add(b)
 
