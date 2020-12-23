@@ -13,7 +13,7 @@ from sensor_msgs.msg import Image, CameraInfo
 from std_msgs.msg import ColorRGBA
 from visualization_msgs.msg import Marker, MarkerArray
 
-from people_recognition_msgs.srv import RecognizePeople2D, RecognizePeople2DResponse
+from people_recognition_msgs.srv import RecognizePeople2D
 from people_recognition_msgs.msg import Person3D
 
 

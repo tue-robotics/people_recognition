@@ -30,9 +30,9 @@ args = parser.parse_args()
 rospy.init_node('get_people_recognition_2d')
 
 recognizer = PeopleRecognizer2D(args.openpose_srv_name,
-                            args.openface_srv_name,
-                            args.keras_srv_name,
-                            args.color_extractor_srv_name)
+                                args.openface_srv_name,
+                                args.keras_srv_name,
+                                args.color_extractor_srv_name)
 
 cvbridge = CvBridge()
 

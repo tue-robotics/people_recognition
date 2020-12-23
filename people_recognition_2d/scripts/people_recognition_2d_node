@@ -17,9 +17,9 @@ class PeopleRecognition2DNode:
         color_extractor_srv_name = self._get_param('~color_extractor_srv_name', "extract_color")
 
         self._people_recognizer = PeopleRecognizer2D(openpose_srv_name,
-                                                openface_srv_name,
-                                                keras_srv_name,
-                                                color_extractor_srv_name)
+                                                     openface_srv_name,
+                                                     keras_srv_name,
+                                                     color_extractor_srv_name)
 
         # Define the service only after PeopleRecognizer2D has initialized
         # completely else an early service call can be made causing errors
