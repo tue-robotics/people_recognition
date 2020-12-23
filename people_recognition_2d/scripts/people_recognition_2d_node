@@ -53,8 +53,11 @@ class PeopleRecognition2DNode:
             self._result_image_publisher.publish(self._cv_bridge.cv2_to_imgmsg(result_image, "rgb8"))
             return RecognizePeople2DResponse(people=person_2d_array)
 
+
 if __name__ == '__main__':
     rospy.init_node('people_recognition_2d')
-    node = PeopleRecognition2DNode()
-    rospy.spin()
-    rospy.loginfo("people_recognition_2d node exited")
+    try:
+        node = PeopleRecognition2DNode()
+        rospy.spin()
+    except rospy.exceptions.ROSInterruptException:
+        pass

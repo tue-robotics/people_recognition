@@ -126,6 +126,8 @@ class PeopleRecognition3DNode:
 
 if __name__ == '__main__':
     rospy.init_node('people_recognition_3d')
-    node = PeopleRecognition3DNode()
-    rospy.spin()
-    rospy.loginfo("people_recognition_3d node exited")
+    try:
+        node = PeopleRecognition3DNode()
+        rospy.spin()
+    except rospy.exceptions.ROSInterruptException:
+        pass
