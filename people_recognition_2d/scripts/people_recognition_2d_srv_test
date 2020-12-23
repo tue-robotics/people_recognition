@@ -30,11 +30,11 @@ srv = rospy.ServiceProxy(args.service_name, RecognizePeople2D)
 rospy.loginfo("Waiting for service {} ...".format(srv.resolved_name))
 srv.wait_for_service()
 
-cv_bridge = CvBridge()
+cvbridge = CvBridge()
 
 if args.mode == 'image':
     image = cv2.imread(args.image)
-    imgmsg = cv_bridge.cv2_to_imgmsg(image, "bgr8")
+    imgmsg = cvbridge.cv2_to_imgmsg(image, "bgr8")
 
     for i in range(0, 2):
         resp = srv(RecognizePeople2DRequest(image=imgmsg))

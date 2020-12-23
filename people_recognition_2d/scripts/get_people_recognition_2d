@@ -34,11 +34,11 @@ recognizer = PeopleRecognizer2D(args.openpose_srv_name,
                             args.keras_srv_name,
                             args.color_extractor_srv_name)
 
-cv_bridge = CvBridge()
+cvbridge = CvBridge()
 
 if args.mode == 'image':
     image = cv2.imread(args.image)
-    image_msg = cv_bridge.cv2_to_imgmsg(image, "bgr8")
+    image_msg = cvbridge.cv2_to_imgmsg(image, "bgr8")
     recognitions, overlayed_image = recognizer.recognize(image_msg)
     rospy.loginfo(recognitions)
     cv2.imshow("overlayed_image", overlayed_image)
@@ -50,7 +50,7 @@ elif args.mode == 'cam':
 
         time_elapsed = time.time() - prev
         res, image = cap.read()
-        image_msg = cv_brige.cv2_to_imgmsg(image, "bgr8")
+        image_msg = cvbridge.cv2_to_imgmsg(image, "bgr8")
 
         if time_elapsed > 1. / args.rate:
             prev = time.time()
