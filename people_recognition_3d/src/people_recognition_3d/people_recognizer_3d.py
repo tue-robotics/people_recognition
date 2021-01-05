@@ -13,7 +13,7 @@ from sensor_msgs.msg import Image, CameraInfo
 from std_msgs.msg import ColorRGBA
 from visualization_msgs.msg import Marker, MarkerArray
 
-from people_recognition_msgs.srv import RecognizePeople2D, RecognizePeople2DResponse
+from people_recognition_msgs.srv import RecognizePeople2D
 from people_recognition_msgs.msg import Person3D
 
 
@@ -145,9 +145,9 @@ class Skeleton(object):
                 p1 = self.body_parts[a].point
                 p2 = self.body_parts[b].point
 
-                l = (geometry_msg_point_to_kdl_vector(p1) -
+                length = (geometry_msg_point_to_kdl_vector(p1) -
                      geometry_msg_point_to_kdl_vector(p2)).Norm()
-                if l <= threshold:
+                if length <= threshold:
                     return_list.add(a)
                     return_list.add(b)
 
