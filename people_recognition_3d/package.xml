@@ -1,4 +1,7 @@
 <?xml version="1.0"?>
+<?xml-model
+  href="http://download.ros.org/schema/package_format3.xsd"
+  schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
   <name>people_recognition_3d</name>
   <version>0.0.1</version>
@@ -15,20 +18,25 @@
 
   <buildtool_depend>catkin</buildtool_depend>
 
+  <buildtool_depend condition="$ROS_PYTHON_VERSION == 2">python-setuptools</buildtool_depend>
+  <buildtool_depend condition="$ROS_PYTHON_VERSION == 3">python3-setuptools</buildtool_depend>
+
   <exec_depend>cv_bridge</exec_depend>
   <exec_depend>geometry_msgs</exec_depend>
   <exec_depend>image_geometry</exec_depend>
   <exec_depend>message_filters</exec_depend>
   <exec_depend>people_recognition_2d</exec_depend>
   <exec_depend>people_recognition_msgs</exec_depend>
-  <exec_depend>python-numpy</exec_depend>
+  <exec_depend condition="$ROS_PYTHON_VERSION == 2">python-numpy</exec_depend>
+  <exec_depend condition="$ROS_PYTHON_VERSION == 3">python3-numpy</exec_depend>
   <exec_depend>rospy</exec_depend>
   <exec_depend>sensor_msgs</exec_depend>
   <exec_depend>visualization_msgs</exec_depend>
 
-  <doc_depend>python-sphinx</doc_depend>
+  <doc_depend condition="$ROS_PYTHON_VERSION == 2">python-sphinx</doc_depend>
+  <doc_depend condition="$ROS_PYTHON_VERSION == 3">python3-sphinx</doc_depend>
   <doc_depend>python-sphinx-autoapi-pip</doc_depend>
-  <doc_depend>python-sphinx-rtd-theme-pip</doc_depend>
+  <doc_depend>python-sphinx-rtd-theme-pip</doc_depend>>
 
   <export>
     <rosdoc config="rosdoc.yaml" />
