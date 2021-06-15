@@ -16,20 +16,20 @@ from people_recognition_msgs.srv import RecognizePeople3D, RecognizePeople3DResp
 
 class PeopleRecognition3DNode:
     def __init__(self):
-        recognize_people_srv_name = self._get_param(
+        recognize_people_srv_name = rospy.get_param(
             '~recognize_people_srv_name', "detect_people")
         probability_threshold = float(
-            self._get_param('~probability_threshold', 0.2))
-        link_threshold = float(self._get_param('~link_threshold', 0.5))
-        heuristic = self._get_param('~heuristic', 'shoulder')
-        arm_norm_threshold = self._get_param('~arm_norm_threshold', 0.5)
-        neck_norm_threshold = self._get_param('~neck_norm_threshold', 0.7)
-        wave_threshold = self._get_param('~wave_threshold', 0.2)
-        vert_threshold = self._get_param('~vert_threshold', 0.7)
-        hor_threshold = self._get_param('~hor_threshold', 0.4)
-        padding = self._get_param('~padding', 5)
+            rospy.get_param('~probability_threshold', 0.2))
+        link_threshold = float(rospy.get_param('~link_threshold', 0.5))
+        heuristic = rospy.get_param('~heuristic', 'shoulder')
+        arm_norm_threshold = rospy.get_param('~arm_norm_threshold', 0.5)
+        neck_norm_threshold = rospy.get_param('~neck_norm_threshold', 0.7)
+        wave_threshold = rospy.get_param('~wave_threshold', 0.2)
+        vert_threshold = rospy.get_param('~vert_threshold', 0.7)
+        hor_threshold = rospy.get_param('~hor_threshold', 0.4)
+        padding = rospy.get_param('~padding', 5)
 
-        enable_topic_mode = self._get_param('~enable_topic_mode', False)
+        enable_topic_mode = rospy.get_param('~enable_topic_mode', False)
 
         self._people_recognizer_3d = PeopleRecognizer3D(
             recognize_people_srv_name, probability_threshold, link_threshold,
@@ -73,16 +73,6 @@ class PeopleRecognition3DNode:
             self._recognize_people_3d_srv)
 
         rospy.loginfo("PeopleRecognition3DNode initialized:")
-
-    @staticmethod
-    def _get_param(name, default):
-        if rospy.has_param(name):
-            return rospy.get_param(name)
-        else:
-            rospy.logwarn(
-                'parameter %s not set, using the default value of %s', name,
-                default)
-            return rospy.get_param(name, default)
 
     def _recognize_people_3d_srv(self, req):
         """

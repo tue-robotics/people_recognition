@@ -11,10 +11,10 @@ from sensor_msgs.msg import Image
 class PeopleRecognition2DNode:
     def __init__(self):
 
-        openpose_srv_name = self._get_param('~openpose_srv_name', "openpose/recognize")
-        openface_srv_name = self._get_param('~openface_srv_name', "face_recognition/recognize")
-        keras_srv_name = self._get_param('~keras_srv_name', "face_recognition/get_face_properties")
-        color_extractor_srv_name = self._get_param('~color_extractor_srv_name', "extract_color")
+        openpose_srv_name = rospy.get_param('~openpose_srv_name', "openpose/recognize")
+        openface_srv_name = rospy.get_param('~openface_srv_name', "face_recognition/recognize")
+        keras_srv_name = rospy.get_param('~keras_srv_name', "face_recognition/get_face_properties")
+        color_extractor_srv_name = rospy.get_param('~color_extractor_srv_name', "extract_color")
 
         self._people_recognizer = PeopleRecognizer2D(openpose_srv_name,
                                                      openface_srv_name,
@@ -28,14 +28,6 @@ class PeopleRecognition2DNode:
         self._cv_bridge = CvBridge()
         self._result_image_publisher = rospy.Publisher('~result_image', Image, queue_size=1)
         rospy.loginfo("PeopleRecognitionNode initialized")
-
-    @staticmethod
-    def _get_param(name, default):
-        if rospy.has_param(name):
-            return rospy.get_param(name)
-        else:
-            rospy.logwarn('parameter %s not set, using the default value of %s', name, default)
-            return rospy.get_param(name, default)
 
     def _detect_people_srv(self, req):
         """
