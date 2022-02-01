@@ -48,7 +48,8 @@ def _get_service_response(srv, args):
 
 class PeopleRecognizer2D(object):
     def __init__(self, openpose_srv_name, openface_srv_name,
-                 keras_srv_name, color_extractor_srv_name, enable_age_gender_detection, enable_shirt_color_extraction):
+                 keras_srv_name, color_extractor_srv_name,
+                 enable_age_gender_detection, enable_shirt_color_extraction):
 
         self._openpose_srv = _get_and_wait_for_service(openpose_srv_name, Recognize)
         self._openface_srv = _get_and_wait_for_service(openface_srv_name, Recognize)
