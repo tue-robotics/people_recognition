@@ -48,12 +48,20 @@ def _get_service_response(srv, args):
 
 class PeopleRecognizer2D(object):
     def __init__(self, openpose_srv_name, openface_srv_name,
-                 keras_srv_name, color_extractor_srv_name):
+                 keras_srv_name, color_extractor_srv_name, enable_age_gender_detection, enable_shirt_color_extraction):
 
         self._openpose_srv = _get_and_wait_for_service(openpose_srv_name, Recognize)
         self._openface_srv = _get_and_wait_for_service(openface_srv_name, Recognize)
-        self._keras_srv = _get_and_wait_for_service(keras_srv_name, GetFaceProperties)
-        self._color_extractor_srv = _get_and_wait_for_service(color_extractor_srv_name, Recognize)
+
+        self._enable_age_gender_detection = enable_age_gender_detection
+        self._enable_shirt_color_extraction = enable_shirt_color_extraction
+
+        if self._enable_age_gender_detection:
+            self._keras_srv = _get_and_wait_for_service(keras_srv_name, GetFaceProperties)
+
+        if self._enable_shirt_color_extraction:
+            self._color_extractor_srv = _get_and_wait_for_service(color_extractor_srv_name, Recognize)
+
 
         self._bridge = CvBridge()
 
@@ -252,27 +260,33 @@ class PeopleRecognizer2D(object):
         face_labels = [PeopleRecognizer2D._get_best_label(r) for r in face_recognitions]
 
         # Keras service call
-        rospy.loginfo("_get_face_properties...")
-        face_image_msg_array = [self._bridge.cv2_to_imgmsg(PeopleRecognizer2D._image_from_roi(image, r.roi), "bgr8") for
-                                r in face_recognitions]
-        keras_response = _get_service_response(self._keras_srv, face_image_msg_array)
-        face_properties_array = keras_response.properties_array
+        if self._enable_age_gender_detection:
+            rospy.loginfo("_get_face_properties...")
+            face_image_msg_array = [self._bridge.cv2_to_imgmsg(PeopleRecognizer2D._image_from_roi(image, r.roi), "bgr8") for
+                                    r in face_recognitions]
+            keras_response = _get_service_response(self._keras_srv, face_image_msg_array)
+            face_properties_array = keras_response.properties_array
+        else:
+            face_properties_array = [FaceProperties()] * len(face_recognitions)
 
         # Color Extractor service call
-        rospy.loginfo("_get_color_extractor...")
-        shirt_colors_array = []
-        for r in face_recognitions:
-            shirt_roi = PeopleRecognizer2D._shirt_roi_from_face_roi(r.roi, image.shape)
-            shirt_image_msg = self._bridge.cv2_to_imgmsg(PeopleRecognizer2D._image_from_roi(image, shirt_roi))
-            try:
-                color_extractor_response = _get_service_response(self._color_extractor_srv, shirt_image_msg)
-            except ServiceException as e:
-                rospy.logerr("Color extractor service request failed: {}".format(e))
-                shirt_colors = []
-            else:
-                shirt_colors = [p.label for p in
-                                color_extractor_response.recognitions[0].categorical_distribution.probabilities]
-            shirt_colors_array.append(shirt_colors)
+        if self._enable_shirt_color_extraction:
+            rospy.loginfo("_get_color_extractor...")
+            shirt_colors_array = []
+            for r in face_recognitions:
+                shirt_roi = PeopleRecognizer2D._shirt_roi_from_face_roi(r.roi, image.shape)
+                shirt_image_msg = self._bridge.cv2_to_imgmsg(PeopleRecognizer2D._image_from_roi(image, shirt_roi))
+                try:
+                    color_extractor_response = _get_service_response(self._color_extractor_srv, shirt_image_msg)
+                except ServiceException as e:
+                    rospy.logerr("Color extractor service request failed: {}".format(e))
+                    shirt_colors = []
+                else:
+                    shirt_colors = [p.label for p in
+                                    color_extractor_response.recognitions[0].categorical_distribution.probabilities]
+                shirt_colors_array.append(shirt_colors)
+        else:
+            shirt_colors_array = [[]] * len(face_recognitions)
 
         # Prepare image annotation labels and People message
         for face_label, face_properties, shirt_colors, body_parts, face_recognition in zip(face_labels,
