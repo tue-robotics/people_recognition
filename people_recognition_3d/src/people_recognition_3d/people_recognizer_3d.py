@@ -330,7 +330,7 @@ class PeopleRecognizer3D(object):
                     x = []
                     y = []
                     z = []
-                    for _, joint in skeleton.body_parts.iteritems():
+                    for _, joint in skeleton.body_parts.items():
                         x.append(joint.point.x)
                         y.append(joint.point.y)
                         z.append(joint.point.z)
