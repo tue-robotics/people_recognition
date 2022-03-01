@@ -5,6 +5,7 @@ find_package(catkin REQUIRED COMPONENTS
   message_generation
   sensor_msgs
   image_recognition_msgs
+  actionlib_msgs
   geometry_msgs
 )
 
@@ -23,16 +24,24 @@ add_service_files(
   RecognizePeople3D.srv
 )
 
+# Generate actions in the 'action' folder
+add_action_files(
+  DIRECTORY action
+  FILES
+    TrackOperator.action
+)
+
 # Generate added messages and services with any dependencies listed here
 generate_messages(
   DEPENDENCIES
   sensor_msgs
   image_recognition_msgs
+  actionlib_msgs
   geometry_msgs
 )
 
 catkin_package(
-  CATKIN_DEPENDS message_runtime sensor_msgs image_recognition_msgs geometry_msgs
+  CATKIN_DEPENDS message_runtime sensor_msgs actionlib_msgs image_recognition_msgs geometry_msgs
 )
 
 if (CATKIN_ENABLE_TESTING)

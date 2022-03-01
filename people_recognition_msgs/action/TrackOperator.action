@@ -1,0 +1,7 @@
+# Define the goal
+geometry_msgs/PoseStamped operator_start_pose
+---
+# Define the result
+---
+# Feedback
+geometry_msgs/PoseStamped current_operator_pose
