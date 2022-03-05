@@ -47,6 +47,9 @@ target_include_directories(${PROJECT_NAME}
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>
 )
+target_link_libraries(${PROJECT_NAME}
+  ${catkin_LIBRARIES}
+)
 
 # ROS node
 add_executable(${PROJECT_NAME}_node
@@ -55,6 +58,10 @@ add_executable(${PROJECT_NAME}_node
 target_link_libraries(${PROJECT_NAME}_node
   ${PROJECT_NAME}
   ${catkin_LIBRARIES}
+)
+target_include_directories(${PROJECT_NAME}_node
+  PRIVATE
+  ${catkin_INCLUDE_DIRS}
 )
 
 # ------------------------------------------------------------------------
