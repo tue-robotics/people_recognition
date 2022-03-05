@@ -15,6 +15,7 @@
   <exec_depend>people_recognition_2d</exec_depend>
   <exec_depend>people_recognition_3d</exec_depend>
   <exec_depend>people_recognition_msgs</exec_depend>
+  <exec_depend>people_recognition_tracking</exec_depend>
 
   <export>
     <metapackage/>
