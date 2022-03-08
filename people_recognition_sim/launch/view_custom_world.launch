@@ -1,0 +1,11 @@
+<?xml version="1.0"?>
+
+<launch>
+  <!-- Show Gazebo GUI on launch -->
+  <arg name="world_name"/>
+
+  <include file="$(dirname)/custom_world.launch">
+    <arg name="gui" value="true"/>
+    <arg name="world_name" value="$(arg world_name)"/>
+  </include>
+</launch>
