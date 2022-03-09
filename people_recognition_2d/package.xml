@@ -22,10 +22,7 @@
   <buildtool_depend condition="$ROS_PYTHON_VERSION == 3">python3-setuptools</buildtool_depend>
 
   <depend>cv_bridge</depend>
-  <depend>image_recognition_keras</depend>
   <depend>image_recognition_msgs</depend>
-  <depend>image_recognition_openface</depend>
-  <depend>image_recognition_openpose</depend>
   <depend>image_recognition_util</depend>
   <depend>people_recognition_msgs</depend>
   <depend>rospy</depend>
