@@ -1,0 +1,38 @@
+<?xml version="1.0"?>
+<?xml-model
+  href="http://download.ros.org/schema/package_format3.xsd"
+  schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>people_recognition_face_recognition</name>
+  <version>0.1.0</version>
+  <description>Pytorch based face recognition module for ROS</description>
+
+  <maintainer email="ar13pit@gmail.com">Arpit Aggarwal</maintainer>
+
+  <license>MIT</license>
+
+  <url type="bugtracker">https://github.com/tue-robotics/people_recognition/issues</url>
+  <url type="repository">https://github.com/tue-robotics/people_recognition/tree/master/people_recognition_face_recognition</url>
+
+  <author email="ar13pit@gmail.com">Arpit Aggarwal</author>
+
+  <buildtool_depend>catkin</buildtool_depend>
+  <buildtool_depend>python3-setuptools</buildtool_depend>
+
+  <depend>cv_bridge</depend>
+  <depend>image_recognition_msgs</depend>
+  <depend>image_recognition_util</depend>
+  <depend>people_recognition_msgs</depend>
+  <depend>rospy</depend>
+  <depend>sensor_msgs</depend>
+
+  <doc_depend>python3-sphinx</doc_depend>
+  <doc_depend>python-sphinx-autoapi-pip</doc_depend>
+  <doc_depend>python-sphinx-rtd-theme-pip</doc_depend>
+  <doc_depend>python3-yaml</doc_depend>
+
+  <export>
+    <rosdoc config="rosdoc.yaml" />
+  </export>
+
+</package>
