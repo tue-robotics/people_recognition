@@ -19,6 +19,7 @@ from sensor_msgs.msg import Image, RegionOfInterest
 def _get_and_wait_for_service(srv_name, srv_class):
     """
     Function to start and wait for dependent service
+
     :param: srv_name: Service name
     :param: srv_class: Service class
     :return: started ServiceProxy object
@@ -32,11 +33,11 @@ def _get_and_wait_for_service(srv_name, srv_class):
 def _get_service_response(srv, args):
     """
     Method to get service response with checks
+
     :param: srv: service
     :param: args: Input arguments of the service request
     :return: response
     """
-    response = None
     try:
         response = srv(args)
     except Exception as e:
@@ -83,6 +84,7 @@ class PeopleRecognizer2D(object):
         """
         Get ROIs of faces from openpose recognitions using the nose, left ear
         and right ear
+
         :param: recognitions from openpose
         """
         nose_recognitions = PeopleRecognizer2D._get_recognitions_with_label("Nose", recognitions)
@@ -130,6 +132,7 @@ class PeopleRecognizer2D(object):
     def _get_body_parts_openpose(group_id, recognitions):
         """
         Get a list of all bodyparts associated with a particular group ID
+
         :param: group_id: The group ID of the bodyparts to be fetched
         :param: recognitions: All bodyparts recieved from openpose
         :return: List of body_parts
@@ -140,6 +143,7 @@ class PeopleRecognizer2D(object):
     def _get_container_recognition(roi, recognitions, padding_factor=0.1):
         """
         Associate OpenPose ROI with best OpenPose face ROI
+
         :param: roi: openpose face roi
         :recognitions: openface recognitions
         """
@@ -207,6 +211,7 @@ class PeopleRecognizer2D(object):
     def _shirt_colors_to_label(shirt_colors):
         """
         Convert shirt colors array to label string
+
         :param: shirt_colors: Array to colors
         :return: string label
         """
@@ -219,6 +224,7 @@ class PeopleRecognizer2D(object):
     def _shirt_roi_from_face_roi(face_roi, image_shape):
         """
         Given a ROI for a face, shift the ROI to the person's shirt. Assuming the person is upright :/
+
         :param face_roi: RegionOfInterest
         :param image_shape: tuple of the image shape
         :return: RegionOfInterest
