@@ -20,6 +20,7 @@ from people_recognition_msgs.msg import Person3D
 def _get_and_wait_for_service(srv_name, srv_class):
     """
     Function to start and wait for dependent service
+
     :param: srv_name: Service name
     :param: srv_class: Service class
     :return: started ServiceProxy object
@@ -33,6 +34,7 @@ def _get_and_wait_for_service(srv_name, srv_class):
 def _get_service_response(srv, args):
     """
     Method to get service response with checks
+
     :param: srv: service
     :param: args: Input arguments of the service request
     :return: response
@@ -235,6 +237,7 @@ class PeopleRecognizer3D(object):
     def recognize(self, rgb, depth, camera_info):
         """
         Service call function
+
         :param: rgb: RGB Image msg
         :param: depth: Depth Image_msg
         :param: depth_info: Depth CameraInfo msg
@@ -409,6 +412,7 @@ class PeopleRecognizer3D(object):
                                regions_viz, scale):
         """
         Method to convert 2D recognitions of body parts to Joint named tuple
+
         :param: recognitions: List of body part recognitions
         :param: cv_depth: cv2 Depth image
         :param: cam_model: Depth camera model
