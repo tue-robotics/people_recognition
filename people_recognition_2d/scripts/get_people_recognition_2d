@@ -1,7 +1,6 @@
 #!/usr/bin/env python
-from __future__ import print_function
-
 import argparse
+import sys
 import time
 
 import cv2
@@ -9,55 +8,64 @@ from cv_bridge import CvBridge
 import rospy
 from people_recognition_2d import PeopleRecognizer2D
 
-parser = argparse.ArgumentParser(description='Get 2D people recognition')
-parser.add_argument('-v', '--verbose', help="Increase output verbosity", action="store_true")
-parser.add_argument('--openpose_srv_name', default="openpose/recognize")
-parser.add_argument('--openface_srv_name', default="face_recognition/recognize")
-parser.add_argument('--keras_srv_name', default="face_recognition/get_face_properties")
-parser.add_argument('--color_extractor_srv_name', default="extract_color")
+parser = argparse.ArgumentParser(description="Get 2D people recognition")
+parser.add_argument("-v", "--verbose", help="Increase output verbosity", action="store_true")
+parser.add_argument("--openpose_srv_name", default="openpose/recognize")
+parser.add_argument("--openface_srv_name", default="people_recognition/face_recognition/recognize")
+parser.add_argument("--keras_srv_name", default="people_recognition/face_recognition/get_face_properties")
+parser.add_argument("--color_extractor_srv_name", default="people_recognition/extract_color")
 
-mode_parser = parser.add_subparsers(help='Mode')
-image_parser = mode_parser.add_parser('image', help='Use image mode')
-image_parser.set_defaults(mode='image')
-image_parser.add_argument('image', help='Input image')
+parser.add_argument("--enable-age-gender", action="store_const", default=True, const=True, dest="age_gender")
+parser.add_argument("--disable-age-gender", action="store_const", default=True, const=False, dest="age_gender")
+parser.add_argument("--enable-shirt-color", action="store_const", default=True, const=True, dest="shirt_color")
+parser.add_argument("--disable-shirt-color", action="store_const", default=True, const=False, dest="shirt_color")
 
-cam_parser = mode_parser.add_parser('cam', help='Use cam mode')
-cam_parser.set_defaults(mode='cam')
-cam_parser.add_argument('--rate', default=3.0, type=float, help='Input image')
+mode_parser = parser.add_subparsers(help="Mode")
+image_parser = mode_parser.add_parser("image", help="Use image mode")
+image_parser.set_defaults(mode="image")
+image_parser.add_argument("image", help="Input image")
 
-args = parser.parse_args()
+cam_parser = mode_parser.add_parser("cam", help="Use cam mode")
+cam_parser.set_defaults(mode="cam")
+cam_parser.add_argument("--rate", default=3.0, type=float, help="Input image")
 
-rospy.init_node('get_people_recognition_2d')
+myargv = rospy.myargv(argv=sys.argv[1:])
 
-recognizer = PeopleRecognizer2D(args.openpose_srv_name,
-                                args.openface_srv_name,
-                                args.keras_srv_name,
-                                args.color_extractor_srv_name)
+args = parser.parse_args(myargv)
+
+rospy.init_node("get_people_recognition_2d")
+
+recognizer = PeopleRecognizer2D(
+    args.openpose_srv_name,
+    args.openface_srv_name,
+    args.keras_srv_name,
+    args.color_extractor_srv_name,
+    args.age_gender,
+    args.shirt_color,
+)
 
 cvbridge = CvBridge()
 
-if args.mode == 'image':
+if args.mode == "image":
     image = cv2.imread(args.image)
     image_msg = cvbridge.cv2_to_imgmsg(image, "bgr8")
     recognitions, overlayed_image = recognizer.recognize(image_msg)
     rospy.loginfo(recognitions)
     cv2.imshow("overlayed_image", overlayed_image)
     cv2.waitKey()
-elif args.mode == 'cam':
+elif args.mode == "cam":
     cap = cv2.VideoCapture(0)
     prev = 0
     while not rospy.is_shutdown():
-
         time_elapsed = time.time() - prev
         res, image = cap.read()
         image_msg = cvbridge.cv2_to_imgmsg(image, "bgr8")
 
-        if time_elapsed > 1. / args.rate:
+        if time_elapsed > 1.0 / args.rate:
             prev = time.time()
 
             recognitions, overlayed_image = recognizer.recognize(image_msg)
             cv2.imshow("overlayed_image", overlayed_image)
 
-            if cv2.waitKey(1) & 0xFF == ord('q'):
+            if cv2.waitKey(1) & 0xFF == ord("q"):
                 break
-
