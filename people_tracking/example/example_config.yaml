@@ -1,0 +1,4 @@
+frame_id: base_link
+rgbd_topic: head_rgbd_sensor/rgbd
+rate: 10
+people_recognition_service: /hero/people_recognition/detect_people

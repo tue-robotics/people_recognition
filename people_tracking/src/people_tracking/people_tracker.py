@@ -56,6 +56,17 @@ class PeopleTracker(object):
 
         rospy.loginfo("People tracker initialized")
 
+    def run():
+        # get image from the camera
+
+        # call detectpeople2D with that image.
+
+        # do tracking...
+
+        # publish results
+
+
+    
     @staticmethod
     def _image_from_roi(image, roi):
         # ROI needs to be at least 1 pixel in size
