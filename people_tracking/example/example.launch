@@ -1,6 +1,8 @@
 <?xml version="1.0"?>
 <launch>
-  <node pkg="people_tracking" type="people_tracker" name="people_tracker">
-    <rosparam command="load" file="$(find people_tracking)/example/example_config.yaml"/>
-  </node>
+  <group ns="hero">
+    <node pkg="people_tracking" type="people_tracker" name="people_tracker">
+      <rosparam command="load" file="$(find people_tracking)/example/example_config.yaml"/>
+    </node>
+  </group>
 </launch>
