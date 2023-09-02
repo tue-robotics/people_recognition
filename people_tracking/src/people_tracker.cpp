@@ -44,7 +44,7 @@ visualization_msgs::MarkerArray fillMessage(people_recognition_msgs::RecognizePe
     {
         for (int j=0; j<srv.response.people[i].body_parts.size(); j++)
         {
-            sensor_msgs::RegionOfInterest output_roi = srv.response.people[i].body_parts[0].roi;
+            sensor_msgs::RegionOfInterest output_roi = srv.response.people[i].body_parts[j].roi;
             double x = r * fx * (output_roi.x_offset + 0.5*output_roi.width - image_width);
             double y = r * fx * (output_roi.y_offset + 0.5*output_roi.height - image_height);
 
