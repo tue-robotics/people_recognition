@@ -16,6 +16,12 @@
 
 #include <people_recognition_msgs/RecognizePeople2D.h>
 
+/**
+ * @brief transform an rgbd image to a ros sensor message
+ * 
+ * @param image input rgbd image
+ * @return sensor_msgs::Image 
+ */
 sensor_msgs::Image rgbd2ros(rgbd::ImageConstPtr image)
 {
     rgbd::View view(*image, image->getRGBImage().cols);
@@ -30,12 +36,18 @@ sensor_msgs::Image rgbd2ros(rgbd::ImageConstPtr image)
     return msg;
 }
 
+/**
+ * @brief fill a message for visualization
+ * 
+ * @param srv service (response) with people detections. You may want to replace this with another input later on.
+ * @return visualization_msgs::MarkerArray 
+ */
 visualization_msgs::MarkerArray fillMessage(people_recognition_msgs::RecognizePeople2D& srv)
 {
     visualization_msgs::MarkerArray array_msg;
 
     double r = 0.5; // visualization distance
-    double fx = 1.0/500;
+    double fx = 1.0/500; // focal length (I just guessed this one)
     int image_width = 640;
     int image_height = 480;
 
@@ -45,8 +57,8 @@ visualization_msgs::MarkerArray fillMessage(people_recognition_msgs::RecognizePe
         for (int j=0; j<srv.response.people[i].body_parts.size(); j++)
         {
             sensor_msgs::RegionOfInterest output_roi = srv.response.people[i].body_parts[j].roi;
-            double x = r * fx * (output_roi.x_offset + 0.5*output_roi.width - image_width);
-            double y = r * fx * (output_roi.y_offset + 0.5*output_roi.height - image_height);
+            double x = r * fx * (output_roi.x_offset + 0.5*output_roi.width - image_width/2);
+            double y = r * fx * (output_roi.y_offset + 0.5*output_roi.height - image_height/2);
 
             // fill message
             visualization_msgs::Marker marker_msg;
@@ -136,8 +148,6 @@ int main(int argc, char** argv)
             ROS_WARN_STREAM("Could not get image");
             continue;
         }
-
-        std::vector <geo::Vector3> measurements;
 
         // Get people detections
         people_recognition_msgs::RecognizePeople2D srv;
