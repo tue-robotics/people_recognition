@@ -34,7 +34,7 @@ visualization_msgs::MarkerArray fillMessage(people_recognition_msgs::RecognizePe
 {
     visualization_msgs::MarkerArray array_msg;
 
-    double r = 0.5 // visualization distance
+    double r = 0.5; // visualization distance
     double fx = 1.0/500;
     int image_width = 640;
     int image_height = 480;
