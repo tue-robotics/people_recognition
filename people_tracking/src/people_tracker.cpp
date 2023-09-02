@@ -64,8 +64,9 @@ int main(int argc, char** argv)
     }
 
     rgbd::ImageBuffer image_buffer;
+    std::string namespaced_rgbd_topic = ros::names::resolve(rgbd_topic);
     image_buffer.initialize(rgbd_topic, frame_id);
-    ROS_INFO_STREAM("set up image buffer on topic: " << rgbd_topic.c_str());
+    ROS_INFO_STREAM("set up image buffer on topic: " << namespaced_rgbd_topic.c_str());
 
     ros::ServiceClient srv_people = nh.serviceClient<people_recognition_msgs::RecognizePeople2D>(people_recognition_service);
     ROS_INFO_STREAM("set up client to " << people_recognition_service.c_str());
