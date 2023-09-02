@@ -80,6 +80,7 @@ int main(int argc, char** argv)
         if (!image_buffer.waitForRecentImage(image, sensor_pose, r.expectedCycleTime().toSec()))
         {
             r.sleep(); // So we do sleep after getting an image again after failing to get an image
+            ROS_WARN_STREAM("Could not get image");
             continue;
         }
 
