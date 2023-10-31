@@ -48,7 +48,7 @@ class table_segmentor:
         model_path = "~/MEGA/developers/Donal/yolov8n-seg.pt"
         device = "cuda"
         self.model = YOLO(model_path).to(device)
-        self.table_class = 60 #table class defined with index 60 (person = 0)
+        self.table_class = 0 #table class defined with index 60 (person = 0)
 
         rospy.init_node('listener', anonymous=True)
         self.publisher = rospy.Publisher('/hero/segmented_image',Image)
