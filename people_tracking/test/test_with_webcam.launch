@@ -1,0 +1,16 @@
+<launch>
+<node
+    pkg="people_tracking"
+    type="yolo.py"
+    name="listener"
+    output="screen"
+  />
+
+  <node
+    pkg="people_tracking"
+    type="webcam.py"
+    name="webcam_pub"
+    output="screen"
+  />
+
+</launch>

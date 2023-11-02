@@ -51,8 +51,9 @@ class table_segmentor:
         self.table_class = 0 #table class defined with index 60 (person = 0)
 
         rospy.init_node('listener', anonymous=True)
-        self.publisher = rospy.Publisher('/hero/segmented_image',Image)
-        self.subscriber = rospy.Subscriber('/hero/head_rgbd_sensor/rgb/image_raw',Image , self.callback)
+        self.publisher = rospy.Publisher('/hero/segmented_image', Image)
+        # self.subscriber = rospy.Subscriber('/hero/head_rgbd_sensor/rgb/image_raw', Image, self.callback)
+        self.subscriber = rospy.Subscriber('video_frames', Image, self.callback)
 
     @staticmethod
     def detect(model, frame):
@@ -81,7 +82,8 @@ class table_segmentor:
         image_message = bridge.cv2_to_imgmsg(cv_image, encoding="passthrough")
         self.publisher.publish(image_message)
 
-    def listener():
+
+    def listener(self):
 
         # In ROS, nodes are uniquely named. If two nodes with the same
         # name are launched, the previous one is kicked off. The
@@ -89,8 +91,9 @@ class table_segmentor:
         # name for our 'listener' node so that multiple listeners can
         # run simultaneously.
 
-
-        rospy.Subscriber('/hero/head_rgbd_sensor/rgb/image_raw',Image , callback)
+        rospy.loginfo("tesssssssssssssss")
+        # rospy.Subscriber('/hero/head_rgbd_sensor/rgb/image_raw',Image , callback)
+        rospy.Subscriber('video_frames',Image , callback)
 
         # spin() simply keeps python from exiting until this node is stopped
         rospy.spin()
