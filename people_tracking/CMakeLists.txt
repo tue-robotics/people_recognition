@@ -19,6 +19,8 @@ catkin_python_setup()
 add_message_files(
    FILES
    detect_person.msg
+   DetectedPerson.msg
+   ColourCheckedTarget.msg
 )
 
 generate_messages(

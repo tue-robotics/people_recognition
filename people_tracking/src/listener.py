@@ -87,7 +87,7 @@ class PeopleTracker:
     def main_loop(self):
         while not rospy.is_shutdown():
             self.msg_callback()
-            self.process_latest_image()
+            # self.process_latest_image()
 
             rospy.sleep(0.1)
 
