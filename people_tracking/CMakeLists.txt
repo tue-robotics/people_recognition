@@ -7,12 +7,31 @@ find_package(catkin REQUIRED COMPONENTS
     roscpp
     sensor_msgs
     people_recognition_msgs
-)
 
-catkin_package()
+    rospy
+    std_msgs
+    message_generation
+)
 
 # TODO still needed?
 catkin_python_setup()
+
+add_message_files(
+   FILES
+   detect_person.msg
+)
+
+generate_messages(
+  DEPENDENCIES
+  std_msgs
+)
+
+
+
+catkin_package(
+    CATKIN_DEPENDS
+    message_runtime
+)
 
 include_directories(
 # include
