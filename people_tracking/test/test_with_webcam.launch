@@ -1,7 +1,7 @@
 <launch>
 <node
     pkg="people_tracking"
-    type="yolo.py"
+    type="listener.py"
     name="listener"
     output="screen"
   />
