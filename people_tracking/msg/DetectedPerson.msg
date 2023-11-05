@@ -1,2 +1,3 @@
 float64 time
+sensor_msgs/Image detected_person
 int32 x_position
