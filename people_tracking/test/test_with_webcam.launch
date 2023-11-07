@@ -1,25 +1,27 @@
 <launch>
-<!-- <node -->
-<!--     pkg="people_tracking" -->
-<!--     type="listener.py" -->
-<!--     name="listener" -->
-<!--     output="screen" -->
-<!--   /> -->
 
-<node
+  <node
     pkg="people_tracking"
     type="person_detection.py"
     name="person_detection"
     output="screen"
   />
 
-<node
+  <node
     pkg="people_tracking"
     type="colour_check.py"
     name="HoC"
     output="screen"
   />
 
+ <node
+    pkg="people_tracking"
+    type="people_tracker.py"
+    name="people_tracker"
+    output="screen"
+  />
+
+<!-- only use when working with webcam: -->
   <node
     pkg="people_tracking"
     type="webcam.py"
