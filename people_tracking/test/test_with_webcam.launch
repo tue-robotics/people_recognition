@@ -13,6 +13,13 @@
     output="screen"
   />
 
+<node
+    pkg="people_tracking"
+    type="colour_check.py"
+    name="HoC"
+    output="screen"
+  />
+
   <node
     pkg="people_tracking"
     type="webcam.py"
