@@ -16,7 +16,7 @@ laptop = True
 name_subscriber_RGB = '/hero/head_rgbd_sensor/rgb/image_raw' if not laptop else 'video_frames'
 
 
-class PeopleTracker:
+class PersonDetector:
     def __init__(self) -> None:
         # Initialize YOLO
         model_path = "~/MEGA/developers/Donal/yolov8n-seg.pt"
@@ -43,7 +43,7 @@ class PeopleTracker:
             self.latest_image = None
 
         self.latest_image = data
-        self.latest_image_time = rospy.get_time()
+        self.latest_image_time = float(rospy.get_time())
 
     @staticmethod
     def detect(model, frame):
@@ -97,9 +97,6 @@ class PeopleTracker:
                 detected_persons.append(image_message)
                 x_positions.append((x2-x1)// 2)
 
-        self.latest_image = None  # Clear the latest image after processing
-        self.latest_image_time = None
-
         # Create person_detections msg
         msg = DetectedPerson()
         msg.time = self.latest_image_time
@@ -108,6 +105,9 @@ class PeopleTracker:
         msg.detected_persons = detected_persons
         msg. x_positions = x_positions
         self.publisher.publish(msg)
+
+        self.latest_image = None  # Clear the latest image after processing
+        self.latest_image_time = None
 
         # for image_message in detected_persons:
         #     self.publisher_debug.publish(image_message)
@@ -123,7 +123,7 @@ class PeopleTracker:
 
 if __name__ == '__main__':
     try:
-        node_pt = PeopleTracker()
-        node_pt.main_loop()
+        node_pd = PersonDetector()
+        node_pd.main_loop()
     except rospy.exceptions.ROSInterruptException:
         pass
