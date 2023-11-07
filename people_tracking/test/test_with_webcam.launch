@@ -14,12 +14,12 @@
     output="screen"
   />
 
-<!--  <node -->
-<!--     pkg="people_tracking" -->
-<!--     type="people_tracker.py" -->
-<!--     name="people_tracker" -->
-<!--     output="screen" -->
-<!--   /> -->
+ <node
+    pkg="people_tracking"
+    type="people_tracker.py"
+    name="people_tracker"
+    output="screen"
+  />
 
 <!-- only use when working with webcam: -->
   <node

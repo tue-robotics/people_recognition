@@ -78,7 +78,7 @@ class HOC:
                 for idx_person, vector in enumerate(person_vectors):
                     distance = self.euclidean(vector, Hoc_detection)
                     if distance < 0.25:
-                        rospy.loginfo(str(idx_person) + " " + str(distance))
+                        # rospy.loginfo(str(idx_person) + " " + str(distance))
                         if len(self.HoC_detections) < 5:
                             self.HoC_detections.append(vector)
                         else:

@@ -95,7 +95,7 @@ class PersonDetector:
                 image_message = bridge.cv2_to_imgmsg(cropped_image, encoding="passthrough")
 
                 detected_persons.append(image_message)
-                x_positions.append((x2-x1)// 2)
+                x_positions.append(int( x1 + ((x2-x1) / 2)))
 
         # Create person_detections msg
         msg = DetectedPerson()
@@ -115,7 +115,6 @@ class PersonDetector:
     def main_loop(self):
         """ Main loop that makes sure only the latest images are processed"""
         while not rospy.is_shutdown():
-            # self.msg_callback()
             self.process_latest_image()
 
             rospy.sleep(0.001)
