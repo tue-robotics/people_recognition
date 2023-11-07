@@ -36,21 +36,16 @@ class HOC:
         :return: HSV-colour histogram vector from image
         """
         # Convert to HSV
-        image = cv2.cvtColor(image, cv2.COLOR_RGB2HSV)
+        hsv_image = cv2.cvtColor(image, cv2.COLOR_RGB2HSV)
 
-        # Get colour histogram
-        hue = cv2.calcHist([image], [0], None, [bins], [0, 256])
-        saturation = cv2.calcHist([image], [1], None, [bins], [0, 256])
-        value = cv2.calcHist([image], [2], None, [bins], [0, 256])
+        # Get color histograms
+        histograms = [cv2.calcHist([hsv_image], [i], None, [bins], [0, 256]) for i in range(3)]
 
-        # Normalize:
-        hue /= hue.sum()
-        saturation /= saturation.sum()
-        value /= value.sum()
+        # Normalize histograms
+        histograms = [hist / hist.sum() for hist in histograms]
 
         # Create Vector
-        vector = np.concatenate([hue, saturation, value], axis=0)
-        vector = vector.reshape(-1)
+        vector = np.concatenate(histograms, axis=0).reshape(-1)
         return vector
 
     @staticmethod
@@ -65,13 +60,13 @@ class HOC:
 
 
     def compare_hoc(self, detected_persons):
+        """ Compare newly detected persons to previously detected target."""
         bridge = CvBridge()
         match = False
         idx_person = None
-        person_vectors = []
-        for person in detected_persons:
-            cv_image = bridge.imgmsg_to_cv2(person, desired_encoding='passthrough')
-            person_vectors.append(self.get_vector(cv_image))
+
+        person_vectors = [self.get_vector(bridge.imgmsg_to_cv2(person, desired_encoding='passthrough')) for person in
+                          detected_persons]
 
         if len(self.HoC_detections) < 1:
             self.HoC_detections.append(person_vectors[0])
@@ -114,9 +109,8 @@ class HOC:
                 self.publisher.publish(msg)
             self.last_batch_processed = nr_batch
 
-        # if nr_persons > 0:
-        #     if match:
-        #         self.publisher_debug.publish(detected_persons[idx_match])
+        # if nr_persons > 0 and match:
+        #     self.publisher_debug.publish(detected_persons[idx_match])
 
 
 if __name__ == '__main__':
