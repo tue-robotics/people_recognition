@@ -26,25 +26,15 @@ class PeopleTracker:
 
         # ROS Initialize
         rospy.init_node(NODE_NAME, anonymous=True)
-        self.publisher = rospy.Publisher('/hero/segmented_image', Image, queue_size=10)
-        # self.subscriber = rospy.Subscriber(name_subscriber_RGB, Image, self.callback, queue_size=1)
+        self.subscriber = rospy.Subscriber(name_subscriber_RGB, Image, self.image_callback, queue_size=1)
+        # self.publisher_debug = rospy.Publisher(TOPIC_PREFIX + 'segmented_image', Image, queue_size=10)
+        self.publisher = rospy.Publisher(TOPIC_PREFIX + 'person_detections', DetectedPerson, queue_size= 10)
 
-        self.publisher2 = rospy.Publisher(TOPIC_PREFIX + 'test_msg', DetectedPerson, queue_size= 10)
-
-
+        # Initialize variables
+        self.batch_nr = 0
         self.latest_image = None  # To store the most recent image
         self.latest_image_time = None
 
-        # Subscribe to the RGB image topic with a callback
-        self.subscriber = rospy.Subscriber(name_subscriber_RGB, Image, self.image_callback, queue_size=1)
-
-    # def msg_callback(self):
-    #     msg = DetectedPerson()
-    #     msg.time = 1
-    #     msg.x_position = 5
-    #     msg.detected_person = self.latest_image
-    #     self.publisher2.publish(msg)
-    #     rospy.loginfo("woosssh")
 
     def image_callback(self, data):
         """ Make sure that only the most recent data will be processed."""
@@ -63,7 +53,7 @@ class PeopleTracker:
             segmentation_contours_idx = [np.array(seg, dtype=np.int32) for seg in results[0].masks.xy]
             class_ids = np.array(results[0].boxes.cls.cpu(), dtype="int")
 
-            # Get bounding box corners (top-left and bottom-right) for each detected object
+            # Get bounding box corners for each detected object
             bounding_box_corners = [(int(x1), int(y1), int(x2), int(y2)) for x1, y1, x2, y2 in results[0].boxes.xyxy]
 
             return class_ids, segmentation_contours_idx, bounding_box_corners
@@ -88,7 +78,9 @@ class PeopleTracker:
             return
 
         detected_persons = []
+        x_positions = []
         nr_persons = 0
+        self.batch_nr += 1
 
         for class_id, seg, box in zip(classes, segmentations, bounding_box_corners):
             x1, y1, x2, y2 = box
@@ -101,21 +93,32 @@ class PeopleTracker:
                 cropped_image = cv_image[y1:y2, x1:x2]
 
                 image_message = bridge.cv2_to_imgmsg(cropped_image, encoding="passthrough")
+
                 detected_persons.append(image_message)
+                x_positions.append((x2-x1)// 2)
 
         self.latest_image = None  # Clear the latest image after processing
         self.latest_image_time = None
 
-        for image_message in detected_persons:
-            self.publisher.publish(image_message)
+        # Create person_detections msg
+        msg = DetectedPerson()
+        msg.time = self.latest_image_time
+        msg.nr_batch = self.batch_nr
+        msg.nr_persons = nr_persons
+        msg.detected_persons = detected_persons
+        msg. x_positions = x_positions
+        self.publisher.publish(msg)
+
+        # for image_message in detected_persons:
+        #     self.publisher_debug.publish(image_message)
 
     def main_loop(self):
+        """ Main loop that makes sure only the latest images are processed"""
         while not rospy.is_shutdown():
             # self.msg_callback()
             self.process_latest_image()
 
-            rospy.sleep(0.1)
-
+            rospy.sleep(0.001)
 
 
 if __name__ == '__main__':
@@ -124,8 +127,3 @@ if __name__ == '__main__':
         node_pt.main_loop()
     except rospy.exceptions.ROSInterruptException:
         pass
-    # try:
-    #     node_pt = PeopleTracker()
-    #     rospy.spin()
-    # except rospy.exceptions.ROSInterruptException:
-    #     pass
