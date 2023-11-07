@@ -24,7 +24,7 @@ class PeopleTracker:
         # Keep publishing the messages until the user interrupts
         while not rospy.is_shutdown():
             message = "Hello World"
-            rospy.loginfo('Published: ' + message)
+            # rospy.loginfo('Published: ' + message)
             # publish the message to the topic
             self.publisher.publish(message)
             rate.sleep()

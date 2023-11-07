@@ -1,3 +1,6 @@
 float64 time
-sensor_msgs/Image detected_person
-int32 x_position
+int32 nr_batch
+int32 nr_persons
+
+sensor_msgs/Image[] detected_persons
+int32[] x_positions
