@@ -57,7 +57,7 @@ class PeopleTracker:
 
     @staticmethod
     def detect(model, frame):
-        """ Return contour of object in image per class type. """
+        """ Return class, contour and bounding box of objects in image per class type. """
         results = model(frame)
         if results and len(results[0]) > 0:
             segmentation_contours_idx = [np.array(seg, dtype=np.int32) for seg in results[0].masks.xy]
@@ -71,40 +71,43 @@ class PeopleTracker:
             return None, None, None
 
     def process_latest_image(self):
-        """ Get data from image and publish it to topic."""
+        """ Get data from image and publish it to the topic."""
 
-        if self.latest_image is not None:
-            bridge = CvBridge()
-            cv_image = bridge.imgmsg_to_cv2(self.latest_image, desired_encoding='passthrough')
-            cv_image = cv2.GaussianBlur(cv_image, (5, 5), 0)
+        if self.latest_image is None:
+            return
 
-            classes, segmentations, bounding_box_corners = self.detect(self.model, cv_image)
-            # rospy.loginfo(bounding_box_corners)
-            if classes is not None and segmentations is not None: # Check if a person is detected
-                # mask = np.zeros_like(cv_image)
+        bridge = CvBridge()
+        cv_image = bridge.imgmsg_to_cv2(self.latest_image, desired_encoding='passthrough')
+        cv_image = cv2.GaussianBlur(cv_image, (5, 5), 0)
 
-                detected_persons = []
-                nr_persons = 0
-                for class_id, seg, box in zip(classes, segmentations, bounding_box_corners):
-                    x1, y1, x2, y2 = box
-                    if class_id == self.person_class:
-                        detection_image = cv_image.copy()
-                        mask = np.zeros_like(detection_image)
-                        nr_persons += 1
-                        cv2.fillPoly(mask, [seg], (255, 255, 255))
-                        detection_image[mask == 0] = 0
-                        cropped_image = detection_image[y1:y2, x1:x2]
+        classes, segmentations, bounding_box_corners = self.detect(self.model, cv_image)
 
-                        # cv2.rectangle(detection_image, (x1, y1), (x2, y2), (255, 0, 255), 3)
-
-                        image_message = bridge.cv2_to_imgmsg(cropped_image, encoding="passthrough")
-                        detected_persons.append(image_message)
-
-                # rospy.loginfo(nr_persons)
-                        self.publisher.publish(image_message)
-
+        if classes is None or segmentations is None:
             self.latest_image = None  # Clear the latest image after processing
             self.latest_image_time = None
+            return
+
+        detected_persons = []
+        nr_persons = 0
+
+        for class_id, seg, box in zip(classes, segmentations, bounding_box_corners):
+            x1, y1, x2, y2 = box
+
+            if class_id == self.person_class:
+                mask = np.zeros_like(cv_image)
+                nr_persons += 1
+                cv2.fillPoly(mask, [seg], (255, 255, 255))
+                cv_image[mask == 0] = 0
+                cropped_image = cv_image[y1:y2, x1:x2]
+
+                image_message = bridge.cv2_to_imgmsg(cropped_image, encoding="passthrough")
+                detected_persons.append(image_message)
+
+        self.latest_image = None  # Clear the latest image after processing
+        self.latest_image_time = None
+
+        for image_message in detected_persons:
+            self.publisher.publish(image_message)
 
     def main_loop(self):
         while not rospy.is_shutdown():
