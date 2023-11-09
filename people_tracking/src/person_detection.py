@@ -26,6 +26,7 @@ class PersonDetector:
 
         # ROS Initialize
         rospy.init_node(NODE_NAME, anonymous=True)
+
         self.subscriber = rospy.Subscriber(name_subscriber_RGB, Image, self.image_callback, queue_size=1)
         # self.publisher_debug = rospy.Publisher(TOPIC_PREFIX + 'segmented_image', Image, queue_size=10)
         self.publisher = rospy.Publisher(TOPIC_PREFIX + 'person_detections', DetectedPerson, queue_size= 10)

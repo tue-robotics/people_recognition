@@ -8,14 +8,14 @@ from filterpy.common.discretization import Q_discrete_white_noise
 # import matplotlib.pyplot as plt
 import scipy
 
-def sqrt_func(x):
-    """ Sqrt functions that prevents covariance matrix P to become slowly not symmetric or positive definite"""
-    try:
-        result = scipy.linalg.cholesky(x)
-    except scipy.linalg.LinAlgError:
-        x = (x + x.T)/2
-        result = scipy.linalg.cholesky(x)
-    return result
+# def sqrt_func(x):
+#     """ Sqrt functions that prevents covariance matrix P to become slowly not symmetric or positive definite"""
+#     try:
+#         result = scipy.linalg.cholesky(x)
+#     except scipy.linalg.LinAlgError:
+#         x = (x + x.T)/2
+#         result = scipy.linalg.cholesky(x)
+#     return result
 
 
 class UKF:
@@ -26,12 +26,12 @@ class UKF:
         dt = 0.1  # standard dt
 
         # Create sigma points
-        self.points = MerweScaledSigmaPoints(4, alpha=0.1, beta=2.0, kappa=-1, sqrt_method=sqrt_func)
+        self.points = MerweScaledSigmaPoints(4, alpha=0.1, beta=2.0, kappa=-1)#, sqrt_method=sqrt_func)
 
         self.kf = UnscentedKalmanFilter(dim_x=4, dim_z=2, dt=dt, fx=self.fx, hx=self.hx, points=self.points)
 
         self.kf.x = np.array([1., 0, 1., 0])  # Initial state
-        self.kf.P *= 0.2  # Initial uncertainty
+        self.kf.P *= 1  # Initial uncertainty
 
         z_std = 0.2
         self.kf.R = np.diag([z_std ** 2, z_std ** 2])  # Measurement noise covariance matrix

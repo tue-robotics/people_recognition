@@ -1,0 +1,19 @@
+<launch>
+
+  <node
+    pkg="people_tracking"
+    type="skelly.py"
+    name="listener"
+    output="screen"
+  />
+
+
+<!-- only use when working with webcam: -->
+  <node
+    pkg="people_tracking"
+    type="webcam.py"
+    name="webcam_pub"
+    output="screen"
+  />
+
+</launch>
