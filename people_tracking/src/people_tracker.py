@@ -90,11 +90,10 @@ class PeopleTracker:
                 z = [entry[3], entry[4], 0]
                 self.ukf_confirmed.update(entry[2], z)
             self.tracked_data = self.tracked_data[idx:][:]
-        else: #if gone potentially to wrong path
+        else:  # if gone potentially to wrong path
             self.ukf_prediction = copy.deepcopy(self.ukf_confirmed)
             # TODO add new way to go (redo data association from known point)
             # self.tracked_data = [[batch_nr, idx_person, time, x_position, y_position, z_position]]
-
 
     def callback_persons(self, data):
         """ Update the ukf_prediction using the closest image."""
@@ -126,7 +125,6 @@ class PeopleTracker:
                     [nr_batch, person, time, x_positions[person], y_positions[person], z_positions[person]])
                 self.ukf_prediction.update(time, [x_positions[person], y_positions[person], 0])
 
-
     def get_latest_image(self, data):
         """ Get the most recent frame/image from the camera."""
         self.latest_image = data
@@ -149,17 +147,19 @@ class PeopleTracker:
         x_position = int(self.ukf_prediction.kf.x[0])
         y_position = int(self.ukf_prediction.kf.x[2])
 
-        # Red = UKF prediction location
         # Blue = HoC ukf latest input measurement
+        # Red = UKF prediction location
         # Green = Data association
 
-        cv2.circle(cv_image, (x_position, y_position), 5, (0, 0, 255), -1)  # plot ukf prediction measurement red
-        cv2.circle(cv_image, (self.tracked_data[-1][-3], self.tracked_data[-1][-2]), 5, (0, 255, 0),
+        cv2.circle(cv_image, (x_hoc, y_hoc), 5, (255, 0, 0, 50), -1)  # plot latest hoc measurement blue
+        cv2.circle(cv_image, (x_position, y_position), 5, (0, 0, 255, 50), -1)  # plot ukf prediction measurement red
+        cv2.circle(cv_image, (self.tracked_data[-1][-3], self.tracked_data[-1][-2]), 5, (0, 255, 0, 20),
                    -1)  # plot latest data ass. measurement green
-        cv2.circle(cv_image, (x_hoc, y_hoc), 5, (255, 0, 0), -1)  # plot latest hoc measurement blue
+
         tracker_image = bridge.cv2_to_imgmsg(cv_image, encoding="passthrough")
 
-        # rospy.loginfo("predict x: %s, y: %s; measured x: %s, y: %s, HoC x: %s, y: %s", x_position, y_position, self.tracked_data[-1][-3], self.tracked_data[-1][-2], x_hoc, y_hoc)
+        # rospy.loginfo("predict x: %s, y: %s; measured x: %s, y: %s, HoC x: %s, y: %s", x_position, y_position,
+        #               self.tracked_data[-1][-3], self.tracked_data[-1][-2], x_hoc, y_hoc)
 
         self.publisher_debug.publish(tracker_image)
 

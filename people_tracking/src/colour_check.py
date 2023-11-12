@@ -8,15 +8,16 @@ from cv_bridge import CvBridge
 from people_tracking.msg import ColourCheckedTarget
 from people_tracking.msg import DetectedPerson
 
-
 NODE_NAME = 'HoC'
 TOPIC_PREFIX = '/hero/'
+
 
 class HOC:
     def __init__(self) -> None:
         # ROS Initialize
         rospy.init_node(NODE_NAME, anonymous=True)
-        self.subscriber = rospy.Subscriber(TOPIC_PREFIX + 'person_detections', DetectedPerson, self.callback, queue_size = 1)
+        self.subscriber = rospy.Subscriber(TOPIC_PREFIX + 'person_detections', DetectedPerson, self.callback,
+                                           queue_size=1)
         self.publisher = rospy.Publisher(TOPIC_PREFIX + 'HoC', ColourCheckedTarget, queue_size=2)
         # self.publisher_debug = rospy.Publisher(TOPIC_PREFIX + 'debug/HoC_debug', Image, queue_size=10)
 
@@ -34,11 +35,11 @@ class HOC:
         hsv_image = cv2.cvtColor(image, cv2.COLOR_RGB2HSV)  # Convert to HSV
 
         histograms = [cv2.calcHist([hsv_image], [i], None, [bins], [0, 256])
-                      for i in range(3)]    # Get color histograms
+                      for i in range(3)]  # Get color histograms
 
-        histograms = [hist / hist.sum() for hist in histograms]     # Normalize histograms
+        histograms = [hist / hist.sum() for hist in histograms]  # Normalize histograms
 
-        vector = np.concatenate(histograms, axis=0).reshape(-1)     # Create colour histogram vector
+        vector = np.concatenate(histograms, axis=0).reshape(-1)  # Create colour histogram vector
         return vector
 
     @staticmethod
@@ -103,7 +104,7 @@ class HOC:
                 msg.idx_person = int(idx_match)
                 msg.x_position = x_positions[idx_match]
                 msg.y_position = y_positions[idx_match]
-                msg.z_position = 0  #z_positions[idx_match]
+                msg.z_position = 0  # z_positions[idx_match]
 
                 self.publisher.publish(msg)
             self.last_batch_processed = nr_batch

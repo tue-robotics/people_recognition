@@ -10,7 +10,6 @@ from ultralytics import YOLO
 from sensor_msgs.msg import Image
 from people_tracking.msg import DetectedPerson
 
-
 NODE_NAME = 'person_detection'
 TOPIC_PREFIX = '/hero/'
 
@@ -36,7 +35,6 @@ class PersonDetector:
         self.batch_nr = 0
         self.latest_image = None  # To store the most recent image
         self.latest_image_time = None
-
 
     def image_callback(self, data):
         """ Make sure that only the most recent data will be processed."""
