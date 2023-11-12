@@ -3,7 +3,7 @@ import rospy
 import cv2
 import math
 from cv_bridge import CvBridge
-
+import copy
 from UKFclass import *
 
 # MSGS
@@ -89,6 +89,10 @@ class PeopleTracker:
                 z = [entry[3], entry[4], 0]
                 self.ukf_confirmed.update(entry[2], z)
             self.tracked_data = self.tracked_data[idx:][:]
+        else: #if gone potentially to wrong path
+            self.ukf_prediction = copy.deepcopy(self.ukf_confirmed)
+            # TODO add new way to go (redo data association from known point)
+            # self.tracked_data = [[batch_nr, idx_person, time, x_position, y_position, z_position]]
 
 
     def callback_persons(self, data):
