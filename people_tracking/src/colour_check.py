@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-
 import rospy
 import cv2
 import numpy as np
@@ -9,20 +8,17 @@ from cv_bridge import CvBridge
 from people_tracking.msg import ColourCheckedTarget
 from people_tracking.msg import DetectedPerson
 
-from sensor_msgs.msg import Image
-
 
 NODE_NAME = 'HoC'
 TOPIC_PREFIX = '/hero/'
 
 class HOC:
     def __init__(self) -> None:
-
         # ROS Initialize
         rospy.init_node(NODE_NAME, anonymous=True)
         self.subscriber = rospy.Subscriber(TOPIC_PREFIX + 'person_detections', DetectedPerson, self.callback, queue_size = 1)
         self.publisher = rospy.Publisher(TOPIC_PREFIX + 'HoC', ColourCheckedTarget, queue_size=2)
-        # self.publisher_debug = rospy.Publisher(TOPIC_PREFIX + 'HOCdebug', Image, queue_size=10)
+        # self.publisher_debug = rospy.Publisher(TOPIC_PREFIX + 'debug/HoC_debug', Image, queue_size=10)
 
         # Variables
         self.HoC_detections = []
@@ -35,17 +31,14 @@ class HOC:
         :param bins: amount of bins in histogram
         :return: HSV-colour histogram vector from image
         """
-        # Convert to HSV
-        hsv_image = cv2.cvtColor(image, cv2.COLOR_RGB2HSV)
+        hsv_image = cv2.cvtColor(image, cv2.COLOR_RGB2HSV)  # Convert to HSV
 
-        # Get color histograms
-        histograms = [cv2.calcHist([hsv_image], [i], None, [bins], [0, 256]) for i in range(3)]
+        histograms = [cv2.calcHist([hsv_image], [i], None, [bins], [0, 256])
+                      for i in range(3)]    # Get color histograms
 
-        # Normalize histograms
-        histograms = [hist / hist.sum() for hist in histograms]
+        histograms = [hist / hist.sum() for hist in histograms]     # Normalize histograms
 
-        # Create Vector
-        vector = np.concatenate(histograms, axis=0).reshape(-1)
+        vector = np.concatenate(histograms, axis=0).reshape(-1)     # Create colour histogram vector
         return vector
 
     @staticmethod
@@ -57,7 +50,6 @@ class HOC:
     def cosine(a, b):
         """ Cosine distance between two vectors. Closer to 1 means a better match."""
         return np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b))
-
 
     def compare_hoc(self, detected_persons):
         """ Compare newly detected persons to previously detected target."""
@@ -96,6 +88,8 @@ class HOC:
         nr_persons = data.nr_persons
         detected_persons = data.detected_persons
         x_positions = data.x_positions
+        y_positions = data.y_positions
+        z_positions = data.z_positions
 
         match = False
         idx_match = None
@@ -108,8 +102,8 @@ class HOC:
                 msg.batch_nr = int(nr_batch)
                 msg.idx_person = int(idx_match)
                 msg.x_position = x_positions[idx_match]
-                msg.y_position = 0
-                msg.z_position = 0
+                msg.y_position = y_positions[idx_match]
+                msg.z_position = 0  #z_positions[idx_match]
 
                 self.publisher.publish(msg)
             self.last_batch_processed = nr_batch

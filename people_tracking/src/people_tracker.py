@@ -1,10 +1,8 @@
 #!/usr/bin/env python
-
 import rospy
 import cv2
-from cv_bridge import CvBridge
 import math
-
+from cv_bridge import CvBridge
 
 from UKFclass import *
 
@@ -20,35 +18,6 @@ laptop = True
 name_subscriber_RGB = '/hero/head_rgbd_sensor/rgb/image_raw' if not laptop else 'video_frames'
 
 
-def euclidean_distance(point1, point2):
-    """ Calculate the Euclidean distance between two points.
-
-    :param point1: A tuple or list representing the coordinates of the first point.
-    :param point2: A tuple or list representing the coordinates of the second point.
-    :return: The Euclidean distance between the two points.
-    """
-    if len(point1) != len(point2):
-        raise ValueError("Not the same dimensions")
-
-    squared_sum = sum((coord2 - coord1) ** 2 for coord1, coord2 in zip(point1, point2))
-    distance = math.sqrt(squared_sum)
-    return distance
-
-
-def element_exists(lst, element):
-    """ Check if element is in list.
-
-    :param lst: List to check element against.
-    :param element: Element to check if it is in the list.
-    :return: True, index element if in the list, False, None if element not in list
-    """
-    try:    # Try to find element
-        idx = lst.index(element)
-        return True, idx
-    except ValueError:  # If element is not in the list
-        return False, None
-
-
 class PeopleTracker:
     def __init__(self) -> None:
 
@@ -58,7 +27,6 @@ class PeopleTracker:
                                                self.callback_HoC, queue_size=1)
         self.subscriber_persons = rospy.Subscriber(TOPIC_PREFIX + 'person_detections', DetectedPerson,
                                                    self.callback_persons, queue_size=1)
-
         self.subscriber_frames = rospy.Subscriber(name_subscriber_RGB, Image, self.get_latest_image, queue_size=1)
 
         self.publisher_debug = rospy.Publisher(TOPIC_PREFIX + 'debug/people_tracker', Image, queue_size=10)
@@ -66,13 +34,44 @@ class PeopleTracker:
 
         # Variables
         self.latest_image = None
-
         self.tracked_data = [[0, 0, 0, 0, 0, 0]]
 
         self.ukf_confirmed = UKF()
         self.ukf_prediction = UKF()
 
+    @staticmethod
+    def euclidean_distance(point1, point2):
+        """ Calculate the Euclidean distance between two points.
+
+        :param point1: A tuple or list representing the coordinates of the first point.
+        :param point2: A tuple or list representing the coordinates of the second point.
+        :return: The Euclidean distance between the two points.
+        """
+        if len(point1) != len(point2):
+            raise ValueError("Not the same dimensions")
+
+        squared_sum = sum((coord2 - coord1) ** 2 for coord1, coord2 in zip(point1, point2))
+        distance = math.sqrt(squared_sum)
+        return distance
+
+    @staticmethod
+    def element_exists(lst, element):
+        """ Check if element is in list.
+
+        :param lst: List to check element against.
+        :param element: Element to check if it is in the list.
+        :return: True, index element if in the list, False, None if element not in list
+        """
+        try:  # Try to find element
+            idx = lst.index(element)
+            return True, idx
+        except ValueError:  # If element is not in the list
+            return False, None
+
     def callback_HoC(self, data):
+        """ Update the ukf_confirmed with the HoC data, as well as check that the ukf_prediction is still
+        following the correct target.
+        """
         time = data.time
         batch_nr = data.batch_nr
         idx_person = data.idx_person
@@ -80,27 +79,27 @@ class PeopleTracker:
         y_position = data.y_position
         z_position = data.z_position
 
-
-        exist, idx = element_exists(self.tracked_data, [batch_nr, idx_person, time, x_position, y_position, z_position])
+        exists, idx = self.element_exists(self.tracked_data,
+                                          [batch_nr, idx_person, time, x_position, y_position, z_position])
         # rospy.loginfo("exist: %s, idx: %s", exist, idx)
 
-        if exist:
+        if exists:
             update_data = self.tracked_data[:idx + 1][:]
             for entry in update_data:
-                z = [entry[3], entry[5]]
+                z = [entry[3], entry[4], 0]
                 self.ukf_confirmed.update(entry[2], z)
             self.tracked_data = self.tracked_data[idx:][:]
 
+
     def callback_persons(self, data):
-        """ Update the ukf_prediciton using the closest image."""
+        """ Update the ukf_prediction using the closest image."""
         time = data.time
         nr_batch = data.nr_batch
         nr_persons = data.nr_persons
         x_positions = data.x_positions
         y_positions = data.y_positions
-        z_positions = data.z_positions
 
-        y_positions = [0] * nr_persons
+        z_positions = data.z_positions
         z_positions = [0] * nr_persons
 
         if time > self.tracked_data[-1][0]:
@@ -109,8 +108,8 @@ class PeopleTracker:
                 person = None
                 for idx in range(nr_persons):
                     tracked = tuple(self.tracked_data[-1][-3:])
-                    distance = euclidean_distance(tracked,
-                                                  tuple([x_positions[idx], y_positions[idx], z_positions[idx]]))
+                    distance = self.euclidean_distance(tracked,
+                                                       tuple([x_positions[idx], y_positions[idx], z_positions[idx]]))
                     if smallest_distance is None:
                         person = idx
                         smallest_distance = distance
@@ -120,8 +119,8 @@ class PeopleTracker:
 
                 self.tracked_data.append(
                     [nr_batch, person, time, x_positions[person], y_positions[person], z_positions[person]])
-                self.ukf_prediction.update(time, [x_positions[person], 0])
-                # rospy.loginfo([nr_batch, person, time , x_positions[person], y_positions[person], z_positions[person]])
+                self.ukf_prediction.update(time, [x_positions[person], y_positions[person], 0])
+
 
     def get_latest_image(self, data):
         """ Get the most recent frame/image from the camera."""
@@ -140,16 +139,23 @@ class PeopleTracker:
             self.ukf_prediction.predict(current_time)
 
         x_hoc = int(self.ukf_confirmed.kf.x[0])
-        x_position = int(self.ukf_prediction.kf.x[0])
-        # rospy.loginfo('predict: time:  ' + str(float(rospy.get_time())) + 'x: ' + str(x_position))
+        y_hoc = int(self.ukf_confirmed.kf.x[2])
 
-        x_position = 0 if x_position < 0 else x_position
-        x_position = 639 if x_position > 639 else x_position
-        cv2.circle(cv_image, (x_position, 200), 5, (0, 0, 255), -1)  # plot ukf prediction measurement red
-        cv2.circle(cv_image, (self.tracked_data[-1][-3], 200), 5, (0, 255, 0),
+        x_position = int(self.ukf_prediction.kf.x[0])
+        y_position = int(self.ukf_prediction.kf.x[2])
+
+        # Red = UKF prediction location
+        # Blue = HoC ukf latest input measurement
+        # Green = Data association
+
+        cv2.circle(cv_image, (x_position, y_position), 5, (0, 0, 255), -1)  # plot ukf prediction measurement red
+        cv2.circle(cv_image, (self.tracked_data[-1][-3], self.tracked_data[-1][-2]), 5, (0, 255, 0),
                    -1)  # plot latest data ass. measurement green
-        cv2.circle(cv_image, (x_hoc, 200), 5, (255, 0, 0), -1)  # plot latest hoc measurement blue
+        cv2.circle(cv_image, (x_hoc, y_hoc), 5, (255, 0, 0), -1)  # plot latest hoc measurement blue
         tracker_image = bridge.cv2_to_imgmsg(cv_image, encoding="passthrough")
+
+        # rospy.loginfo("predict x: %s, y: %s; measured x: %s, y: %s, HoC x: %s, y: %s", x_position, y_position, self.tracked_data[-1][-3], self.tracked_data[-1][-2], x_hoc, y_hoc)
+
         self.publisher_debug.publish(tracker_image)
 
     def loop(self):

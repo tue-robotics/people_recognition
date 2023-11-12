@@ -2,12 +2,13 @@
 import rospy
 import cv2
 import numpy as np
-from ultralytics import YOLO
 from cv_bridge import CvBridge
+from ultralytics import YOLO
 
 # MSGS
 from sensor_msgs.msg import Image
 from people_tracking.msg import DetectedPerson
+
 
 NODE_NAME = 'person_detection'
 TOPIC_PREFIX = '/hero/'
@@ -28,8 +29,8 @@ class PersonDetector:
         rospy.init_node(NODE_NAME, anonymous=True)
 
         self.subscriber = rospy.Subscriber(name_subscriber_RGB, Image, self.image_callback, queue_size=1)
-        # self.publisher_debug = rospy.Publisher(TOPIC_PREFIX + 'segmented_image', Image, queue_size=10)
-        self.publisher = rospy.Publisher(TOPIC_PREFIX + 'person_detections', DetectedPerson, queue_size= 10)
+        self.publisher = rospy.Publisher(TOPIC_PREFIX + 'person_detections', DetectedPerson, queue_size=5)
+        # self.publisher_debug = rospy.Publisher(TOPIC_PREFIX + 'debug/segmented_image', Image, queue_size=5)
 
         # Initialize variables
         self.batch_nr = 0
@@ -80,6 +81,7 @@ class PersonDetector:
 
         detected_persons = []
         x_positions = []
+        y_positions = []
         nr_persons = 0
         self.batch_nr += 1
 
@@ -96,15 +98,17 @@ class PersonDetector:
                 image_message = bridge.cv2_to_imgmsg(cropped_image, encoding="passthrough")
 
                 detected_persons.append(image_message)
-                x_positions.append(int( x1 + ((x2-x1) / 2)))
+                x_positions.append(int(x1 + ((x2 - x1) / 2)))
+                y_positions.append(int(y1 + ((y2 - y1) / 2)))
 
-        # Create person_detections msg
+        # Create and Publish person_detections msg
         msg = DetectedPerson()
         msg.time = self.latest_image_time
         msg.nr_batch = self.batch_nr
         msg.nr_persons = nr_persons
         msg.detected_persons = detected_persons
-        msg. x_positions = x_positions
+        msg.x_positions = x_positions
+        msg.y_positions = y_positions
         self.publisher.publish(msg)
 
         self.latest_image = None  # Clear the latest image after processing
@@ -114,7 +118,7 @@ class PersonDetector:
         #     self.publisher_debug.publish(image_message)
 
     def main_loop(self):
-        """ Main loop that makes sure only the latest images are processed"""
+        """ Main loop that makes sure only the latest images are processed. """
         while not rospy.is_shutdown():
             self.process_latest_image()
 
