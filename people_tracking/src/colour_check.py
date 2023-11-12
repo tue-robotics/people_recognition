@@ -105,7 +105,12 @@ class HOC:
             if match:
                 msg = ColourCheckedTarget()
                 msg.time = time
+                msg.batch_nr = int(nr_batch)
+                msg.idx_person = int(idx_match)
                 msg.x_position = x_positions[idx_match]
+                msg.y_position = 0
+                msg.z_position = 0
+
                 self.publisher.publish(msg)
             self.last_batch_processed = nr_batch
 
