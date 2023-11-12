@@ -4,11 +4,14 @@
 # https://automaticaddison.com/working-with-ros-and-opencv-in-ros-noetic/
 
 # Import the necessary libraries
+import sys
+
 import rospy  # Python library for ROS
 from sensor_msgs.msg import Image  # Image is the message type
 from cv_bridge import CvBridge  # Package to convert between ROS and OpenCV Images
 import cv2  # OpenCV library
 
+laptop = rospy.get_param('~laptop', default=True)
 
 def publish_message():
     # Node is publishing to the video_frames topic using
@@ -50,10 +53,12 @@ def publish_message():
         # Sleep just enough to maintain the desired rate
         rate.sleep()
 
-
 if __name__ == '__main__':
-    try:
-        publish_message()
-    except rospy.ROSInterruptException:
-        pass
-    rospy.spin()
+    laptop = sys.argv[1]
+    # print(laptop)
+    if laptop == "True":
+        try:
+            publish_message()
+        except rospy.ROSInterruptException:
+            pass
+        rospy.spin()

@@ -1,10 +1,12 @@
 <launch>
+  <arg name="laptop" default="True" />
 
   <node
     pkg="people_tracking"
     type="person_detection.py"
     name="person_detection"
     output="screen"
+    args="$(arg laptop)"
   />
 
   <node
@@ -12,6 +14,7 @@
     type="colour_check.py"
     name="HoC"
     output="screen"
+    args="$(arg laptop)"
   />
 
  <node
@@ -19,14 +22,20 @@
     type="people_tracker.py"
     name="people_tracker"
     output="screen"
+    args="$(arg laptop)"
   />
 
-<!-- only use when working with webcam: -->
+<!--
+    launches pc webcam node if argument laptop is set to True:
+    $ roslaunch people_tracking people_tracking.launch laptop:=True
+-->
+
   <node
     pkg="people_tracking"
     type="webcam.py"
     name="webcam_pub"
     output="screen"
+    args="$(arg laptop)"
   />
 
 </launch>

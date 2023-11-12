@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+import sys
 import rospy
 import cv2
 import math
@@ -14,8 +15,8 @@ from people_tracking.msg import DetectedPerson
 NODE_NAME = 'people_tracker'
 TOPIC_PREFIX = '/hero/'
 
-laptop = True
-name_subscriber_RGB = '/hero/head_rgbd_sensor/rgb/image_raw' if not laptop else 'video_frames'
+laptop = sys.argv[1]
+name_subscriber_RGB = 'video_frames' if laptop == "True" else '/hero/head_rgbd_sensor/rgb/image_raw'
 
 
 class PeopleTracker:

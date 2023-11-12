@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+import sys
 import rospy
 import cv2
 import numpy as np
@@ -13,8 +14,8 @@ from people_tracking.msg import DetectedPerson
 NODE_NAME = 'person_detection'
 TOPIC_PREFIX = '/hero/'
 
-laptop = True
-name_subscriber_RGB = '/hero/head_rgbd_sensor/rgb/image_raw' if not laptop else 'video_frames'
+laptop = sys.argv[1]
+name_subscriber_RGB = 'video_frames' if laptop == "True" else '/hero/head_rgbd_sensor/rgb/image_raw'
 
 
 class PersonDetector:
@@ -27,7 +28,6 @@ class PersonDetector:
 
         # ROS Initialize
         rospy.init_node(NODE_NAME, anonymous=True)
-
         self.subscriber = rospy.Subscriber(name_subscriber_RGB, Image, self.image_callback, queue_size=1)
         self.publisher = rospy.Publisher(TOPIC_PREFIX + 'person_detections', DetectedPerson, queue_size=5)
         # self.publisher_debug = rospy.Publisher(TOPIC_PREFIX + 'debug/segmented_image', Image, queue_size=5)
