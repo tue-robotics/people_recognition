@@ -4,3 +4,5 @@ int32 nr_persons
 
 sensor_msgs/Image[] detected_persons
 int32[] x_positions
+int32[] y_positions
+int32[] z_positions
