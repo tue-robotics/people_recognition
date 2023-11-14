@@ -12,7 +12,7 @@ from people_tracking.msg import DetectedPerson
 NODE_NAME = 'HoC'
 TOPIC_PREFIX = '/hero/'
 
-from std_srvs.srv import Empty, EmptyResponse  # Import the Empty service type
+from std_srvs.srv import Empty, EmptyResponse
 
 class HOC:
     def __init__(self) -> None:

@@ -18,8 +18,7 @@ TOPIC_PREFIX = '/hero/'
 laptop = sys.argv[1]
 name_subscriber_RGB = 'video_frames' if laptop == "True" else '/hero/head_rgbd_sensor/rgb/image_raw'
 
-from std_srvs.srv import Empty  # Import the Empty service type
-
+from std_srvs.srv import Empty
 class PeopleTracker:
     def __init__(self) -> None:
 
@@ -35,7 +34,12 @@ class PeopleTracker:
         self.rate = rospy.Rate(20)  # 20hz
 
         # Create a ROS Service Proxy for the color histogram reset service
-        self.color_histogram_reset_proxy = rospy.ServiceProxy(TOPIC_PREFIX + 'HoC/reset', Empty)
+        rospy.wait_for_service(TOPIC_PREFIX + 'HoC/reset')
+        self.hoc_reset_proxy = rospy.ServiceProxy(TOPIC_PREFIX + 'HoC/reset', Empty)
+        rospy.wait_for_service(TOPIC_PREFIX + 'Face/reset')
+        self.face_reset_proxy = rospy.ServiceProxy(TOPIC_PREFIX + 'Face/reset', Empty)
+        rospy.wait_for_service(TOPIC_PREFIX + 'person_detection/reset')
+        self.detection_reset_proxy = rospy.ServiceProxy(TOPIC_PREFIX + 'person_detection/reset', Empty)
 
         # Variables
         self.latest_image = None
@@ -188,17 +192,32 @@ class PeopleTracker:
             if self.latest_image is not None:
                 self.plot_tracker()
 
-            if self.latest_image:
-                self.reset_color_histogram_node()
+            # if self.latest_image:
+            #     self.reset_color_histogram_node()
             self.rate.sleep()
 
     def reset_color_histogram_node(self):
+
+
         # Call the color histogram reset service
         try:
-            response = self.color_histogram_reset_proxy()
+            response = self.hoc_reset_proxy()
             rospy.loginfo("Color histogram node reset successfully.")
         except rospy.ServiceException as e:
             rospy.logerr("Failed to reset color histogram node: %s", str(e))
+        try:
+            response = self.face_reset_proxy()
+            rospy.loginfo("Face node reset successfully.")
+        except rospy.ServiceException as e:
+            rospy.logerr("Failed to reset Face node: %s", str(e))
+        try:
+            response = self.detection_reset_proxy()
+            rospy.loginfo("Detection node reset successfully.")
+        except rospy.ServiceException as e:
+            rospy.logerr("Failed to reset detection node: %s", str(e))
+
+
+
 
 
 if __name__ == '__main__':

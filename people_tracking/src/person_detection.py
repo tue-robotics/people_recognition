@@ -10,6 +10,8 @@ from ultralytics import YOLO
 from sensor_msgs.msg import Image
 from people_tracking.msg import DetectedPerson
 
+from std_srvs.srv import Empty, EmptyResponse
+
 NODE_NAME = 'person_detection'
 TOPIC_PREFIX = '/hero/'
 
@@ -30,17 +32,19 @@ class PersonDetector:
         self.subscriber = rospy.Subscriber(name_subscriber_RGB, Image, self.image_callback, queue_size=1)
         self.publisher = rospy.Publisher(TOPIC_PREFIX + 'person_detections', DetectedPerson, queue_size=5)
         # self.publisher_debug = rospy.Publisher(TOPIC_PREFIX + 'debug/segmented_image', Image, queue_size=5)
+        self.reset_service = rospy.Service(TOPIC_PREFIX + NODE_NAME + '/reset', Empty, self.reset)
 
         # Initialize variables
         self.batch_nr = 0
         self.latest_image = None  # To store the most recent image
         self.latest_image_time = None
 
-    def reset(self):
+    def reset(self, request):
         """ Reset all stored variables in Class to their default values."""
         self.batch_nr = 0
         self.latest_image = None
         self.latest_image_time = None
+        return EmptyResponse()
 
     def image_callback(self, data):
         """ Make sure that only the most recent data will be processed."""
@@ -76,9 +80,10 @@ class PersonDetector:
 
         if self.latest_image is None:
             return
-
+        latest_image = self.latest_image
+        latest_image_time = self.latest_image_time
         bridge = CvBridge()
-        cv_image = bridge.imgmsg_to_cv2(self.latest_image, desired_encoding='passthrough')
+        cv_image = bridge.imgmsg_to_cv2(latest_image, desired_encoding='passthrough')
         cv_image = cv2.GaussianBlur(cv_image, (5, 5), 0)
 
         classes, segmentations, bounding_box_corners = self.detect(self.model, cv_image)
@@ -119,7 +124,7 @@ class PersonDetector:
 
         # Create and Publish person_detections msg
         msg = DetectedPerson()
-        msg.time = self.latest_image_time
+        msg.time = latest_image_time
         msg.nr_batch = self.batch_nr
         msg.nr_persons = nr_persons
         msg.detected_persons = detected_persons

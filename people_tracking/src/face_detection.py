@@ -12,6 +12,8 @@ from sensor_msgs.msg import Image
 from people_tracking.msg import ColourCheckedTarget
 from people_tracking.msg import DetectedPerson
 
+from std_srvs.srv import Empty, EmptyResponse
+
 NODE_NAME = 'Face'
 TOPIC_PREFIX = '/hero/'
 
@@ -24,6 +26,7 @@ class FaceDetection:
                                            queue_size=1)
         self.publisher = rospy.Publisher(TOPIC_PREFIX + 'face_detections', ColourCheckedTarget, queue_size=2)
         self.publisher_debug = rospy.Publisher(TOPIC_PREFIX + 'debug/Face_debug', Image, queue_size=10)
+        self.reset_service = rospy.Service(TOPIC_PREFIX + NODE_NAME + '/reset', Empty, self.reset)
 
         # Variables
         self.HoC_detections = []
@@ -34,7 +37,7 @@ class FaceDetection:
         self.encoded_batch = None
         self.encoded = False    #True if encoding process of face was succesful
 
-    def reset(self):
+    def reset(self, request):
         """ Reset all stored variables in Class to their default values."""
         self.HoC_detections = []
         self.last_batch_processed = 0
@@ -43,6 +46,7 @@ class FaceDetection:
         self.latest_data = None
         self.encoded_batch = None
         self.encoded = False
+        return EmptyResponse()
 
     def encode_known_faces(self, image, model: str = "hog") -> None:
         """
