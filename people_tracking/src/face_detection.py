@@ -1,4 +1,6 @@
 #!/usr/bin/env python
+from typing import Tuple, Any
+
 import rospy
 import cv2
 import numpy as np
@@ -33,8 +35,10 @@ class FaceDetection:
 
     def encode_known_faces(self, image, model: str = "hog") -> None:
         """
-        Loads images in the training directory and builds a dictionary of their
-        names and encodings. hog (cpu) cnn (gpu)
+        From the given image, encode the face and store it.
+
+        :param image: image to find the face to encode on.
+        :param model: method to use for encoding. Either hog (cpu) or cnn (gpu).
         """
         bridge = CvBridge()
         image = bridge.imgmsg_to_cv2(image, desired_encoding='passthrough')
@@ -52,66 +56,63 @@ class FaceDetection:
     #     top, right, bottom, left = bounding_box
     #     cv2.rectangle(img, (top, left), (bottom, right), (255, 0, 0), 2)
 
+    def recognize_faces(self, input_images) -> Tuple[bool, Any]:
+        """ Check if a face on the given image matches the encoded face(s).
+        Assumptions:
+        * A face has already been encoded and stored.
+        * Unknown faces get the name Unknown.
 
-    def recognize_faces(self, image):
+        :param input_images: list with images to find a face to check on.
+        :return: match, idx_match, match is true if match found,
+         and it returns the idx of the element this was found on from the input list.
+        """
 
         bridge = CvBridge()
-        image = bridge.imgmsg_to_cv2(image, desired_encoding='passthrough')
+        for idx, image in enumerate(input_images):
+            print(idx)
+            image = bridge.imgmsg_to_cv2(image, desired_encoding='passthrough')
+            face_location = face_recognition.face_locations(image)
+            face_encoding = face_recognition.face_encodings(image, face_location)
 
-        face_locations = face_recognition.face_locations(image)
-        rospy.loginfo(face_locations)
-
-        face_encodings = face_recognition.face_encodings(image, face_locations)
-
-        face_names = []
-        for face_encoding in face_encodings:
-            # See if the face is a match for the known face(s)
-            matches = face_recognition.compare_faces(self.known_face_encodings, face_encoding)
-            name = "Unknown"
-
-            face_distances = face_recognition.face_distance(self.known_face_encodings, face_encoding)
-            best_match_index = np.argmin(face_distances)
-            if matches[best_match_index]:
-                name = self.names[best_match_index]
-
-            face_names.append(name)
-
-            rospy.loginfo(name)
+            for encoding in face_encoding:
+                matches = face_recognition.compare_faces(self.known_face_encodings, encoding, tolerance=0.6)  # True if match, False if no match.
+                if any(matches):
+                    return True, idx
+        return False, None
 
 
     def callback(self, data):
         time = data.time
         nr_batch = data.nr_batch
         nr_persons = data.nr_persons
-        detected_persons = data.detected_persons
+
+        detected_persons = data.detected_persons #images
         x_positions = data.x_positions
         y_positions = data.y_positions
         z_positions = data.z_positions
 
-        if len(self.known_face_encodings) < 1:
+        if len(self.known_face_encodings) < 1: #for now define first image with face as target
             self.encode_known_faces(detected_persons[0])
-        else:
-            self.recognize_faces(detected_persons[0])
-        #
-        # match = False
-        # idx_match = None
-        #
-        # if nr_batch > self.last_batch_processed:
-        #     match, idx_match = self.compare_hoc(detected_persons)
-        #     if match:
-        #         msg = ColourCheckedTarget()
-        #         msg.time = time
-        #         msg.batch_nr = int(nr_batch)
-        #         msg.idx_person = int(idx_match)
-        #         msg.x_position = x_positions[idx_match]
-        #         msg.y_position = y_positions[idx_match]
-        #         msg.z_position = 0  # z_positions[idx_match]
-        #
-        #         self.publisher.publish(msg)
-        #     self.last_batch_processed = nr_batch
-        #
-        # if nr_persons > 0 and match:
-        #     self.publisher_debug.publish(detected_persons[idx_match])
+
+        match = False
+        idx_match = None
+
+        if nr_batch > self.last_batch_processed:
+            match, idx_match = self.recognize_faces(detected_persons)
+            if match:
+                msg = ColourCheckedTarget()
+                msg.time = time
+                msg.batch_nr = int(nr_batch)
+                msg.idx_person = int(idx_match)
+                msg.x_position = x_positions[idx_match]
+                msg.y_position = y_positions[idx_match]
+                msg.z_position = 0  # z_positions[idx_match]
+
+                self.publisher.publish(msg)
+            self.last_batch_processed = nr_batch
+
+        if nr_persons > 0 and match:
+            self.publisher_debug.publish(detected_persons[idx_match])
 
 
 if __name__ == '__main__':
