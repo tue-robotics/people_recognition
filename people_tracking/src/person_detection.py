@@ -39,6 +39,7 @@ class PersonDetector:
         self.latest_image = None  # To store the most recent image
         self.latest_image_time = None
 
+
     def reset(self, request):
         """ Reset all stored variables in Class to their default values."""
         self.batch_nr = 0
@@ -52,7 +53,9 @@ class PersonDetector:
             self.latest_image = None
 
         self.latest_image = data
-        self.latest_image_time = float(rospy.get_time())
+        # rospy.loginfo("%s, %s",data.header.seq, data.header.stamp.secs)
+        self.latest_image_time = data.header.stamp.secs#float(rospy.get_time())
+        self.batch_nr = data.header.seq
 
     @staticmethod
     def detect(model, frame):
@@ -82,6 +85,7 @@ class PersonDetector:
             return
         latest_image = self.latest_image
         latest_image_time = self.latest_image_time
+        batch_nr = self.batch_nr
         bridge = CvBridge()
         cv_image = bridge.imgmsg_to_cv2(latest_image, desired_encoding='passthrough')
         cv_image = cv2.GaussianBlur(cv_image, (5, 5), 0)
@@ -97,7 +101,6 @@ class PersonDetector:
         x_positions = []
         y_positions = []
         nr_persons = 0
-        self.batch_nr += 1
 
         for class_id, seg, box in zip(classes, segmentations, bounding_box_corners):
             x1, y1, x2, y2 = box
@@ -124,8 +127,8 @@ class PersonDetector:
 
         # Create and Publish person_detections msg
         msg = DetectedPerson()
-        msg.time = latest_image_time
-        msg.nr_batch = self.batch_nr
+        msg.time = float(latest_image_time)
+        msg.nr_batch = batch_nr
         msg.nr_persons = nr_persons
         msg.detected_persons = detected_persons
         msg.x_positions = x_positions

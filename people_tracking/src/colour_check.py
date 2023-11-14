@@ -105,18 +105,22 @@ class HOC:
         match = False
         idx_match = None
 
-        if nr_batch > self.last_batch_processed:
-            match, idx_match = self.compare_hoc(detected_persons)
-            if match:
-                msg = ColourCheckedTarget()
-                msg.time = time
-                msg.batch_nr = int(nr_batch)
-                msg.idx_person = int(idx_match)
-                msg.x_position = x_positions[idx_match]
-                msg.y_position = y_positions[idx_match]
-                msg.z_position = z_positions[idx_match]
+        if nr_batch <= self.last_batch_processed:
+            return
+        if nr_persons < 1:
+            return
 
-                self.publisher.publish(msg)
+        match, idx_match = self.compare_hoc(detected_persons)
+        if match:
+            msg = ColourCheckedTarget()
+            msg.time = time
+            msg.batch_nr = int(nr_batch)
+            msg.idx_person = int(idx_match)
+            msg.x_position = x_positions[idx_match]
+            msg.y_position = y_positions[idx_match]
+            msg.z_position = z_positions[idx_match]
+
+            self.publisher.publish(msg)
             self.last_batch_processed = nr_batch
 
         # if nr_persons > 0 and match:

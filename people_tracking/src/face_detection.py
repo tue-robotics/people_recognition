@@ -131,12 +131,13 @@ class FaceDetection:
 
         if not self.encoded:  # Define first image with face as target,
                               # make sure that this is done before "throwing" away data
-            rospy.loginfo("encoding %s", data.nr_batch)
-            self.encode_known_faces(data.detected_persons[0])
-            if len(self.known_face_encodings) >= 1:
-                self.encoded = True
-                self.encoded_batch = data.nr_batch
-                rospy.loginfo("encoded Face: %s", self.encoded_batch)
+            if len(data.detected_persons) > 0:
+                rospy.loginfo("encoding %s", data.nr_batch)
+                self.encode_known_faces(data.detected_persons[0])
+                if len(self.known_face_encodings) >= 1:
+                    self.encoded = True
+                    self.encoded_batch = data.nr_batch
+                    rospy.loginfo("encoded Face: %s", self.encoded_batch)
 
     def main_loop(self):
         """ Main loop that makes sure only the latest images are processed. """
