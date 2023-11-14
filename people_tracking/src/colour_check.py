@@ -5,6 +5,7 @@ import numpy as np
 from cv_bridge import CvBridge
 
 # MSGS
+from sensor_msgs.msg import Image
 from people_tracking.msg import ColourCheckedTarget
 from people_tracking.msg import DetectedPerson
 

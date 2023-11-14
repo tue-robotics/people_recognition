@@ -93,6 +93,7 @@ class PeopleTracker:
         else:  # if gone potentially to wrong path
             self.ukf_prediction = copy.deepcopy(self.ukf_confirmed)
             # TODO add new way to go (redo data association from known point)
+            # TODO add somthing that check for long data losses and than resets or stops tracker. e.g. target lost
             # self.tracked_data = [[batch_nr, idx_person, time, x_position, y_position, z_position]]
 
     def callback_persons(self, data):

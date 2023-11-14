@@ -25,6 +25,14 @@
     args="$(arg laptop)"
   />
 
+  <node
+    pkg="people_tracking"
+    type="face_detection.py"
+    name="Face"
+    output="screen"
+    args="$(arg laptop)"
+  />
+
 <!--
     launches pc webcam node if argument laptop is set to True:
     $ roslaunch people_tracking people_tracking.launch laptop:=True
