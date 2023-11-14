@@ -18,6 +18,7 @@ TOPIC_PREFIX = '/hero/'
 laptop = sys.argv[1]
 name_subscriber_RGB = 'video_frames' if laptop == "True" else '/hero/head_rgbd_sensor/rgb/image_raw'
 
+from std_srvs.srv import Empty  # Import the Empty service type
 
 class PeopleTracker:
     def __init__(self) -> None:
@@ -32,6 +33,9 @@ class PeopleTracker:
 
         self.publisher_debug = rospy.Publisher(TOPIC_PREFIX + 'debug/people_tracker', Image, queue_size=10)
         self.rate = rospy.Rate(20)  # 20hz
+
+        # Create a ROS Service Proxy for the color histogram reset service
+        self.color_histogram_reset_proxy = rospy.ServiceProxy(TOPIC_PREFIX + 'HoC/reset', Empty)
 
         # Variables
         self.latest_image = None
@@ -184,7 +188,17 @@ class PeopleTracker:
             if self.latest_image is not None:
                 self.plot_tracker()
 
+            if self.latest_image:
+                self.reset_color_histogram_node()
             self.rate.sleep()
+
+    def reset_color_histogram_node(self):
+        # Call the color histogram reset service
+        try:
+            response = self.color_histogram_reset_proxy()
+            rospy.loginfo("Color histogram node reset successfully.")
+        except rospy.ServiceException as e:
+            rospy.logerr("Failed to reset color histogram node: %s", str(e))
 
 
 if __name__ == '__main__':

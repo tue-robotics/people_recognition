@@ -12,6 +12,7 @@ from people_tracking.msg import DetectedPerson
 NODE_NAME = 'HoC'
 TOPIC_PREFIX = '/hero/'
 
+from std_srvs.srv import Empty, EmptyResponse  # Import the Empty service type
 
 class HOC:
     def __init__(self) -> None:
@@ -22,14 +23,17 @@ class HOC:
         self.publisher = rospy.Publisher(TOPIC_PREFIX + 'HoC', ColourCheckedTarget, queue_size=2)
         # self.publisher_debug = rospy.Publisher(TOPIC_PREFIX + 'debug/HoC_debug', Image, queue_size=10)
 
+        self.reset_service = rospy.Service(TOPIC_PREFIX + NODE_NAME + '/reset', Empty, self.reset)
+
         # Variables
         self.HoC_detections = []
         self.last_batch_processed = 0
 
-    def reset(self):
+    def reset(self, request):
         """ Reset all stored variables in Class to their default values."""
         self.HoC_detections = []
         self.last_batch_processed = 0
+        return EmptyResponse()
 
     @staticmethod
     def get_vector(image, bins=32):
