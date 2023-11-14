@@ -26,6 +26,11 @@ class HOC:
         self.HoC_detections = []
         self.last_batch_processed = 0
 
+    def reset(self):
+        """ Reset all stored variables in Class to their default values."""
+        self.HoC_detections = []
+        self.last_batch_processed = 0
+
     @staticmethod
     def get_vector(image, bins=32):
         """ Return HSV-colour histogram vector from image.
@@ -105,7 +110,7 @@ class HOC:
                 msg.idx_person = int(idx_match)
                 msg.x_position = x_positions[idx_match]
                 msg.y_position = y_positions[idx_match]
-                msg.z_position = 0  # z_positions[idx_match]
+                msg.z_position = z_positions[idx_match]
 
                 self.publisher.publish(msg)
             self.last_batch_processed = nr_batch

@@ -35,7 +35,15 @@ class PeopleTracker:
 
         # Variables
         self.latest_image = None
-        self.tracked_data = [[0, 0, 0, 0, 0, 0]]
+        self.tracked_data = []
+
+        self.ukf_confirmed = UKF()
+        self.ukf_prediction = UKF()
+
+    def reset(self):
+        """ Reset all stored variables in Class to their default values."""
+        self.latest_image = None
+        self.tracked_data = []
 
         self.ukf_confirmed = UKF()
         self.ukf_prediction = UKF()
@@ -96,16 +104,19 @@ class PeopleTracker:
             # TODO add somthing that check for long data losses and than resets or stops tracker. e.g. target lost
             # self.tracked_data = [[batch_nr, idx_person, time, x_position, y_position, z_position]]
 
-    def callback_persons(self, data):
-        """ Update the ukf_prediction using the closest image."""
+    def callback_persons(self, data) -> None:
+        """ Update the ukf_prediction using the closest image. (Data Association based on distance)."""
         time = data.time
         nr_batch = data.nr_batch
         nr_persons = data.nr_persons
         x_positions = data.x_positions
         y_positions = data.y_positions
-
         z_positions = data.z_positions
-        z_positions = [0] * nr_persons
+
+        if len(self.tracked_data) < 1:
+            self.tracked_data.append(
+                [nr_batch, 0, time, x_positions[0], y_positions[0], z_positions[0]])
+            return
 
         if time > self.tracked_data[-1][0]:
             if nr_persons > 0:
@@ -132,37 +143,38 @@ class PeopleTracker:
 
     def plot_tracker(self):
         """ Plot the trackers on a camera frame and publish it.
-        This can be used to visualise all the output from the trackers.
+        This can be used to visualise all the output from the trackers. [x,y coords] Currently not for depth
         """
-        latest_image = self.latest_image
-        bridge = CvBridge()
-        cv_image = bridge.imgmsg_to_cv2(latest_image, desired_encoding='passthrough')
+        if len(self.tracked_data) >= 1:
+            latest_image = self.latest_image
+            bridge = CvBridge()
+            cv_image = bridge.imgmsg_to_cv2(latest_image, desired_encoding='passthrough')
 
-        current_time = float(rospy.get_time())
-        if self.ukf_prediction.current_time < current_time:
-            self.ukf_prediction.predict(current_time)
+            current_time = float(rospy.get_time())
+            if self.ukf_prediction.current_time < current_time:
+                self.ukf_prediction.predict(current_time)
 
-        x_hoc = int(self.ukf_confirmed.kf.x[0])
-        y_hoc = int(self.ukf_confirmed.kf.x[2])
+            x_hoc = int(self.ukf_confirmed.kf.x[0])
+            y_hoc = int(self.ukf_confirmed.kf.x[2])
 
-        x_position = int(self.ukf_prediction.kf.x[0])
-        y_position = int(self.ukf_prediction.kf.x[2])
+            x_position = int(self.ukf_prediction.kf.x[0])
+            y_position = int(self.ukf_prediction.kf.x[2])
 
-        # Blue = HoC ukf latest input measurement
-        # Red = UKF prediction location
-        # Green = Data association
+            # Blue = HoC ukf latest input measurement
+            # Red = UKF prediction location
+            # Green = Data association
 
-        cv2.circle(cv_image, (x_hoc, y_hoc), 5, (255, 0, 0, 50), -1)  # plot latest hoc measurement blue
-        cv2.circle(cv_image, (x_position, y_position), 5, (0, 0, 255, 50), -1)  # plot ukf prediction measurement red
-        cv2.circle(cv_image, (self.tracked_data[-1][-3], self.tracked_data[-1][-2]), 5, (0, 255, 0, 20),
-                   -1)  # plot latest data ass. measurement green
+            cv2.circle(cv_image, (x_hoc, y_hoc), 5, (255, 0, 0, 50), -1)  # plot latest hoc measurement blue
+            cv2.circle(cv_image, (x_position, y_position), 5, (0, 0, 255, 50), -1)  # plot ukf prediction measurement red
+            cv2.circle(cv_image, (self.tracked_data[-1][-3], self.tracked_data[-1][-2]), 5, (0, 255, 0, 20),
+                       -1)  # plot latest data ass. measurement green
 
-        tracker_image = bridge.cv2_to_imgmsg(cv_image, encoding="passthrough")
+            tracker_image = bridge.cv2_to_imgmsg(cv_image, encoding="passthrough")
 
-        # rospy.loginfo("predict x: %s, y: %s; measured x: %s, y: %s, HoC x: %s, y: %s", x_position, y_position,
-        #               self.tracked_data[-1][-3], self.tracked_data[-1][-2], x_hoc, y_hoc)
+            # rospy.loginfo("predict x: %s, y: %s; measured x: %s, y: %s, HoC x: %s, y: %s", x_position, y_position,
+            #               self.tracked_data[-1][-3], self.tracked_data[-1][-2], x_hoc, y_hoc)
 
-        self.publisher_debug.publish(tracker_image)
+            self.publisher_debug.publish(tracker_image)
 
     def loop(self):
         """ Loop that repeats itself at self.rate.

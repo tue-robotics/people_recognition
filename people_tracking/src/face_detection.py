@@ -5,6 +5,7 @@ import rospy
 import cv2
 import numpy as np
 from cv_bridge import CvBridge
+import face_recognition
 
 # MSGS
 from sensor_msgs.msg import Image
@@ -13,9 +14,6 @@ from people_tracking.msg import DetectedPerson
 
 NODE_NAME = 'Face'
 TOPIC_PREFIX = '/hero/'
-
-
-import face_recognition
 
 
 class FaceDetection:
@@ -33,6 +31,18 @@ class FaceDetection:
         self.known_face_encodings = []
         self.names = ["target"]
         self.latest_data = None
+        self.encoded_batch = None
+        self.encoded = False    #True if encoding process of face was succesful
+
+    def reset(self):
+        """ Reset all stored variables in Class to their default values."""
+        self.HoC_detections = []
+        self.last_batch_processed = 0
+        self.known_face_encodings = []
+        self.names = ["target"]
+        self.latest_data = None
+        self.encoded_batch = None
+        self.encoded = False
 
     def encode_known_faces(self, image, model: str = "hog") -> None:
         """
@@ -48,7 +58,6 @@ class FaceDetection:
 
         for encoding in face_encodings:
             self.known_face_encodings.append(encoding)
-            rospy.loginfo("encoded")
 
     def recognize_faces(self, input_images) -> Tuple[bool, Any]:
         """ Check if a face on the given image matches the encoded face(s).
@@ -69,7 +78,8 @@ class FaceDetection:
             face_encoding = face_recognition.face_encodings(image, face_location)
 
             for encoding in face_encoding:
-                matches = face_recognition.compare_faces(self.known_face_encodings, encoding, tolerance=0.6)  # True if match, False if no match.
+                matches = face_recognition.compare_faces(self.known_face_encodings, encoding, tolerance=0.6)  # True
+                # if match, False if no match.
                 if any(matches):
                     return True, idx
         return False, None
@@ -77,7 +87,7 @@ class FaceDetection:
     def process_latest_data(self):
         """ Process the most recent data to see if the correct face is detected."""
 
-        if self.latest_data is not None:
+        if self.latest_data is not None and self.encoded:
             data = self.latest_data
             time = data.time
             nr_batch = data.nr_batch
@@ -87,9 +97,6 @@ class FaceDetection:
             x_positions = data.x_positions
             y_positions = data.y_positions
             z_positions = data.z_positions
-
-            if len(self.known_face_encodings) < 1: #for now define first image with face as target
-                self.encode_known_faces(detected_persons[0])
 
             match = False
             idx_match = None
@@ -103,7 +110,7 @@ class FaceDetection:
                     msg.idx_person = int(idx_match)
                     msg.x_position = x_positions[idx_match]
                     msg.y_position = y_positions[idx_match]
-                    msg.z_position = 0  # z_positions[idx_match]
+                    msg.z_position = z_positions[idx_match]
 
                     self.publisher.publish(msg)
                 self.last_batch_processed = nr_batch
@@ -118,6 +125,14 @@ class FaceDetection:
     def callback(self, data):
         self.latest_data = data
 
+        if not self.encoded:  # Define first image with face as target,
+                              # make sure that this is done before "throwing" away data
+            rospy.loginfo("encoding %s", data.nr_batch)
+            self.encode_known_faces(data.detected_persons[0])
+            if len(self.known_face_encodings) >= 1:
+                self.encoded = True
+                self.encoded_batch = data.nr_batch
+                rospy.loginfo("encoded Face: %s", self.encoded_batch)
 
     def main_loop(self):
         """ Main loop that makes sure only the latest images are processed. """
@@ -125,6 +140,7 @@ class FaceDetection:
             self.process_latest_data()
 
             rospy.sleep(0.001)
+
 
 if __name__ == '__main__':
     try:

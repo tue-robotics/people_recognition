@@ -23,7 +23,7 @@ class PersonDetector:
         model_path = "~/MEGA/developers/Donal/yolov8n-seg.pt"
         device = "cuda"
         self.model = YOLO(model_path).to(device)
-        self.person_class = 0  # person class = 0
+        self.person_class = 0
 
         # ROS Initialize
         rospy.init_node(NODE_NAME, anonymous=True)
@@ -36,9 +36,14 @@ class PersonDetector:
         self.latest_image = None  # To store the most recent image
         self.latest_image_time = None
 
+    def reset(self):
+        """ Reset all stored variables in Class to their default values."""
+        self.batch_nr = 0
+        self.latest_image = None
+        self.latest_image_time = None
+
     def image_callback(self, data):
         """ Make sure that only the most recent data will be processed."""
-        # Cancel any previously queued image processing tasks
         if self.latest_image is not None:
             self.latest_image = None
 
@@ -59,6 +64,12 @@ class PersonDetector:
             return class_ids, segmentation_contours_idx, bounding_box_corners
         else:
             return None, None, None
+
+    @staticmethod
+    def key_distance(x):
+        """ Calculate x-distance between input and center image."""
+        x_middle_image = 320
+        return abs(x - x_middle_image)
 
     def process_latest_image(self):
         """ Get data from image and publish it to the topic."""
@@ -99,6 +110,13 @@ class PersonDetector:
                 x_positions.append(int(x1 + ((x2 - x1) / 2)))
                 y_positions.append(int(y1 + ((y2 - y1) / 2)))
 
+        # Sort entries from x_distance from the center, makes sure that the first round correct data is selected
+        sorted_idx = sorted(range(len(x_positions)), key=lambda k: self.key_distance(x_positions[k]))
+        detected_persons = [detected_persons[i] for i in sorted_idx]
+        x_positions = [x_positions[i] for i in sorted_idx]
+        y_positions = [y_positions[i] for i in sorted_idx]
+        # z_positions = [z_positions[i] for i in sorted_idx]
+
         # Create and Publish person_detections msg
         msg = DetectedPerson()
         msg.time = self.latest_image_time
@@ -107,6 +125,7 @@ class PersonDetector:
         msg.detected_persons = detected_persons
         msg.x_positions = x_positions
         msg.y_positions = y_positions
+        msg.z_positions = [0] * nr_persons  # Temporary, will be replaced with depth data
         self.publisher.publish(msg)
 
         self.latest_image = None  # Clear the latest image after processing
