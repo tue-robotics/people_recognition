@@ -32,6 +32,7 @@ class FaceDetection:
         self.last_batch_processed = 0
         self.known_face_encodings = []
         self.names = ["target"]
+        self.latest_data = None
 
     def encode_known_faces(self, image, model: str = "hog") -> None:
         """
@@ -48,13 +49,6 @@ class FaceDetection:
         for encoding in face_encodings:
             self.known_face_encodings.append(encoding)
             rospy.loginfo("encoded")
-
-    # def _display_face(self,img, bounding_box):
-    #     """
-    #     Draws bounding boxes around faces, a caption area, and text captions.
-    #     """
-    #     top, right, bottom, left = bounding_box
-    #     cv2.rectangle(img, (top, left), (bottom, right), (255, 0, 0), 2)
 
     def recognize_faces(self, input_images) -> Tuple[bool, Any]:
         """ Check if a face on the given image matches the encoded face(s).
@@ -80,44 +74,61 @@ class FaceDetection:
                     return True, idx
         return False, None
 
+    def process_latest_data(self):
+        """ Process the most recent data to see if the correct face is detected."""
+
+        if self.latest_data is not None:
+            data = self.latest_data
+            time = data.time
+            nr_batch = data.nr_batch
+            nr_persons = data.nr_persons
+
+            detected_persons = data.detected_persons  # images
+            x_positions = data.x_positions
+            y_positions = data.y_positions
+            z_positions = data.z_positions
+
+            if len(self.known_face_encodings) < 1: #for now define first image with face as target
+                self.encode_known_faces(detected_persons[0])
+
+            match = False
+            idx_match = None
+
+            if nr_batch > self.last_batch_processed:
+                match, idx_match = self.recognize_faces(detected_persons)
+                if match:
+                    msg = ColourCheckedTarget()
+                    msg.time = time
+                    msg.batch_nr = int(nr_batch)
+                    msg.idx_person = int(idx_match)
+                    msg.x_position = x_positions[idx_match]
+                    msg.y_position = y_positions[idx_match]
+                    msg.z_position = 0  # z_positions[idx_match]
+
+                    self.publisher.publish(msg)
+                self.last_batch_processed = nr_batch
+
+            if nr_persons > 0 and match:
+                self.publisher_debug.publish(detected_persons[idx_match])
+
+            self.latest_data = None  # Clear the latest image after processing
+            return
+        return
 
     def callback(self, data):
-        time = data.time
-        nr_batch = data.nr_batch
-        nr_persons = data.nr_persons
+        self.latest_data = data
 
-        detected_persons = data.detected_persons #images
-        x_positions = data.x_positions
-        y_positions = data.y_positions
-        z_positions = data.z_positions
 
-        if len(self.known_face_encodings) < 1: #for now define first image with face as target
-            self.encode_known_faces(detected_persons[0])
+    def main_loop(self):
+        """ Main loop that makes sure only the latest images are processed. """
+        while not rospy.is_shutdown():
+            self.process_latest_data()
 
-        match = False
-        idx_match = None
-
-        if nr_batch > self.last_batch_processed:
-            match, idx_match = self.recognize_faces(detected_persons)
-            if match:
-                msg = ColourCheckedTarget()
-                msg.time = time
-                msg.batch_nr = int(nr_batch)
-                msg.idx_person = int(idx_match)
-                msg.x_position = x_positions[idx_match]
-                msg.y_position = y_positions[idx_match]
-                msg.z_position = 0  # z_positions[idx_match]
-
-                self.publisher.publish(msg)
-            self.last_batch_processed = nr_batch
-
-        if nr_persons > 0 and match:
-            self.publisher_debug.publish(detected_persons[idx_match])
-
+            rospy.sleep(0.001)
 
 if __name__ == '__main__':
     try:
         node_face = FaceDetection()
-        rospy.spin()
+        node_face.main_loop()
     except rospy.exceptions.ROSInterruptException:
         pass
