@@ -1,19 +1,30 @@
 <launch>
+    <arg name="laptop" default="True" />
 
-  <node
+<!--   <node -->
+<!--     pkg="people_tracking" -->
+<!--     type="skelly.py" -->
+<!--     name="listener" -->
+<!--     output="screen" -->
+<!--   /> -->
+<node
     pkg="people_tracking"
-    type="skelly.py"
-    name="listener"
+    type="depth_image.py"
+    name="depth"
     output="screen"
   />
 
+<!--
+    launches pc webcam node if argument laptop is set to True:
+    $ roslaunch people_tracking people_tracking.launch laptop:=True
+-->
 
-<!-- only use when working with webcam: -->
   <node
     pkg="people_tracking"
     type="webcam.py"
     name="webcam_pub"
     output="screen"
+    args="$(arg laptop)"
   />
 
 </launch>

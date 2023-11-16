@@ -16,7 +16,7 @@ def publish_message():
     rospy.init_node('video_pub_py', anonymous=True)
     pub = rospy.Publisher('video_frames', Image, queue_size=10)
 
-    rate = rospy.Rate(30)  # 10hz
+    rate = rospy.Rate(30)
 
     # Create a VideoCapture object
     cap = cv2.VideoCapture(0)  # The argument '0' gets the default webcam.

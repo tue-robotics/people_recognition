@@ -5,6 +5,9 @@ import cv2
 import math
 from cv_bridge import CvBridge
 import copy
+
+from typing import List, Union
+
 from UKFclass import *
 
 # MSGS
@@ -12,20 +15,25 @@ from sensor_msgs.msg import Image
 from people_tracking.msg import ColourCheckedTarget
 from people_tracking.msg import DetectedPerson
 
+# SrvS
+from std_srvs.srv import Empty
+
 NODE_NAME = 'people_tracker'
 TOPIC_PREFIX = '/hero/'
 
 laptop = sys.argv[1]
 name_subscriber_RGB = 'video_frames' if laptop == "True" else '/hero/head_rgbd_sensor/rgb/image_raw'
 
-from std_srvs.srv import Empty
+
 class PeopleTracker:
     def __init__(self) -> None:
 
         # ROS Initialize
         rospy.init_node(NODE_NAME, anonymous=True)
         self.subscriber_HoC = rospy.Subscriber(TOPIC_PREFIX + 'HoC', ColourCheckedTarget,
-                                               self.callback_HoC, queue_size=1)
+                                               self.callback_hoc, queue_size=1)
+        self.subscriber_Face = rospy.Subscriber(TOPIC_PREFIX + 'Face', ColourCheckedTarget,
+                                                self.callback_face, queue_size=1)
         self.subscriber_persons = rospy.Subscriber(TOPIC_PREFIX + 'person_detections', DetectedPerson,
                                                    self.callback_persons, queue_size=1)
         self.subscriber_frames = rospy.Subscriber(name_subscriber_RGB, Image, self.get_latest_image, queue_size=1)
@@ -42,6 +50,15 @@ class PeopleTracker:
         self.detection_reset_proxy = rospy.ServiceProxy(TOPIC_PREFIX + 'person_detection/reset', Empty)
 
         # Variables
+        self.hoc_detections = []
+        self.face_detections = []
+        self.new_reidentify_hoc = False
+        self.time_received_hoc = None
+        self.new_reidentify_face = False
+        self.time_received_face = None
+
+        self.detections = []
+
         self.latest_image = None
         self.tracked_data = []
 
@@ -85,10 +102,8 @@ class PeopleTracker:
         except ValueError:  # If element is not in the list
             return False, None
 
-    def callback_HoC(self, data):
-        """ Update the ukf_confirmed with the HoC data, as well as check that the ukf_prediction is still
-        following the correct target.
-        """
+    def callback_hoc(self, data):
+        """ Add the latest HoC detection to the storage."""
         time = data.time
         batch_nr = data.batch_nr
         idx_person = data.idx_person
@@ -96,21 +111,50 @@ class PeopleTracker:
         y_position = data.y_position
         z_position = data.z_position
 
-        exists, idx = self.element_exists(self.tracked_data,
-                                          [batch_nr, idx_person, time, x_position, y_position, z_position])
-        # rospy.loginfo("exist: %s, idx: %s", exist, idx)
+        self.hoc_detections.append([batch_nr, idx_person, time, x_position, y_position, z_position])
 
-        if exists:
-            update_data = self.tracked_data[:idx + 1][:]
-            for entry in update_data:
-                z = [entry[3], entry[4], 0]
-                self.ukf_confirmed.update(entry[2], z)
-            self.tracked_data = self.tracked_data[idx:][:]
-        else:  # if gone potentially to wrong path
-            self.ukf_prediction = copy.deepcopy(self.ukf_confirmed)
-            # TODO add new way to go (redo data association from known point)
-            # TODO add somthing that check for long data losses and than resets or stops tracker. e.g. target lost
-            # self.tracked_data = [[batch_nr, idx_person, time, x_position, y_position, z_position]]
+        if len(self.hoc_detections) < 5:
+            self.hoc_detections.append([batch_nr, idx_person, time, x_position, y_position, z_position])
+        else:
+            self.hoc_detections = self.hoc_detections[1:] + [batch_nr, idx_person, time, x_position, y_position,
+                                                             z_position]
+
+        self.new_reidentify_hoc = True
+        self.time_received_hoc = float(rospy.get_time())
+
+    def callback_face(self, data):
+        """ Add the latest Face detection to the storage."""
+        time = data.time
+        batch_nr = data.batch_nr
+        idx_person = data.idx_person
+        x_position = data.x_position
+        y_position = data.y_position
+        z_position = data.z_position
+
+        self.face_detections.append([batch_nr, idx_person, time, x_position, y_position, z_position])
+
+        if len(self.face_detections) < 5:
+            self.face_detections.append([batch_nr, idx_person, time, x_position, y_position, z_position])
+        else:
+            self.face_detections = self.face_detections[1:] + [batch_nr, idx_person, time, x_position, y_position,
+                                                               z_position]
+
+        self.new_reidentify_face = True
+        self.time_received_face = float(rospy.get_time())
+
+        # exists, idx = self.element_exists(self.tracked_data,
+        #                                   [batch_nr, idx_person, time, x_position, y_position, z_position])
+        # # rospy.loginfo("exist: %s, idx: %s", exist, idx)
+        #
+        # if exists:
+        #     update_data = self.tracked_data[:idx + 1][:]
+        #     for entry in update_data:
+        #         z = [entry[3], entry[4], 0]
+        #         self.ukf_confirmed.update(entry[2], z)
+        #     self.tracked_data = self.tracked_data[idx:][:]
+        # else:  # if gone potentially to wrong path
+        #     self.ukf_prediction = copy.deepcopy(self.ukf_confirmed)
+        # self.tracked_data = [[batch_nr, idx_person, time, x_position, y_position, z_position]]
 
     def callback_persons(self, data) -> None:
         """ Update the ukf_prediction using the closest image. (Data Association based on distance)."""
@@ -121,29 +165,44 @@ class PeopleTracker:
         y_positions = data.y_positions
         z_positions = data.z_positions
 
-        if len(self.tracked_data) < 1:
+        self.detections.append([nr_batch, time, nr_persons, x_positions, y_positions, z_positions])
+        self.data_association(self.detections[-1])
+
+    def data_association(self, detection:  List[Union[int, float, int, List[int], List[int], List[int]]]):
+        """ Perform data association based on euclidean distance between latest and the input. Also updates the
+        latest measurement.
+
+        :param detection: [nr_batch, time, nr_persons, x_positions, y_positions, z_positions]
+        """
+        nr_batch, time, nr_persons, x_positions, y_positions, z_positions = detection
+
+        if len(self.tracked_data) < 1:  # Check if it is the first detection
             self.tracked_data.append(
                 [nr_batch, 0, time, x_positions[0], y_positions[0], z_positions[0]])
             return
 
-        if time > self.tracked_data[-1][0]:
-            if nr_persons > 0:
-                smallest_distance = None
-                person = None
-                for idx in range(nr_persons):
-                    tracked = tuple(self.tracked_data[-1][-3:])
-                    distance = self.euclidean_distance(tracked,
-                                                       tuple([x_positions[idx], y_positions[idx], z_positions[idx]]))
-                    if smallest_distance is None:
-                        person = idx
-                        smallest_distance = distance
-                    elif distance < smallest_distance:
-                        person = idx
-                        smallest_distance = distance
+        if time < self.tracked_data[-1][0]:     # Return if the detection is "old"
+            return
 
-                self.tracked_data.append(
-                    [nr_batch, person, time, x_positions[person], y_positions[person], z_positions[person]])
-                self.ukf_prediction.update(time, [x_positions[person], y_positions[person], 0])
+        if nr_persons <= 0:  # Return if there are no persons in detection
+            return
+
+        smallest_distance = None
+        person = None
+        for idx in range(nr_persons):
+            tracked = tuple(self.tracked_data[-1][-3:])
+            distance = self.euclidean_distance(tracked,
+                                               tuple([x_positions[idx], y_positions[idx], z_positions[idx]]))
+            if smallest_distance is None:
+                person = idx
+                smallest_distance = distance
+            elif distance < smallest_distance:
+                person = idx
+                smallest_distance = distance
+
+        self.tracked_data.append(
+            [nr_batch, person, time, x_positions[person], y_positions[person], z_positions[person]])
+        self.ukf_prediction.update(time, [x_positions[person], y_positions[person], 0])  # ToDo move?
 
     def get_latest_image(self, data):
         """ Get the most recent frame/image from the camera."""
@@ -172,8 +231,9 @@ class PeopleTracker:
             # Red = UKF prediction location
             # Green = Data association
 
-            cv2.circle(cv_image, (x_hoc, y_hoc), 5, (255, 0, 0, 50), -1)  # plot latest hoc measurement blue
-            cv2.circle(cv_image, (x_position, y_position), 5, (0, 0, 255, 50), -1)  # plot ukf prediction measurement red
+            # cv2.circle(cv_image, (x_hoc, y_hoc), 5, (255, 0, 0, 50), -1)  # plot latest hoc measurement blue
+            cv2.circle(cv_image, (x_position, y_position), 5, (0, 0, 255, 50),
+                       -1)  # plot ukf prediction measurement red
             cv2.circle(cv_image, (self.tracked_data[-1][-3], self.tracked_data[-1][-2]), 5, (0, 255, 0, 20),
                        -1)  # plot latest data ass. measurement green
 
@@ -198,7 +258,6 @@ class PeopleTracker:
 
     def reset_color_histogram_node(self):
 
-
         # Call the color histogram reset service
         try:
             response = self.hoc_reset_proxy()
@@ -215,9 +274,6 @@ class PeopleTracker:
             rospy.loginfo("Detection node reset successfully.")
         except rospy.ServiceException as e:
             rospy.logerr("Failed to reset detection node: %s", str(e))
-
-
-
 
 
 if __name__ == '__main__':
