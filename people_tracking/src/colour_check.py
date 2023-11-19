@@ -8,6 +8,10 @@ from cv_bridge import CvBridge
 from sensor_msgs.msg import Image
 from people_tracking.msg import ColourCheckedTarget
 from people_tracking.msg import DetectedPerson
+from people_tracking.msg import ColourTarget
+
+from rospy.numpy_msg import numpy_msg
+
 
 NODE_NAME = 'HoC'
 TOPIC_PREFIX = '/hero/'
@@ -20,7 +24,7 @@ class HOC:
         rospy.init_node(NODE_NAME, anonymous=True)
         self.subscriber = rospy.Subscriber(TOPIC_PREFIX + 'person_detections', DetectedPerson, self.callback,
                                            queue_size=1)
-        self.publisher = rospy.Publisher(TOPIC_PREFIX + 'HoC', ColourCheckedTarget, queue_size=2)
+        self.publisher = rospy.Publisher(TOPIC_PREFIX + 'HoC', ColourTarget, queue_size=2)
         # self.publisher_debug = rospy.Publisher(TOPIC_PREFIX + 'debug/HoC_debug', Image, queue_size=10)
 
         self.reset_service = rospy.Service(TOPIC_PREFIX + NODE_NAME + '/reset', Empty, self.reset)
@@ -50,7 +54,7 @@ class HOC:
         histograms = [hist / hist.sum() for hist in histograms]  # Normalize histograms
 
         vector = np.concatenate(histograms, axis=0).reshape(-1)  # Create colour histogram vector
-        return vector
+        return vector.tolist()
 
     @staticmethod
     def euclidean(a, b):
@@ -109,20 +113,24 @@ class HOC:
             return
         if nr_persons < 1:
             return
+        bridge = CvBridge()
+        # match, idx_match = self.compare_hoc(detected_persons)
+        colour_vectors = [self.get_vector(bridge.imgmsg_to_cv2(person, desired_encoding='passthrough')) for person in
+                          detected_persons]
+        # if match:
 
-        match, idx_match = self.compare_hoc(detected_persons)
-        if match:
-            msg = ColourCheckedTarget()
-            msg.time = time
-            msg.batch_nr = int(nr_batch)
-            msg.idx_person = int(idx_match)
-            msg.x_position = x_positions[idx_match]
-            msg.y_position = y_positions[idx_match]
-            msg.z_position = z_positions[idx_match]
-            msg.detected_person = detected_persons[idx_match]
+        msg = ColourTarget()
+        msg.time = time
+        msg.nr_batch = nr_batch
+        msg.nr_persons = nr_persons
+        msg.x_positions = x_positions
+        msg.y_positions = y_positions
+        msg.z_positions = z_positions
+        msg.colour_vectors = [item for sublist in colour_vectors for item in sublist]
+        # msg.detected_person = detected_persons[idx_match]
 
-            self.publisher.publish(msg)
-            self.last_batch_processed = nr_batch
+        self.publisher.publish(msg)
+        self.last_batch_processed = nr_batch
 
         # if nr_persons > 0 and match:
         #     self.publisher_debug.publish(detected_persons[idx_match])

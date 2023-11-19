@@ -21,6 +21,7 @@ add_message_files(
    detect_person.msg
    DetectedPerson.msg
    ColourCheckedTarget.msg
+   ColourTarget.msg
 )
 
 add_service_files(
