@@ -261,7 +261,7 @@ class PeopleTracker:
     def update_confirmed_tracker(self, update_idx, type):
         """ Update the known UKF up until given index."""
 
-        if type is "hoc":
+        if type == "hoc":
             self.data_confirmed_face.append(self.tracked_data[:update_idx])
 
             update_data = self.tracked_data[:update_idx + 1][:]
@@ -270,7 +270,7 @@ class PeopleTracker:
                 self.ukf_confirmed.update(entry[2], z)
             self.tracked_data = self.tracked_data[update_idx:][:]
 
-        if type is "face":
+        if type == "face":
             rospy.loginfo("face update not done")
 
 
@@ -348,7 +348,7 @@ class PeopleTracker:
                 else:
                     self.redo_data_association(self.hoc_detections[-1][0], self.hoc_detections[-1][1])
             else:
-                self.update_confirmed_tracker(hoc_idx)
+                self.update_confirmed_tracker(hoc_idx, "hoc")
 
             self.new_reidentify_hoc = False
             return

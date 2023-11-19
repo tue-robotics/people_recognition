@@ -12,6 +12,7 @@ from people_tracking.srv import Depth
 NODE_NAME = 'depth'
 TOPIC_PREFIX = '/hero/'
 
+
 class DepthImage:
     def __init__(self) -> None:
         # ROS Initialize
@@ -21,14 +22,15 @@ class DepthImage:
         self.depth_images = []
         self.depth_service = rospy.Service(TOPIC_PREFIX + NODE_NAME + '/depth_data', Depth, self.get_depth_data)
 
-    def image_callback(self, data):
-        """Store 5 seconds of depth data."""
+    def image_callback(self, data, time_data_stored_sec: int = 10):
+        """Store recent depth data for given amount of time."""
         if data is None:
             rospy.logwarn("Received NoneType data in image_callback.")
             return
-        # self.depth_images = [img for img in self.depth_images if (rospy.Time.now() - img[0]).to_sec() <= 5]
-        while self.depth_images and (float(rospy.get_time()) - self.depth_images[0][0]) > 10:
+
+        while self.depth_images and (float(rospy.get_time()) - self.depth_images[0][0]) > time_data_stored_sec:
             self.depth_images.pop(0)
+
         # Store the current image
         bridge = CvBridge()
         cv_image = bridge.imgmsg_to_cv2(data, desired_encoding='passthrough')
@@ -47,26 +49,22 @@ class DepthImage:
             if time_diff < min_time_diff:
                 min_time_diff = time_diff
                 closest_image = image
-        rospy.loginfo(f"closest_idx: , min_time_diff:{min_time_diff}, desired: {desired_time}")
+        # rospy.loginfo(f"closest_idx: , min_time_diff:{min_time_diff}, desired: {desired_time}")
         return closest_image
 
     def get_depth_data(self, data):
-        """Get data from image and publish it to the topic."""
-        rospy.loginfo(data)
+        """Get data from image and publish it to the topic if data available."""
         desired_time = data.desired_timestamp
         desired_image = self.find_closest_index(desired_time)
 
         if desired_image is not None:
-            depth_image_data = desired_image
-
-            # Create a new Image message
             bridge = CvBridge()
-            depth_image_msg = bridge.cv2_to_imgmsg(depth_image_data, encoding="passthrough")
-
+            depth_image_msg = bridge.cv2_to_imgmsg(desired_image, encoding="passthrough")
             return depth_image_msg
         else:
             rospy.logwarn("No depth image available.")
             return Image()
+
 
 if __name__ == '__main__':
     try:

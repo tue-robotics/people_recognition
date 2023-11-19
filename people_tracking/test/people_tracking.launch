@@ -3,6 +3,14 @@
 
   <node
     pkg="people_tracking"
+    type="depth_image.py"
+    name="depth"
+    output="screen"
+    args="$(arg laptop)"
+  />
+
+  <node
+    pkg="people_tracking"
     type="person_detection.py"
     name="person_detection"
     output="screen"

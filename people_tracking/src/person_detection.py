@@ -108,7 +108,7 @@ class PersonDetector:
         cv_image = cv2.GaussianBlur(cv_image, (5, 5), 0)
 
         depth_image = self.request_depth_image(self.latest_image_time).image
-        rospy.loginfo(type(depth_image))
+        # rospy.loginfo(type(depth_image))
         cv_depth_image = bridge.imgmsg_to_cv2(depth_image, desired_encoding='passthrough')
         cv_depth_image = cv2.GaussianBlur(cv_depth_image, (5, 5), 0)
 
@@ -145,7 +145,7 @@ class PersonDetector:
                 image_message_depth = bridge.cv2_to_imgmsg(depth_cropped, encoding="passthrough")
                 depth_detected.append(image_message_depth)
 
-                rospy.loginfo(f"color {int(average_color[0])}")
+                # rospy.loginfo(f"color {int(average_color[0])}")
                 z_positions.append(int(average_color[0]))
 
                 detected_persons.append(image_message)
@@ -167,7 +167,7 @@ class PersonDetector:
         msg.detected_persons = detected_persons
         msg.x_positions = x_positions
         msg.y_positions = y_positions
-        msg.z_positions = [0] * nr_persons  # Temporary, will be replaced with depth data
+        msg.z_positions = z_positions#[0] * nr_persons  # Temporary, will be replaced with depth data
         self.publisher.publish(msg)
 
         self.latest_image = None  # Clear the latest image after processing
