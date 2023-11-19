@@ -23,36 +23,47 @@ class DepthImage:
 
     def image_callback(self, data):
         """Store 5 seconds of depth data."""
+        if data is None:
+            rospy.logwarn("Received NoneType data in image_callback.")
+            return
         # self.depth_images = [img for img in self.depth_images if (rospy.Time.now() - img[0]).to_sec() <= 5]
-        while self.depth_images and (float(rospy.get_time()) - self.depth_images[0][0]) > 5:
+        while self.depth_images and (float(rospy.get_time()) - self.depth_images[0][0]) > 10:
             self.depth_images.pop(0)
         # Store the current image
-        self.depth_images.append([data.header.stamp.secs, data])
+        bridge = CvBridge()
+        cv_image = bridge.imgmsg_to_cv2(data, desired_encoding='passthrough')
+        self.depth_images.append([data.header.stamp.secs, cv_image])
 
         msg = data
         self.publisher.publish(msg)
 
     def find_closest_index(self, desired_time):
         """Find the index of the closest image to the desired timestamp."""
-        closest_index = None
+        closest_image = None
         min_time_diff = float('inf')
 
-        for i, (timestamp, _) in enumerate(self.depth_images):
+        for i, (timestamp, image) in enumerate(self.depth_images):
             time_diff = abs((timestamp - desired_time))
             if time_diff < min_time_diff:
                 min_time_diff = time_diff
-                closest_index = i
-        rospy.loginfo(f"closest_idx: {closest_index}, min_time_diff:{min_time_diff}, desired: {desired_time}")
-        return closest_index
+                closest_image = image
+        rospy.loginfo(f"closest_idx: , min_time_diff:{min_time_diff}, desired: {desired_time}")
+        return closest_image
 
     def get_depth_data(self, data):
         """Get data from image and publish it to the topic."""
         rospy.loginfo(data)
         desired_time = data.desired_timestamp
-        idx_image = self.find_closest_index(desired_time)
+        desired_image = self.find_closest_index(desired_time)
 
-        if idx_image is not None:
-            return self.depth_images[idx_image][1]
+        if desired_image is not None:
+            depth_image_data = desired_image
+
+            # Create a new Image message
+            bridge = CvBridge()
+            depth_image_msg = bridge.cv2_to_imgmsg(depth_image_data, encoding="passthrough")
+
+            return depth_image_msg
         else:
             rospy.logwarn("No depth image available.")
             return Image()

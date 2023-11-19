@@ -32,7 +32,7 @@ class PersonDetector:
         rospy.init_node(NODE_NAME, anonymous=True)
         self.subscriber = rospy.Subscriber(name_subscriber_RGB, Image, self.image_callback, queue_size=1)
         self.publisher = rospy.Publisher(TOPIC_PREFIX + 'person_detections', DetectedPerson, queue_size=5)
-        # self.publisher_debug = rospy.Publisher(TOPIC_PREFIX + 'debug/segmented_image', Image, queue_size=5)
+        self.publisher_debug = rospy.Publisher(TOPIC_PREFIX + 'debug/segmented_image', Image, queue_size=5)
         self.reset_service = rospy.Service(TOPIC_PREFIX + NODE_NAME + '/reset', Empty, self.reset)
 
         # Initialize variables
@@ -57,6 +57,7 @@ class PersonDetector:
         try:
             if time_stamp is not None:
                 response = self.depth_proxy(int(time_stamp))
+                return response
                 # rospy.loginfo(f"Depth: {response}")
         except rospy.ServiceException as e:
             rospy.logerr("Failed to get depth: %s", str(e))
@@ -106,6 +107,11 @@ class PersonDetector:
         cv_image = bridge.imgmsg_to_cv2(latest_image, desired_encoding='passthrough')
         cv_image = cv2.GaussianBlur(cv_image, (5, 5), 0)
 
+        depth_image = self.request_depth_image(self.latest_image_time).image
+        rospy.loginfo(type(depth_image))
+        cv_depth_image = bridge.imgmsg_to_cv2(depth_image, desired_encoding='passthrough')
+        cv_depth_image = cv2.GaussianBlur(cv_depth_image, (5, 5), 0)
+
         classes, segmentations, bounding_box_corners = self.detect(self.model, cv_image)
 
         if classes is None or segmentations is None:
@@ -114,8 +120,10 @@ class PersonDetector:
             return
 
         detected_persons = []
+        depth_detected = []
         x_positions = []
         y_positions = []
+        z_positions = []
         nr_persons = 0
 
         for class_id, seg, box in zip(classes, segmentations, bounding_box_corners):
@@ -127,8 +135,18 @@ class PersonDetector:
                 cv2.fillPoly(mask, [seg], (255, 255, 255))
                 cv_image[mask == 0] = 0
                 cropped_image = cv_image[y1:y2, x1:x2]
-
                 image_message = bridge.cv2_to_imgmsg(cropped_image, encoding="passthrough")
+
+                mask_depth = np.zeros_like(cv_depth_image, dtype=np.uint8)
+                cv2.fillPoly(mask_depth, [seg], (255, 255, 255))
+                average_color = cv2.mean(cv_depth_image, mask=mask_depth)
+                cv_depth_image[mask_depth == 0] = 0
+                depth_cropped = cv_depth_image[y1:y2, x1:x2]
+                image_message_depth = bridge.cv2_to_imgmsg(depth_cropped, encoding="passthrough")
+                depth_detected.append(image_message_depth)
+
+                rospy.loginfo(f"color {int(average_color[0])}")
+                z_positions.append(int(average_color[0]))
 
                 detected_persons.append(image_message)
                 x_positions.append(int(x1 + ((x2 - x1) / 2)))
@@ -139,7 +157,7 @@ class PersonDetector:
         detected_persons = [detected_persons[i] for i in sorted_idx]
         x_positions = [x_positions[i] for i in sorted_idx]
         y_positions = [y_positions[i] for i in sorted_idx]
-        # z_positions = [z_positions[i] for i in sorted_idx]
+        z_positions = [z_positions[i] for i in sorted_idx]
 
         # Create and Publish person_detections msg
         msg = DetectedPerson()
@@ -155,17 +173,15 @@ class PersonDetector:
         self.latest_image = None  # Clear the latest image after processing
         self.latest_image_time = None
 
+        for image_message in depth_detected:
+            self.publisher_debug.publish(image_message)
         # for image_message in detected_persons:
         #     self.publisher_debug.publish(image_message)
 
     def main_loop(self):
         """ Main loop that makes sure only the latest images are processed. """
         while not rospy.is_shutdown():
-            self.request_depth_image(self.latest_image_time)
             self.process_latest_image()
-            # rospy.loginfo(self.latest_image_time)
-
-
             rospy.sleep(0.001)
 
 
