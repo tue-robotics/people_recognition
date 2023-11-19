@@ -13,7 +13,13 @@
     name="depth"
     output="screen"
   />
-
+<node
+    pkg="people_tracking"
+    type="person_detection.py"
+    name="person_detection"
+    output="screen"
+    args="$(arg laptop)"
+  />
 <!--
     launches pc webcam node if argument laptop is set to True:
     $ roslaunch people_tracking people_tracking.launch laptop:=True

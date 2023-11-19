@@ -4,3 +4,4 @@ int32 idx_person
 int32 x_position
 int32 y_position
 int32 z_position
+sensor_msgs/Image detected_person

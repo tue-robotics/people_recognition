@@ -11,6 +11,7 @@ from sensor_msgs.msg import Image
 from people_tracking.msg import DetectedPerson
 
 from std_srvs.srv import Empty, EmptyResponse
+from people_tracking.srv import Depth
 
 NODE_NAME = 'person_detection'
 TOPIC_PREFIX = '/hero/'
@@ -40,12 +41,26 @@ class PersonDetector:
         self.latest_image_time = None
 
 
+        # depth
+        rospy.wait_for_service(TOPIC_PREFIX + 'depth/depth_data')
+        self.depth_proxy = rospy.ServiceProxy(TOPIC_PREFIX + 'depth/depth_data', Depth)
+
     def reset(self, request):
         """ Reset all stored variables in Class to their default values."""
         self.batch_nr = 0
         self.latest_image = None
         self.latest_image_time = None
         return EmptyResponse()
+
+    def request_depth_image(self, time_stamp):
+
+        try:
+            if time_stamp is not None:
+                response = self.depth_proxy(int(time_stamp))
+                # rospy.loginfo(f"Depth: {response}")
+        except rospy.ServiceException as e:
+            rospy.logerr("Failed to get depth: %s", str(e))
+
 
     def image_callback(self, data):
         """ Make sure that only the most recent data will be processed."""
@@ -56,6 +71,7 @@ class PersonDetector:
         # rospy.loginfo("%s, %s",data.header.seq, data.header.stamp.secs)
         self.latest_image_time = data.header.stamp.secs#float(rospy.get_time())
         self.batch_nr = data.header.seq
+        # rospy.loginfo("rgb: %s t: %s",data.header.seq, data.header.stamp.secs)
 
     @staticmethod
     def detect(model, frame):
@@ -145,7 +161,10 @@ class PersonDetector:
     def main_loop(self):
         """ Main loop that makes sure only the latest images are processed. """
         while not rospy.is_shutdown():
+            self.request_depth_image(self.latest_image_time)
             self.process_latest_image()
+            # rospy.loginfo(self.latest_image_time)
+
 
             rospy.sleep(0.001)
 

@@ -119,6 +119,7 @@ class HOC:
             msg.x_position = x_positions[idx_match]
             msg.y_position = y_positions[idx_match]
             msg.z_position = z_positions[idx_match]
+            msg.detected_person = detected_persons[idx_match]
 
             self.publisher.publish(msg)
             self.last_batch_processed = nr_batch

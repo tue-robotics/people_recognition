@@ -23,6 +23,11 @@ add_message_files(
    ColourCheckedTarget.msg
 )
 
+add_service_files(
+  FILES
+  Depth.srv
+)
+
 generate_messages(
   DEPENDENCIES
   std_msgs
