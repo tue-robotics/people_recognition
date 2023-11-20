@@ -179,7 +179,7 @@ class PeopleTracker:
             nr_batch, time, nr_persons, x_positions, y_positions, z_positions, _, face_detected = self.detections[idx]
             self.detections[idx] = Persons(nr_batch, time, nr_persons, x_positions, y_positions, z_positions, colour_vectors, face_detected)
 
-        self.compare_hoc(idx) # Temp for Hoc
+            self.compare_hoc(idx) # Temp for Hoc
 
     def callback_face(self, data: ColourCheckedTarget, amount_detections_stored: int = 100) -> None:
         """ Add the latest Face detection to the storage."""
@@ -249,7 +249,7 @@ class PeopleTracker:
         self.data_data_association.append([nr_batch, person])
         if self.ukf_data_association.current_time < time:
             self.ukf_data_association.update(time, [x_positions[person], y_positions[person], 0])
-        rospy.loginfo(self.data_data_association)
+        # rospy.loginfo(self.data_data_association)
 
     # def redo_data_association(self, start_batch: int, idx_person: int):
     #     """ Redo the data association from a start batch nr.
@@ -413,11 +413,13 @@ class PeopleTracker:
 
     def compare_hoc(self, idx_detection):
         """ Compare newly detected persons to previously detected target."""
+        if idx_detection is None:
+            return
         bridge = CvBridge()
         match = False
         idx_person = None
 
-        person_vectors = [detection.colour_vector for detection in self.detections[idx_detection]]
+        person_vectors = self.detections[idx_detection].colour_vectors
 
         if len(self.HoC_detections) < 1:
             self.HoC_detections.append(person_vectors[0])
