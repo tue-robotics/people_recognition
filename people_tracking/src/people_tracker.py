@@ -83,6 +83,8 @@ class PeopleTracker:
 
         self.ukf_confirmed = UKF()
 
+        self.HoC_detections = []
+
     def reset(self):
         """ Reset all stored variables in Class to their default values."""
         self.hoc_detections = []  # latest detected persons with hoc
@@ -177,6 +179,8 @@ class PeopleTracker:
             nr_batch, time, nr_persons, x_positions, y_positions, z_positions, _, face_detected = self.detections[idx]
             self.detections[idx] = Persons(nr_batch, time, nr_persons, x_positions, y_positions, z_positions, colour_vectors, face_detected)
 
+        self.compare_hoc(idx) # Temp for Hoc
+
     def callback_face(self, data: ColourCheckedTarget, amount_detections_stored: int = 100) -> None:
         """ Add the latest Face detection to the storage."""
         batch_nr = data.batch_nr
@@ -203,7 +207,7 @@ class PeopleTracker:
         self.detections.append(Persons(nr_batch, time, nr_persons, x_positions, y_positions, z_positions, colour_vectors, face_detected))
         self.new_detections = True
         # rospy.loginfo([person.nr_batch for person in self.detections])
-        self.do_data_association(self.detections[-1])
+        self.do_data_association(self.detections[-1]) # Temp for DA
 
     def do_data_association(self, detection: Persons) -> None:
         """ Perform data association based on Euclidean distance between latest and the input. Also updates the
@@ -407,7 +411,40 @@ class PeopleTracker:
     #         # update confirmed tracker with data form the "oldest tracker"
     #         # -> How to make sure that both UKFs are consistent?
 
+    def compare_hoc(self, idx_detection):
+        """ Compare newly detected persons to previously detected target."""
+        bridge = CvBridge()
+        match = False
+        idx_person = None
 
+        person_vectors = [detection.colour_vector for detection in self.detections[idx_detection]]
+
+        if len(self.HoC_detections) < 1:
+            self.HoC_detections.append(person_vectors[0])
+            idx_person = 0
+            match = True
+        else:
+            flag = False
+            for Hoc_detection in self.HoC_detections:
+                for idx_person, vector in enumerate(person_vectors):
+                    distance = self.euclidean_distance(vector, Hoc_detection)
+                    if distance < 0.25:
+                        # rospy.loginfo(str(idx_person) + " " + str(distance))
+                        if len(self.HoC_detections) < 5:
+                            self.HoC_detections.append(vector)
+                        else:
+                            self.HoC_detections = self.HoC_detections[1:] + [vector]
+                        flag = True
+                        match = True
+                        break
+                if flag:
+                    break
+
+        if match:
+            if len(self.data_hoc) > 10:
+                self.data_hoc.pop(0)
+            self.data_hoc.append([self.detections[idx_detection].nr_batch, self.detections[idx_detection].x_positions[idx_person], self.detections[idx_detection].y_positions[idx_person], self.detections[idx_detection].z_positions[idx_person]] )
+        # return match, idx_person
 
 
     def loop(self):
