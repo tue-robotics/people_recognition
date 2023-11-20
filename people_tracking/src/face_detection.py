@@ -106,18 +106,20 @@ class FaceDetection:
             idx_match = None
 
             if nr_batch > self.last_batch_processed:
+                face_detections = [False] * nr_persons
                 match, idx_match = self.recognize_faces(detected_persons)
                 if match:
-                    msg = ColourCheckedTarget()
-                    msg.time = time
-                    msg.batch_nr = int(nr_batch)
-                    msg.idx_person = int(idx_match)
-                    msg.x_position = x_positions[idx_match]
-                    msg.y_position = y_positions[idx_match]
-                    msg.z_position = z_positions[idx_match]
-                    msg.detected_person = detected_persons[idx_match]
+                    face_detections[idx_match] = True
+                msg = ColourCheckedTarget()
+                msg.time = time
+                msg.batch_nr = int(nr_batch)
+                msg.nr_persons = nr_persons
+                msg.x_positions = x_positions
+                msg.y_positions = y_positions
+                msg.z_positions = z_positions
+                msg.face_detections = face_detections
 
-                    self.publisher.publish(msg)
+                self.publisher.publish(msg)
                 self.last_batch_processed = nr_batch
 
             if nr_persons > 0 and match:
