@@ -18,7 +18,7 @@ TOPIC_PREFIX = '/hero/'
 
 laptop = sys.argv[1]
 name_subscriber_RGB = 'video_frames' if laptop == "True" else '/hero/head_rgbd_sensor/rgb/image_raw'
-
+depth_camera = False if sys.argv[2] == "False" else True
 
 class PersonDetector:
     def __init__(self) -> None:
@@ -167,7 +167,7 @@ class PersonDetector:
         msg.detected_persons = detected_persons
         msg.x_positions = x_positions
         msg.y_positions = y_positions
-        msg.z_positions = z_positions#[0] * nr_persons  # Temporary, will be replaced with depth data
+        msg.z_positions = z_positions if depth_camera else [0] * nr_persons
         self.publisher.publish(msg)
 
         self.latest_image = None  # Clear the latest image after processing
@@ -187,6 +187,7 @@ class PersonDetector:
 
 if __name__ == '__main__':
     try:
+        print(f"Use Depth: {depth_camera}, Camera Source: {name_subscriber_RGB}")
         node_pd = PersonDetector()
         node_pd.main_loop()
     except rospy.exceptions.ROSInterruptException:
