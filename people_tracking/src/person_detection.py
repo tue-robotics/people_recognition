@@ -139,15 +139,21 @@ class PersonDetector:
 
                 mask_depth = np.zeros_like(cv_depth_image, dtype=np.uint8)
                 cv2.fillPoly(mask_depth, [seg], (255, 255, 255))
-                average_color = cv2.mean(cv_depth_image, mask=mask_depth)
+
+                # Extract the values based on the mask
+                masked_pixels = cv_depth_image[mask_depth]
+                median_color = np.median(masked_pixels)
+                # print("Median color:", median_color)
+
+                # average_color = cv2.mean(cv_depth_image, mask=mask_depth)
                 cv_depth_image[mask_depth == 0] = 0
                 depth_cropped = cv_depth_image[y1:y2, x1:x2]
                 image_message_depth = bridge.cv2_to_imgmsg(depth_cropped, encoding="passthrough")
                 depth_detected.append(image_message_depth)
 
                 # rospy.loginfo(f"color {int(average_color[0])}")
-                z_positions.append(int(average_color[0]))
-
+                # z_positions.append(int(average_color[0]))
+                z_positions.append(int(median_color))
                 detected_persons.append(image_message)
                 x_positions.append(int(x1 + ((x2 - x1) / 2)))
                 y_positions.append(int(y1 + ((y2 - y1) / 2)))
