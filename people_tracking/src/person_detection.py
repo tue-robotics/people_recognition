@@ -19,6 +19,7 @@ TOPIC_PREFIX = '/hero/'
 laptop = sys.argv[1]
 name_subscriber_RGB = 'video_frames' if laptop == "True" else '/hero/head_rgbd_sensor/rgb/image_raw'
 depth_camera = False if sys.argv[2] == "False" else True
+save_data = False if sys.argv[3] == "False" else True
 
 class PersonDetector:
     def __init__(self) -> None:
@@ -41,7 +42,6 @@ class PersonDetector:
         self.latest_image_time = None
 
         self.bridge = CvBridge()
-
 
         # depth
         rospy.wait_for_service(TOPIC_PREFIX + 'depth/depth_data')
@@ -74,6 +74,7 @@ class PersonDetector:
         # rospy.loginfo("%s, %s",data.header.seq, data.header.stamp.secs)
         self.latest_image_time = data.header.stamp.secs#float(rospy.get_time())
         self.batch_nr = data.header.seq
+
         # rospy.loginfo("rgb: %s t: %s",data.header.seq, data.header.stamp.secs)
 
     @staticmethod
@@ -110,6 +111,9 @@ class PersonDetector:
         cv_image = self.bridge.imgmsg_to_cv2(latest_image, desired_encoding='passthrough')
         cv_image = cv2.GaussianBlur(cv_image, (5, 5), 0)
 
+        # Save Image
+        if save_data:
+            cv2.imwrite(f"{save_path}{batch_nr}.jpg", cv_image)
         # People detection
         classes, segmentations, bounding_box_corners = self.detect(self.model, cv_image)
         if classes is None or segmentations is None:
@@ -199,7 +203,22 @@ class PersonDetector:
             rospy.sleep(0.001)
 
 
+import os
+import rospkg
+import time
+
 if __name__ == '__main__':
+    if save_data:
+        try:
+            rospack = rospkg.RosPack()
+            package_path = rospack.get_path("people_tracking")
+            time = time.ctime(time.time())
+            save_path = os.path.join(package_path, f'data/{time}_test/')
+            os.makedirs(save_path, exist_ok=True)           # Make sure the directory exists
+            print(save_path)
+        except:
+            pass
+
     try:
         print(f"Use Depth: {depth_camera}, Camera Source: {name_subscriber_RGB}")
         node_pd = PersonDetector()

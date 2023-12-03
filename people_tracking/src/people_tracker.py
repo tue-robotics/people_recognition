@@ -24,6 +24,9 @@ TOPIC_PREFIX = '/hero/'
 laptop = sys.argv[1]
 name_subscriber_RGB = 'video_frames' if laptop == "True" else '/hero/head_rgbd_sensor/rgb/image_raw'
 
+save_data = False if sys.argv[3] == "False" else True
+
+
 Persons = namedtuple("Persons",
                      ["nr_batch", "time", "nr_persons", "x_positions", "y_positions", "z_positions", "colour_vectors",
                       "face_detected"])
@@ -33,8 +36,9 @@ Target_hoc = namedtuple("Target_hoc", ["nr_batch", "colour_vector"])
 
 class PeopleTracker:
     def __init__(self) -> None:
-        csv_file = open(csv_file_path, 'w', newline='')
-        self.csv_writer = csv.writer(csv_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+        if save_data:
+            csv_file = open(csv_file_path, 'w', newline='')
+            self.csv_writer = csv.writer(csv_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
         # ROS Initialize
         rospy.init_node(NODE_NAME, anonymous=True)
         self.subscriber_hoc = rospy.Subscriber(TOPIC_PREFIX + 'HoC', ColourTarget, self.callback_hoc,
@@ -167,10 +171,10 @@ class PeopleTracker:
             self.detections[idx] = Persons(nr_batch, time, nr_persons, x_positions, y_positions, z_positions,
                                            colour_vectors, face_detected)
             self.new_detections = True
-
-            self.csv_writer.writerow([nr_batch, time, nr_persons,
-                                 x_positions, y_positions, z_positions,
-                                 colour_vectors, face_detected])
+            if save_data:
+                self.csv_writer.writerow([nr_batch, time, nr_persons,
+                                     x_positions, y_positions, z_positions,
+                                     colour_vectors, face_detected])
             rospy.loginfo(f"hoc: {nr_batch}")
 
 
@@ -194,9 +198,10 @@ class PeopleTracker:
             self.detections[idx] = Persons(nr_batch, time, nr_persons, x_positions, y_positions, z_positions,
                                            colour_vectors, face_detections)
             self.new_detections = True
-            self.csv_writer.writerow([nr_batch, time, nr_persons,
-                                      x_positions, y_positions, z_positions,
-                                      colour_vectors, face_detections])
+            if save_data:
+                self.csv_writer.writerow([nr_batch, time, nr_persons,
+                                          x_positions, y_positions, z_positions,
+                                          colour_vectors, face_detections])
             rospy.loginfo(f"face: {nr_batch}")
 
             current_timestamp = rospy.get_time()
@@ -225,9 +230,10 @@ class PeopleTracker:
         self.detections.append(
             Persons(nr_batch, time, nr_persons, x_positions, y_positions, z_positions, colour_vectors, face_detected))
         self.new_detections = True
-        self.csv_writer.writerow([nr_batch, time, nr_persons,
-                                  x_positions, y_positions, z_positions,
-                                  colour_vectors, face_detected])
+        if save_data:
+            self.csv_writer.writerow([nr_batch, time, nr_persons,
+                                      x_positions, y_positions, z_positions,
+                                      colour_vectors, face_detected])
         rospy.loginfo(f"pos: {nr_batch}")
         current_timestamp = rospy.get_time()
         if self.last_timestamp_da is not None:
@@ -441,7 +447,7 @@ class PeopleTracker:
             current_time = rospy.get_time()
             if self.new_detections and current_time - time_old > 0.2:
                 time_old = current_time
-                # self.track_person()
+                self.track_person()
                 self.new_detections = False
                 rospy.loginfo(self.detections[-1])
 
@@ -468,17 +474,18 @@ import rospkg
 import time
 
 if __name__ == '__main__':
-    try:
-        rospack = rospkg.RosPack()
-        package_path = rospack.get_path("people_tracking")
-        full_path = os.path.join(package_path, 'data/')
+    if save_data:
+        try:
+            rospack = rospkg.RosPack()
+            package_path = rospack.get_path("people_tracking")
+            full_path = os.path.join(package_path, 'data/')
 
-        # Make sure the directory exists
-        os.makedirs(full_path, exist_ok=True)
-        time = time.ctime(time.time())
-        csv_file_path = os.path.join(full_path, f'{time}_test.csv')
-    except:
-        pass
+            # Make sure the directory exists
+            os.makedirs(full_path, exist_ok=True)
+            time = time.ctime(time.time())
+            csv_file_path = os.path.join(full_path, f'{time}_test.csv')
+        except:
+            pass
 
     try:
         node_pt = PeopleTracker()

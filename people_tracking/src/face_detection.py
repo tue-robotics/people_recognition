@@ -83,6 +83,7 @@ class FaceDetection:
 
             for encoding in face_encoding:
                 matches = face_recognition.compare_faces(self.known_face_encodings, encoding, tolerance=0.6)  # True
+                # print(face_recognition.face_distance(self.known_face_encodings, encoding))
                 # if match, False if no match.
                 if any(matches):
                     return True, idx
