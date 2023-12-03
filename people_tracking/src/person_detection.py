@@ -40,6 +40,8 @@ class PersonDetector:
         self.latest_image = None  # To store the most recent image
         self.latest_image_time = None
 
+        self.bridge = CvBridge()
+
 
         # depth
         rospy.wait_for_service(TOPIC_PREFIX + 'depth/depth_data')
@@ -103,21 +105,23 @@ class PersonDetector:
         latest_image = self.latest_image
         latest_image_time = self.latest_image_time
         batch_nr = self.batch_nr
-        bridge = CvBridge()
-        cv_image = bridge.imgmsg_to_cv2(latest_image, desired_encoding='passthrough')
+
+        # Import RGB Image
+        cv_image = self.bridge.imgmsg_to_cv2(latest_image, desired_encoding='passthrough')
         cv_image = cv2.GaussianBlur(cv_image, (5, 5), 0)
 
-        depth_image = self.request_depth_image(self.latest_image_time).image
-        # rospy.loginfo(type(depth_image))
-        cv_depth_image = bridge.imgmsg_to_cv2(depth_image, desired_encoding='passthrough')
-        cv_depth_image = cv2.GaussianBlur(cv_depth_image, (5, 5), 0)
-
+        # People detection
         classes, segmentations, bounding_box_corners = self.detect(self.model, cv_image)
-
         if classes is None or segmentations is None:
             self.latest_image = None  # Clear the latest image after processing
             self.latest_image_time = None
             return
+
+        # Import Depth Image
+        if depth_camera:
+            depth_image = self.request_depth_image(self.latest_image_time).image
+            cv_depth_image = self.bridge.imgmsg_to_cv2(depth_image, desired_encoding='passthrough')
+            cv_depth_image = cv2.GaussianBlur(cv_depth_image, (5, 5), 0)
 
         detected_persons = []
         depth_detected = []
@@ -135,24 +139,28 @@ class PersonDetector:
                 cv2.fillPoly(mask, [seg], (255, 255, 255))
                 cv_image[mask == 0] = 0
                 cropped_image = cv_image[y1:y2, x1:x2]
-                image_message = bridge.cv2_to_imgmsg(cropped_image, encoding="passthrough")
+                image_message = self.bridge.cv2_to_imgmsg(cropped_image, encoding="passthrough")
 
-                mask_depth = np.zeros_like(cv_depth_image, dtype=np.uint8)
-                cv2.fillPoly(mask_depth, [seg], (255, 255, 255))
+                if depth_camera:
+                    mask_depth = np.zeros_like(cv_depth_image, dtype=np.uint8)
+                    cv2.fillPoly(mask_depth, [seg], (255, 255, 255))
 
-                # Extract the values based on the mask
-                masked_pixels = cv_depth_image[mask_depth]
-                median_color = np.median(masked_pixels)
-                # print("Median color:", median_color)
+                    # Extract the values based on the mask
+                    masked_pixels = cv_depth_image[mask_depth]
+                    median_color = np.median(masked_pixels)
+                    # print("Median color:", median_color)
 
-                # average_color = cv2.mean(cv_depth_image, mask=mask_depth)
-                cv_depth_image[mask_depth == 0] = 0
-                depth_cropped = cv_depth_image[y1:y2, x1:x2]
-                image_message_depth = bridge.cv2_to_imgmsg(depth_cropped, encoding="passthrough")
-                depth_detected.append(image_message_depth)
 
-                # rospy.loginfo(f"color {int(average_color[0])}")
-                # z_positions.append(int(average_color[0]))
+                    cv_depth_image[mask_depth == 0] = 0
+                    depth_cropped = cv_depth_image[y1:y2, x1:x2]
+                    image_message_depth = self.bridge.cv2_to_imgmsg(depth_cropped, encoding="passthrough")
+                    depth_detected.append(image_message_depth)
+
+                    # average_color = cv2.mean(cv_depth_image, mask=mask_depth)
+                    # rospy.loginfo(f"color {int(average_color[0])}")
+                    # z_positions.append(int(average_color[0]))
+                else:
+                    median_color = 0
                 z_positions.append(int(median_color))
                 detected_persons.append(image_message)
                 x_positions.append(int(x1 + ((x2 - x1) / 2)))
@@ -179,8 +187,8 @@ class PersonDetector:
         self.latest_image = None  # Clear the latest image after processing
         self.latest_image_time = None
 
-        for image_message in depth_detected:
-            self.publisher_debug.publish(image_message)
+        # for image_message in depth_detected:
+        #     self.publisher_debug.publish(image_message)
         # for image_message in detected_persons:
         #     self.publisher_debug.publish(image_message)
 

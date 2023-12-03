@@ -5,6 +5,8 @@ import cv2
 from cv_bridge import CvBridge
 import copy
 
+import csv
+
 from typing import List
 from collections import namedtuple
 from UKFclass import *
@@ -31,19 +33,20 @@ Target_hoc = namedtuple("Target_hoc", ["nr_batch", "colour_vector"])
 
 class PeopleTracker:
     def __init__(self) -> None:
-
+        csv_file = open(csv_file_path, 'w', newline='')
+        self.csv_writer = csv.writer(csv_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
         # ROS Initialize
         rospy.init_node(NODE_NAME, anonymous=True)
         self.subscriber_hoc = rospy.Subscriber(TOPIC_PREFIX + 'HoC', ColourTarget, self.callback_hoc,
-                                               queue_size=5)
+                                               queue_size=2)
         self.subscriber_face = rospy.Subscriber(TOPIC_PREFIX + 'face_detections', ColourCheckedTarget,
-                                                self.callback_face, queue_size=5)
+                                                self.callback_face, queue_size=2)
         self.subscriber_persons = rospy.Subscriber(TOPIC_PREFIX + 'person_detections', DetectedPerson,
-                                                   self.callback_persons, queue_size=5)
+                                                   self.callback_persons, queue_size=2)
         self.subscriber_image_raw = rospy.Subscriber(name_subscriber_RGB, Image, self.get_latest_image, queue_size=1)
 
-        self.publisher_debug = rospy.Publisher(TOPIC_PREFIX + 'debug/people_tracker', Image, queue_size=10)
-        self.rate = rospy.Rate(20)  # 20hz
+        self.publisher_debug = rospy.Publisher(TOPIC_PREFIX + 'debug/people_tracker', Image, queue_size=2)
+        self.rate = rospy.Rate(50)  # 20hz
 
         # Create a ROS Service Proxys for the reset services
         rospy.wait_for_service(TOPIC_PREFIX + 'HoC/reset')
@@ -67,6 +70,16 @@ class PeopleTracker:
 
         self.ukf_from_data = UKF()
         self.ukf_past_data = UKF()
+
+        self.last_timestamp_hoc = None
+        self.message_count_hoc = 0
+        self.rate_estimate_hoc = 0.0
+        self.last_timestamp_face = None
+        self.message_count_face = 0
+        self.rate_estimate_face = 0.0
+        self.last_timestamp_da = None
+        self.message_count_da = 0
+        self.rate_estimate_da = 0.0
 
     def reset(self):
         """ Reset all stored variables in Class to their default values."""
@@ -154,6 +167,20 @@ class PeopleTracker:
             self.detections[idx] = Persons(nr_batch, time, nr_persons, x_positions, y_positions, z_positions,
                                            colour_vectors, face_detected)
             self.new_detections = True
+
+            self.csv_writer.writerow([nr_batch, time, nr_persons,
+                                 x_positions, y_positions, z_positions,
+                                 colour_vectors, face_detected])
+            rospy.loginfo(f"hoc: {nr_batch}")
+
+
+            current_timestamp = rospy.get_time()
+            if self.last_timestamp_hoc is not None:
+                time_difference = current_timestamp - self.last_timestamp_hoc
+                self.rate_estimate_hoc = 1.0 / time_difference if time_difference > 0 else 0.0
+
+            self.last_timestamp_hoc = current_timestamp
+            self.message_count_hoc += 1
         else:
             rospy.loginfo("HoC detection not used")
 
@@ -167,6 +194,18 @@ class PeopleTracker:
             self.detections[idx] = Persons(nr_batch, time, nr_persons, x_positions, y_positions, z_positions,
                                            colour_vectors, face_detections)
             self.new_detections = True
+            self.csv_writer.writerow([nr_batch, time, nr_persons,
+                                      x_positions, y_positions, z_positions,
+                                      colour_vectors, face_detections])
+            rospy.loginfo(f"face: {nr_batch}")
+
+            current_timestamp = rospy.get_time()
+            if self.last_timestamp_face is not None:
+                time_difference = current_timestamp - self.last_timestamp_face
+                self.rate_estimate_face = 1.0 / time_difference if time_difference > 0 else 0.0
+
+            self.last_timestamp_face = current_timestamp
+            self.message_count_face += 1
         else:
             rospy.loginfo("Face detection not used")
 
@@ -186,6 +225,17 @@ class PeopleTracker:
         self.detections.append(
             Persons(nr_batch, time, nr_persons, x_positions, y_positions, z_positions, colour_vectors, face_detected))
         self.new_detections = True
+        self.csv_writer.writerow([nr_batch, time, nr_persons,
+                                  x_positions, y_positions, z_positions,
+                                  colour_vectors, face_detected])
+        rospy.loginfo(f"pos: {nr_batch}")
+        current_timestamp = rospy.get_time()
+        if self.last_timestamp_da is not None:
+            time_difference = current_timestamp - self.last_timestamp_da
+            self.rate_estimate_da = 1.0 / time_difference if time_difference > 0 else 0.0
+
+        self.last_timestamp_da = current_timestamp
+        self.message_count_da += 1
         # rospy.loginfo([person.nr_batch for person in self.detections])
 
     def plot_tracker(self):
@@ -349,10 +399,10 @@ class PeopleTracker:
             combined = [weight_face * faces[person] +
                         weight_hoc * norm_hoc_distance[person] +
                         weight_da * norm_distance_da[person] for person in range(measurement.nr_persons)]
-            rospy.loginfo(f"face: {faces}, hoc: {distance_hoc}, da: {distance_da}, combined: {combined}")
+            # rospy.loginfo(f"face: {faces}, hoc: {distance_hoc}, da: {distance_da}, combined: {combined}")
             # rospy.loginfo(f"face: {faces}, norm_hoc: {norm_hoc_distance}, norm_da: {norm_distance_da}")
             idx_target = combined.index(min(combined))
-            rospy.loginfo(f"target: {idx_target}")
+            # rospy.loginfo(f"target: {idx_target}")
 
             if any([flag_face, flag_hoc, flag_da]):
                 x = measurement.x_positions[idx_target]
@@ -373,6 +423,7 @@ class PeopleTracker:
     def loop(self):
         """ Loop that repeats itself at self.rate. Can be used to execute methods at given rate. """
         time_old = rospy.get_time()
+
         while not rospy.is_shutdown():
             # if self.new_detections:  # Do data association with most recent detection.
 
@@ -383,12 +434,18 @@ class PeopleTracker:
             while len(self.detections) > 500:
                 self.detections.pop(0)
 
+            #lOG detection rate
+            rospy.loginfo( f"da: {self.rate_estimate_da:.2f} Hz, face: {self.rate_estimate_face:.2f} Hz, hoc: {self.rate_estimate_hoc:.2f} Hz")
+
             # ToDo Move the picture plotter to different node -> might help with visible lag spikes in tracker
             current_time = rospy.get_time()
             if self.new_detections and current_time - time_old > 0.2:
                 time_old = current_time
-                self.track_person()
+                # self.track_person()
                 self.new_detections = False
+                rospy.loginfo(self.detections[-1])
+
+
 
             # Add target lost check (based on time)
             if self.time_since_identifiers is None:
@@ -404,11 +461,25 @@ class PeopleTracker:
         :return: list with all the batches removed.
         """
         result = [entry for entry in lst if start_batch <= entry.nr_batch <= end_batch]
-        # rospy.loginfo(result)
         return result
 
+import os
+import rospkg
+import time
 
 if __name__ == '__main__':
+    try:
+        rospack = rospkg.RosPack()
+        package_path = rospack.get_path("people_tracking")
+        full_path = os.path.join(package_path, 'data/')
+
+        # Make sure the directory exists
+        os.makedirs(full_path, exist_ok=True)
+        time = time.ctime(time.time())
+        csv_file_path = os.path.join(full_path, f'{time}_test.csv')
+    except:
+        pass
+
     try:
         node_pt = PeopleTracker()
         node_pt.loop()
