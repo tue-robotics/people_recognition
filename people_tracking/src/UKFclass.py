@@ -5,7 +5,7 @@ from filterpy.kalman import UnscentedKalmanFilter
 
 class UKF:
     def __init__(self):
-        self.current_time = 0
+        self.current_time = 0.0
 
         dt = 0.1  # standard dt
 
