@@ -4,7 +4,9 @@ import rospy
 import cv2
 from cv_bridge import CvBridge
 import copy
-
+import os
+import rospkg
+import time
 import csv
 
 from typing import List
@@ -77,6 +79,7 @@ class PeopleTracker:
         self.ukf_from_data = UKF()
         # self.ukf_past_data = UKF()
 
+        # For log rate
         self.last_timestamp_hoc = None
         self.message_count_hoc = 0
         self.rate_estimate_hoc = 0.0
@@ -576,159 +579,7 @@ class PeopleTracker:
 
         tracker_image = bridge.cv2_to_imgmsg(cv_image, encoding="passthrough")
         self.publisher_debug.publish(tracker_image)
-    #
-    # def get_distance_hoc(self, hoc):
-    #     """ Compare given hoc to targets last 10 HoC's. Return the smallest distance of hoc. 0 means perfect match."""
-    #     distances = []
-    #
-    #     if len(self.approved_targets_hoc) < 1:
-    #         return 0
-    #
-    #     test_hocs = self.approved_targets_hoc[-10:]
-    #     for target_hoc in test_hocs:
-    #         distances.append(self.euclidean_distance(target_hoc.colour_vector, hoc))
-    #     return min(distances)
-    #
-    # def track_person(self):
-    #     """ Track the target."""
-    #     rospy.loginfo(f"target: {len(self.approved_targets)} hoc: {len(self.approved_targets_hoc)}")
-    #
-    #     # Cycle through measurements
-    #     nr_measurements = 50
-    #
-    #     # Clear approved targets to 1
-    #     if len(self.approved_targets) > nr_measurements:
-    #         start_batch = self.approved_targets[-nr_measurements].nr_batch
-    #     else:
-    #         start_batch = self.approved_targets[0].nr_batch
-    #
-    #     self.approved_targets = self.remove_outside_batches(self.approved_targets, start_batch, start_batch)
-    #
-    #     # Clear hoc to 10 measurements
-    #     self.approved_targets_hoc = self.remove_outside_batches(self.approved_targets_hoc, 0, start_batch)
-    #     while len(self.approved_targets_hoc) > 10:
-    #         self.approved_targets_hoc.pop(0)
-    #
-    #     # UKF
-    #     self.ukf_from_data = UKF()
-    #     self.ukf_from_data.update(self.approved_targets[0].time,
-    #                               [self.approved_targets[0].x, self.approved_targets[0].y, self.approved_targets[0].z])
-    #
-    #     self.tracked_plottable = False
-    #
-    #     time_since_identifiers = self.time_since_identifiers
-    #
-    #     base_idx = len(self.detections) - nr_measurements
-    #     for idx_raw, measurement in enumerate(
-    #             self.detections[-nr_measurements:]):  # Do data association with other data through all detections
-    #         idx = base_idx + idx_raw
-    #         if measurement.nr_persons <= 0:  # Skip measurement if no persons
-    #             continue
-    #
-    #         flag_hoc = False
-    #         flag_face = False
-    #         flag_da = False
-    #
-    #         if any(x is not None for x in measurement.face_detected):  # There is a face in the measurement
-    #             faces = measurement.face_detected
-    #             flag_face = True
-    #
-    #             faces = [0 if value else 1 for value in faces]
-    #
-    #
-    #         else:  # There is no face data
-    #             faces = [1] * measurement.nr_persons
-    #
-    #         if any(x is not None for x in measurement.colour_vectors):  # There is HoC data
-    #             distance_hoc = []  # Get HoC distance to targets
-    #             for person_idx in range(measurement.nr_persons):
-    #                 hoc = measurement.colour_vectors[person_idx]
-    #                 distance_hoc.append(self.get_distance_hoc(hoc))
-    #
-    #             # Normalize data
-    #             max_distance_hoc = max(distance_hoc)
-    #             if 0 == max_distance_hoc or len(distance_hoc) <= 1:
-    #                 norm_hoc_distance = [0 for _ in distance_hoc]
-    #             else:
-    #                 norm_hoc_distance = [distance / max_distance_hoc for distance in distance_hoc]
-    #
-    #             if any([value < 0.25 for value in distance_hoc]):  # Check if any of the data meets the threshold value
-    #                 flag_hoc = True
-    #         else:  # There is no HoC data
-    #             distance_hoc = []
-    #             norm_hoc_distance = [1] * measurement.nr_persons
-    #
-    #         previous_target_coords = (
-    #             self.approved_targets[-1].x, self.approved_targets[-1].y, self.approved_targets[-1].z)
-    #         distance_da = []
-    #         for person_idx in range(measurement.nr_persons):
-    #             position = (measurement.x_positions[person_idx], measurement.y_positions[person_idx],
-    #                         measurement.z_positions[person_idx])
-    #             distance_da.append(self.euclidean_distance(previous_target_coords, position))
-    #
-    #         max_da_value = 150
-    #         # Normalize data
-    #         max_distance_da = max(distance_da)
-    #         # rospy.loginfo(f"euclid:{distance_da}")
-    #
-    #         if max_distance_da <= 0:
-    #             norm_distance_da = [0 for _ in distance_da]
-    #         else:
-    #             # Adjust values over 200 to have normalized distance 1
-    #             norm_distance_da = [min(value, max_da_value) / max_distance_da if value <= 200 else 1 for value in distance_da]
-    #
-    #         if any([value < max_da_value for value in distance_da]):
-    #             flag_da = True
-    #
-    #         nr_batch = measurement.nr_batch
-    #         time = measurement.time
-    #
-    #         nr_parameters = sum([flag_face, flag_hoc, flag_da])
-    #         current_weight = 2
-    #         weights = [[0.1, 0.2, 0.7],
-    #                    [0.0, 0.3, 0.7],
-    #                    [0.0, 0.0, 1.0]]
-    #
-    #         if flag_face:
-    #             weight_face = weights[nr_parameters - 1][current_weight]
-    #             current_weight -= 1
-    #         else:
-    #             weight_face = 0.0
-    #
-    #         if flag_hoc:
-    #             weight_hoc = weights[nr_parameters - 1][current_weight]
-    #             current_weight -= 1
-    #         else:
-    #             weight_hoc = 0.0
-    #
-    #         if flag_da:
-    #             weight_da = weights[nr_parameters - 1][current_weight]
-    #         else:
-    #             weight_da = 0.0
-    #
-    #         combined = [weight_face * faces[person] +
-    #                     weight_hoc * norm_hoc_distance[person] +
-    #                     weight_da * norm_distance_da[person] for person in range(measurement.nr_persons)]
-    #         # rospy.loginfo(f"face: {faces}, hoc: {distance_hoc}, da: {distance_da}, combined: {combined}")
-    #         # rospy.loginfo(f"face: {faces}, norm_hoc: {norm_hoc_distance}, norm_da: {norm_distance_da}")
-    #         idx_target = combined.index(min(combined))
-    #         # rospy.loginfo(f"target: {idx_target}")
-    #
-    #         if any([flag_face, flag_hoc, flag_da]):
-    #             x = measurement.x_positions[idx_target]
-    #             y = measurement.y_positions[idx_target]
-    #             z = measurement.z_positions[idx_target]
-    #             self.approved_targets.append(Target(nr_batch, time, idx_target, x, y, z))
-    #             time_since_identifiers = time
-    #             self.ukf_from_data.update(time, [x, y, z])  # UKF
-    #
-    #             if flag_hoc:
-    #                 self.approved_targets_hoc.append(Target_hoc(nr_batch, measurement.colour_vectors[idx_target]))
-    #     # rospy.loginfo([(target.nr_batch, target.idx_person) for target in self.approved_targets])
-    #
-    #     self.time_since_identifiers = time_since_identifiers
-    #     self.ukf_past_data = copy.deepcopy(self.ukf_from_data)
-    #     self.tracked_plottable = True
+
 
     def loop(self):
         """ Loop that repeats itself at self.rate. Can be used to execute methods at given rate. """
@@ -744,7 +595,7 @@ class PeopleTracker:
             # while len(self.detections) > 500:
             #     self.detections.pop(0)
             #
-            # #lOG detection rate
+
             current_time = rospy.get_time()
             if len(self.approved_targets) > 0:
                 val_idx = 1
@@ -759,22 +610,6 @@ class PeopleTracker:
             if current_time - time_old > 0.1:
                 rospy.loginfo( f"da: {self.rate_estimate_da:.2f} Hz, face: {self.rate_estimate_face:.2f} Hz, hoc: {self.rate_estimate_hoc:.2f} Hz")
                 time_old = current_time
-            #
-            # # ToDo Move the picture plotter to different node -> might help with visible lag spikes in tracker
-            # current_time = rospy.get_time()
-            # if self.new_detections and current_time - time_old > 0.2:
-            #     time_old = current_time
-            #     self.track_person()
-            #     self.new_detections = False
-            #     rospy.loginfo(self.detections[-1])
-            #
-            #
-            #
-            # # Add target lost check (based on time)
-            # if self.time_since_identifiers is None:
-            #     continue
-            # if rospy.get_time() - self.time_since_identifiers > 3:
-            #     rospy.loginfo("Target Lost (ID'ers)")
 
             self.rate.sleep()
 
@@ -785,10 +620,6 @@ class PeopleTracker:
         """
         result = [entry for entry in lst if start_batch <= entry.nr_batch <= end_batch]
         return result
-
-import os
-import rospkg
-import time
 
 if __name__ == '__main__':
     if save_data:
