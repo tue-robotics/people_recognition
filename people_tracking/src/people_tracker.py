@@ -65,7 +65,7 @@ class PeopleTracker:
         self.detection_reset_proxy = rospy.ServiceProxy(TOPIC_PREFIX + 'person_detection/reset', Empty)
 
         # Variables
-        self.approved_targets = [Target(0, 0, 0, 320, 240, 0, None, True)]
+        self.approved_targets = [Target(0, 0, 0, 320, 240, 0, None, False), Target(1, 1, 0, 320, 240, 0, None, False), Target(2, 2, 0, 320, 240, 0, None, False)]
         self.approved_targets_hoc = []  # HoC's from approved target (only keep last 10).
         self.time_since_identifiers = None
 
@@ -76,7 +76,8 @@ class PeopleTracker:
 
         self.latest_image = None
 
-        self.ukf_from_data = UKF()
+        # self.ukf_from_data = UKF()
+        self.target_lost = False
         # self.ukf_past_data = UKF()
 
         # For log rate
@@ -104,38 +105,8 @@ class PeopleTracker:
 
         self.latest_image = None
 
-        self.ukf_from_data = UKF()
+        # self.ukf_from_data = UKF()
         # self.ukf_past_data = UKF()
-
-    @staticmethod
-    def euclidean_distance(point1, point2):
-        """ Calculate the Euclidean distance between two points.
-
-        :param point1: A tuple or list representing the coordinates of the first point.
-        :param point2: A tuple or list representing the coordinates of the second point.
-        :return: The Euclidean distance between the two points.
-        """
-
-        if len(point1) != len(point2):
-            raise ValueError("Not the same dimensions")
-
-        a = np.array(point1)
-        b = np.array(point2)
-        return np.linalg.norm(a - b)
-
-    @staticmethod
-    def element_exists(lst, element):
-        """ Check if element is in list.
-
-        :param lst: List to check element against.
-        :param element: Element to check if it is in the list.
-        :return: True, index element if in the list, False, None if element not in list
-        """
-        try:  # Try to find element
-            idx = lst.index(element)
-            return True, idx
-        except ValueError:  # If element is not in the list
-            return False, None
 
     def reset_color_histogram_node(self):
         """ Call the color histogram reset service."""
@@ -256,6 +227,36 @@ class PeopleTracker:
 
         self.update_target(nr_batch)
         # rospy.loginfo([person.nr_batch for person in self.detections])
+###THRESHOLD FILE = SAME ####
+    @staticmethod
+    def element_exists(lst, element):
+        """ Check if element is in list.
+
+        :param lst: List to check element against.
+        :param element: Element to check if it is in the list.
+        :return: True, index element if in the list, False, None if element not in list
+        """
+        try:  # Try to find element
+            idx = lst.index(element)
+            return True, idx
+        except ValueError:  # If element is not in the list
+            return False, None
+
+    @staticmethod
+    def euclidean_distance(point1, point2):
+        """ Calculate the Euclidean distance between two points.
+
+        :param point1: A tuple or list representing the coordinates of the first point.
+        :param point2: A tuple or list representing the coordinates of the second point.
+        :return: The Euclidean distance between the two points.
+        """
+
+        if len(point1) != len(point2):
+            raise ValueError("Not the same dimensions")
+
+        a = np.array(point1)
+        b = np.array(point2)
+        return np.linalg.norm(a - b)
 
     def check_face_data(self, detection):
         """
@@ -278,7 +279,13 @@ class PeopleTracker:
         :param hocs_existing: hocs to calculate distance to hoc_check from
         :return: minimum distances from input list
         """
-        distances = [self.euclidean_distance(hoc_check, hoc) for hoc in hocs_existing]
+
+        h = [self.euclidean_distance(hoc_check[:32], hoc[:32]) for hoc in hocs_existing]
+        s = [self.euclidean_distance(hoc_check[32:64], hoc[32:64]) for hoc in hocs_existing]
+        # v = [self.euclidean_distance(hoc_check[64:], hoc[64:]) for hoc in hocs_existing]
+
+        hsv = zip(h, s)  # , v]
+        distances = [0.8 * h + 0.2 * s for h, s in hsv]
         return min(distances)
 
     def check_hoc_data(self, detection, tracked_hocs):
@@ -295,17 +302,20 @@ class PeopleTracker:
         if any(x is not None for x in detection.colour_vectors):  # There is HoC data
             flag_hoc = True
 
-            distance_hoc = [self.get_distance_hocs(detection.colour_vectors[person_idx], tracked_hocs) for person_idx in range(detection.nr_persons)]
+            distance_hoc = [self.get_distance_hocs(detection.colour_vectors[person_idx], tracked_hocs) for person_idx in
+                            range(detection.nr_persons)]
 
             if any([value < HOC_THRESHOLD for value in distance_hoc]):  # Check if any of the data meets the threshold
                 # Normalize data
-                max_distance_hoc = max([distance for distance in distance_hoc if distance < HOC_THRESHOLD]) # get max distance without invalid entries
+                max_distance_hoc = max([distance for distance in distance_hoc if
+                                        distance < HOC_THRESHOLD])  # get max distance without invalid entries
                 if 0 == max_distance_hoc or len(distance_hoc) <= 1:
                     norm_hoc = [0 for _ in distance_hoc]
                 else:
-                    norm_hoc = [distance / max_distance_hoc if distance < HOC_THRESHOLD else 2 for distance in distance_hoc]
+                    norm_hoc = [distance / max_distance_hoc if distance < HOC_THRESHOLD else 2 for distance in
+                                distance_hoc]
 
-            else:   # All values are invalid, thus max normalized distance
+            else:  # All values are invalid, thus max normalized distance
                 norm_hoc = [2] * detection.nr_persons
 
         else:  # There is no HoC data
@@ -314,6 +324,76 @@ class PeopleTracker:
 
         return flag_hoc, norm_hoc
 
+    def predict_location(self, data, target_time):
+        """
+        Linear interpolation to find the position at a given time.
+        Extrapolates if the target time is outside the range of the given data.
+
+        Parameters:
+        - data: List of data points in the format [(t, x, y, z), ...].
+        - target_time: The time for which you want to find the position.
+
+        Returns:
+        - Tuple (x, y, z) representing the interpolated or extrapolated position.
+        """
+        # Sort data by time
+        data.sort(key=lambda point: point[0])
+
+        # Handle the case where target time is before the first data point
+        if target_time < data[0][0]:
+            t1, x1, y1, z1 = data[0]
+            t2, x2, y2, z2 = data[1]
+
+            if t2 - t1 == 0:
+                # Handle the case where t2 and t1 are equal
+                alpha = 0.5
+            else:
+                alpha = (target_time - t1) / (t2 - t1)
+
+            # Linear interpolation formula
+            x = x1 + alpha * (x2 - x1)
+            y = y1 + alpha * (y2 - y1)
+            z = z1 + alpha * (z2 - z1)
+
+            return (x, y, z)
+
+        # Handle the case where target time is after the last data point
+        if target_time > data[-1][0]:
+            t1, x1, y1, z1 = data[-2]
+            t2, x2, y2, z2 = data[-1]
+
+            if t2 - t1 == 0:
+                # Handle the case where t2 and t1 are equal
+                alpha = 0.5
+            else:
+                alpha = (target_time - t1) / (t2 - t1)
+
+            # Linear interpolation formula
+            x = x1 + alpha * (x2 - x1)
+            y = y1 + alpha * (y2 - y1)
+            z = z1 + alpha * (z2 - z1)
+
+            return (x, y, z)
+
+        # Find the two points between which the target time lies
+        for i in range(len(data) - 1):
+            if data[i][0] <= target_time <= data[i + 1][0]:
+                # Linear interpolation formula
+                t1, x1, y1, z1 = data[i]
+                t2, x2, y2, z2 = data[i + 1]
+
+                if t2 - t1 == 0:
+                    # Handle the case where t2 and t1 are equal
+                    alpha = 0.5
+                else:
+                    alpha = (target_time - t1) / (t2 - t1)
+
+                # Linear interpolation formula
+                x = x1 + alpha * (x2 - x1)
+                y = y1 + alpha * (y2 - y1)
+                z = z1 + alpha * (z2 - z1)
+
+                return (x, y, z)
 
     def check_da_data(self, new_detection, previous_da_detection):
         """
@@ -321,29 +401,37 @@ class PeopleTracker:
         :param previous_da_detection: measurement to calculate the distance from (aka the previous known target location).
         :return:
         """
+        #ToDO make DA_THRESHOLD Time dependent, make distance calc  x,y,z weighted
         DA_THRESHOLD = 150
 
         flag_da = True
-        previous_target_coords = (previous_da_detection.x, previous_da_detection.y, previous_da_detection.z)
 
-        coords_detections = [(new_detection.x_positions[person_idx], new_detection.y_positions[person_idx], new_detection.z_positions[person_idx]) for person_idx in range(new_detection.nr_persons)]
-        distance_da = [self.euclidean_distance(previous_target_coords, detection) for detection in coords_detections]
+        if len(previous_da_detection) > 0:
+            previous_target_coords = [(data.time, data.x, data.y, data.z) for data in previous_da_detection]
+            predicted_location = self.predict_location(previous_target_coords, new_detection.time)
+        else:
+            predicted_location = (0, 0, 0)
+
+        coords_detections = [(new_detection.x_positions[person_idx], new_detection.y_positions[person_idx],
+                              new_detection.z_positions[person_idx]) for person_idx in range(new_detection.nr_persons)]
+        distance_da = [self.euclidean_distance(predicted_location, detection) for detection in coords_detections]
 
         if any([value < DA_THRESHOLD for value in distance_da]):
 
             # Normalize data
-            max_distance = max([distance for distance in distance_da if distance < DA_THRESHOLD])  # get max distance without invalid entries
+            max_distance = max([distance for distance in distance_da if
+                                distance < DA_THRESHOLD])  # get max distance without invalid entries
             if 0 == max_distance or len(distance_da) <= 1:
                 norm_da = [0 for _ in distance_da]
             else:
                 norm_da = [distance / max_distance if distance < DA_THRESHOLD else 2 for distance in distance_da]
 
-        else:       # All data is invalid
+        else:  # All data is invalid
             norm_da = [2] * new_detection.nr_persons
 
         return flag_da, norm_da
 
-    def get_target_value(self, new_detection, tracked_hocs, previous_da_detection, flag_target_lost):
+    def get_target_value(self, new_detection, tracked_hocs, previous_da_detections, flag_target_lost):
         """ Calculate the data association between two detection. Return the idx of the target"""
 
         if new_detection.nr_persons < 1:
@@ -355,8 +443,11 @@ class PeopleTracker:
         flag_hoc, norm_hoc = self.check_hoc_data(new_detection, tracked_hocs)
         # print(f"flag_hoc {flag_hoc}, {norm_hoc}")
 
-        flag_da, norm_da = self.check_da_data(new_detection, previous_da_detection)
+        flag_da, norm_da = self.check_da_data(new_detection, previous_da_detections)
         # print(f"flag_da {flag_da}, {norm_da}")
+
+        # flag_da = False
+        # flag_face = False
 
         weight_face, weight_hoc, weight_da = self.get_weights(flag_face, flag_hoc, flag_da, flag_target_lost)
         # print(f"{new_detection.nr_batch}, flags: {flag_face, flag_hoc, flag_da}, weights: {weight_face, weight_hoc, weight_da}")
@@ -364,7 +455,13 @@ class PeopleTracker:
                     for person in range(new_detection.nr_persons)]
 
         idx_target = combined.index(min(combined))
-        valid = True if min(combined) <= 1 else False   # combined is larger than 1 if either to many of the targets have invalid measurements or the most important one is invalid.
+        valid = True if min(
+            combined) <= 1 else False  # combined is larger than 1 if either to many of the targets have invalid measurements or the most important one is invalid.
+
+        self.target_get_values.append(
+            [new_detection.nr_batch, flag_face, faces[idx_target], min(faces), flag_hoc, norm_hoc[idx_target],
+             min(norm_hoc), flag_da, norm_da[idx_target], min(norm_da)])
+
         return idx_target, valid
 
     def add_approved_target(self, measurement, idx_target, valid):
@@ -386,11 +483,12 @@ class PeopleTracker:
             colour_vector = measurement.colour_vectors[idx_target]
             # print(f"colour {colour_vector}")
         self.approved_targets.append(Target(nr_batch, time, idx_target, x, y, z, colour_vector, valid))
+        # print(f"approved {nr_batch},  {valid}")
 
         # print(valid)
-        if valid and self.ukf_from_data.current_time <= time:
-            self.ukf_from_data.update(time, [x, y, z])
-            # print("update ukf")
+        # if valid and self.ukf_from_data.current_time <= time:
+        #     self.ukf_from_data.update(time, [x, y, z])
+        # print("update ukf")
         # print(f"approved {nr_batch},  {valid}")
 
     def update_approved_target(self, idx_target, idx_tracked, measurement, valid):
@@ -423,38 +521,46 @@ class PeopleTracker:
         tracked_hocs = []
 
         if idx_tracked is not None:
-            while len(tracked_hocs) < 10 and hoc_idx < 60 and hoc_idx < len(self.approved_targets[:idx_tracked]):
+            while len(tracked_hocs) < 5 and hoc_idx < 60 and hoc_idx < len(self.approved_targets[:idx_tracked]):
                 if self.approved_targets[idx_tracked - hoc_idx].colour_vector is not None and \
                         self.approved_targets[idx_tracked - hoc_idx].valid_measurement:
                     tracked_hocs.append(self.approved_targets[idx_tracked - hoc_idx].colour_vector)
                 hoc_idx += 1
         else:
-            while len(tracked_hocs) < 10 and hoc_idx < 60 and hoc_idx < len(self.approved_targets):
+            while len(tracked_hocs) < 5 and hoc_idx < 60 and hoc_idx < len(self.approved_targets):
                 if self.approved_targets[-hoc_idx].colour_vector is not None and \
                         self.approved_targets[-hoc_idx].valid_measurement:
                     tracked_hocs.append(self.approved_targets[-hoc_idx].colour_vector)
                 hoc_idx += 1
 
+        # return []
         return tracked_hocs
+
+        # # Calculate the average by dividing the sum by the total number of arrays
+        # sum_array = np.sum(tracked_hocs, axis=0)
+        # average_array = sum_array / len(tracked_hocs)
+        # return [average_array]
 
     def update_target(self, from_batch):
         """ Update the self.approved_targets from batch."""
 
-        exists_detection, idx_detection = self.element_exists([detection.nr_batch for detection in self.detections], from_batch)
+        exists_detection, idx_detection = self.element_exists([detection.nr_batch for detection in self.detections],
+                                                              from_batch)
         if not exists_detection:  # Make sure existing batch number in detections
             return
 
-        exist_tracked, idx_tracked = self.element_exists([detection.nr_batch for detection in self.approved_targets], from_batch)
+        exist_tracked, idx_tracked = self.element_exists([detection.nr_batch for detection in self.approved_targets],
+                                                         from_batch)
 
-        if exist_tracked:   # Check new data with existing track.
-            idx_compare = idx_tracked-1
+        if exist_tracked:  # Check new data with existing track.
+            idx_compare = idx_tracked - 1
             while not self.approved_targets[idx_compare].valid_measurement:
                 idx_compare -= 1
 
             tracked_hocs = self.get_tracked_hocs(idx_tracked)
             # print(f"tracked hocs exists: {tracked_hocs}")
             idx_target, valid = self.get_target_value(self.detections[idx_detection], tracked_hocs,
-                                                      self.approved_targets[idx_compare],
+                                                      self.approved_targets[idx_compare - 2: idx_compare],
                                                       self.approved_targets[idx_compare].valid_measurement)
 
             if self.approved_targets[idx_tracked].idx_person == idx_target:
@@ -465,15 +571,13 @@ class PeopleTracker:
                 # print(f"dummu {self.approved_targets[idx_tracked].idx_person} {idx_target}")
 
                 self.approved_targets = self.approved_targets[:idx_compare]
-                self.ukf_from_data = UKF()
 
-
-                while idx_detection < len(self.detections)-1:
+                while idx_detection < len(self.detections) - 1:
                     tracked_hocs = self.get_tracked_hocs()
                     # print(f"tracked hocs new: {tracked_hocs}")
 
                     idx_target, valid = self.get_target_value(self.detections[idx_detection], tracked_hocs,
-                                                              self.approved_targets[-1],
+                                                              self.approved_targets[-3:-1],
                                                               self.approved_targets[-1].valid_measurement)
                     self.add_approved_target(self.detections[idx_detection], idx_target, valid)
 
@@ -481,15 +585,16 @@ class PeopleTracker:
 
                 return
 
-
-
-        if self.approved_targets[-1].nr_batch < from_batch:  # Add single data association step to the end of target list
+        if self.approved_targets[
+            -1].nr_batch < from_batch:  # Add single data association step to the end of target list
 
             # Get 5 previous hoc measurements from track
             tracked_hocs = self.get_tracked_hocs()
             # print(f"tracked hocs new: {tracked_hocs}")
 
-            idx_target, valid = self.get_target_value(self.detections[idx_detection], tracked_hocs, self.approved_targets[-1], self.approved_targets[-1].valid_measurement)
+            idx_target, valid = self.get_target_value(self.detections[idx_detection], tracked_hocs,
+                                                      self.approved_targets[-3:-1],
+                                                      self.approved_targets[-1].valid_measurement)
             self.add_approved_target(self.detections[idx_detection], idx_target, valid)
 
             return
@@ -497,29 +602,27 @@ class PeopleTracker:
         print("TUMMMMMM")
         # else: # totaly new data that can be placed somewhere between already associated data, find place, do associaiton 1 back to this, this to next, if match in next return else redo everything -> For now do nothing with it
 
-
-
-
-
     @staticmethod
     def get_weights(flag_face, flag_hoc, flag_da, valid):
         """ Get the correct weights for the DA.
 
         :return: weight_face, weight_hoc, weight_da
         """
+        #TODO update to make da more important and hoc lesss.
+
         # print(f"weight:{sum([flag_face,flag_hoc,flag_da])} {valid}")
         if sum([flag_face, flag_hoc, flag_da]) <= 0:
             return 0.0, 0.0, 0.0
 
-        if not valid:    # Use different weights if target was lost in previous steps
+        if not valid:  # Use different weights if target was lost in previous steps
             weight_da = 0.0
 
             nr_parameters = sum([flag_face, flag_hoc])
-            weights = [[1.0, 1.0],      # 1 parameter
-                       [0.9, 0.1]]      # 2 parameters
+            weights = [[1.0, 1.0],  # 1 parameter
+                       [0.9, 0.1]]  # 2 parameters
 
             if flag_face:
-                weight_face = weights[nr_parameters-1][0]
+                weight_face = weights[nr_parameters - 1][0]
             else:
                 weight_face = 0.0
 
@@ -531,9 +634,9 @@ class PeopleTracker:
         else:
             nr_parameters = sum([flag_face, flag_hoc, flag_da])  # How many measurement types available
             current_weight = 2
-            weights = [[0.0, 0.0, 1.0],     # 1 parameter
-                       [0.0, 0.2, 0.8],     # 2 parameters
-                       [0.1, 0.2, 0.7]]     # 3 parameters
+            weights = [[0.0, 0.0, 1.0],  # 1 parameter
+                       [0.0, 0.2, 0.8],  # 2 parameters
+                       [0.1, 0.2, 0.7]]  # 3 parameters
 
             if flag_face:
                 weight_face = weights[nr_parameters - 1][current_weight]
@@ -553,6 +656,8 @@ class PeopleTracker:
                 weight_da = 0.0
 
         return weight_face, weight_hoc, weight_da
+
+    ##########################################
     def plot_tracker(self):
         """ Plot the trackers on a camera frame and publish it.
         This can be used to visualise all the output from the trackers. [x,y coords] Currently not for depth data
@@ -562,20 +667,21 @@ class PeopleTracker:
         latest_image = self.latest_image
         cv_image = bridge.imgmsg_to_cv2(latest_image, desired_encoding='passthrough')
 
-        if len(self.approved_targets) > 0 and self.tracked_plottable:  # Plot latest approved measurement
-            x_approved = self.approved_targets[-1].x
-            y_approved = self.approved_targets[-1].y
-            cv2.circle(cv_image, (x_approved, y_approved), 5, (0, 0, 255, 50), -1)  # BGR
+        if not self.target_lost:
+            if len(self.approved_targets) > 0 and self.tracked_plottable:  # Plot latest approved measurement
+                x_approved = self.approved_targets[-1].x
+                y_approved = self.approved_targets[-1].y
+                cv2.circle(cv_image, (x_approved, y_approved), 5, (0, 0, 255, 50), -1)  # BGR
 
-        # Get location with UKF
-        current_time = float(rospy.get_time())
-        ukf_predict = copy.deepcopy(self.ukf_from_data)
-        if ukf_predict.current_time < current_time:  # Get prediction for current time
-            ukf_predict.predict(current_time)
-
-        x_ukf = int(ukf_predict.kf.x[0])
-        y_ukf = int(ukf_predict.kf.x[2])
-        cv2.circle(cv_image, (x_ukf, y_ukf), 5, (0, 255, 0, 50), -1)  # BGR
+        # # Get location with UKF
+        # current_time = float(rospy.get_time())
+        # ukf_predict = copy.deepcopy(self.ukf_from_data)
+        # if ukf_predict.current_time < current_time:  # Get prediction for current time
+        #     ukf_predict.predict(current_time)
+        #
+        # x_ukf = int(ukf_predict.kf.x[0])
+        # y_ukf = int(ukf_predict.kf.x[2])
+        # cv2.circle(cv_image, (x_ukf, y_ukf), 5, (0, 255, 0, 50), -1)  # BGR
 
         tracker_image = bridge.cv2_to_imgmsg(cv_image, encoding="passthrough")
         self.publisher_debug.publish(tracker_image)
@@ -604,8 +710,11 @@ class PeopleTracker:
                     validity = self.approved_targets[-val_idx].valid_measurement
                     val_idx += 1
 
-            if current_time - self.approved_targets[-val_idx].time > 3:
+            if current_time - self.approved_targets[-val_idx].time > 2:
                 rospy.loginfo("Target Lost")
+                self.target_lost = True
+            else:
+                self.target_lost = False
 
             if current_time - time_old > 0.1:
                 rospy.loginfo( f"da: {self.rate_estimate_da:.2f} Hz, face: {self.rate_estimate_face:.2f} Hz, hoc: {self.rate_estimate_hoc:.2f} Hz")

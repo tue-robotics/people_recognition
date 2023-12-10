@@ -193,8 +193,8 @@ class PersonDetector:
 
         # for image_message in depth_detected:
         #     self.publisher_debug.publish(image_message)
-        # for image_message in detected_persons:
-        #     self.publisher_debug.publish(image_message)
+        for image_message in detected_persons:
+            self.publisher_debug.publish(image_message)
 
     def main_loop(self):
         """ Main loop that makes sure only the latest images are processed. """
