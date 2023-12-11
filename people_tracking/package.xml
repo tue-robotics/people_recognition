@@ -24,6 +24,8 @@
   <depend>image_recognition_msgs</depend>
   <depend>image_recognition_util</depend>
   <depend>people_recognition_msgs</depend>
+  <depend>rgbd</depend>
+  <depend>rgbd_image_buffer</depend>
   <depend>rospy</depend>
   <depend>sensor_msgs</depend>
 
