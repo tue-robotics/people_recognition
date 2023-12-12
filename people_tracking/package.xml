@@ -20,17 +20,28 @@
 
   <buildtool_depend>python3-setuptools</buildtool_depend>
 
-  <depend>cv_bridge</depend>
-  <depend>image_recognition_msgs</depend>
-  <depend>image_recognition_util</depend>
-  <depend>people_recognition_msgs</depend>
-  <depend>rgbd</depend>
-  <depend>rgbd_image_buffer</depend>
-  <depend>rospy</depend>
   <depend>sensor_msgs</depend>
 
+  <build_depend>people_recognition_msgs</build_depend>
+  <build_depend>rgbd</build_depend>
+  <build_depend>rgbd_image_buffer</build_depend>
+  <build_depend>roscpp</build_depend>
+  <build_depend>visualization_msgs</build_depend>
+
   <build_depend>message_generation</build_depend>
+
+  <exec_depend>cv_bridge</exec_depend>
+  <exec_depend>image_recognition_util</exec_depend>
   <exec_depend>message_runtime</exec_depend>
+  <exec_depend>people_recognition_msgs</exec_depend>
+  <exec_depend>rgbd</exec_depend>
+  <exec_depend>rgbd_image_buffer</exec_depend>
+  <exec_depend>roscpp</exec_depend>
+  <exec_depend>rospy</exec_depend>
+  <exec_depend>std_msgs</exec_depend>
+  <exec_depend>visualization_msgs</exec_depend>
+
+  <test_depend>catkin_lint_cmake</test_depend>
 
   <doc_depend>python3-sphinx</doc_depend>
   <doc_depend>python-sphinx-autoapi-pip</doc_depend>

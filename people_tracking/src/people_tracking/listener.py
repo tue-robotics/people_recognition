@@ -5,7 +5,7 @@ import numpy as np
 from ultralytics import YOLO
 from cv_bridge import CvBridge
 from sensor_msgs.msg import Image
-from people_tracking.msg import detect_person
+from people_tracking.msg import DetectPerson
 
 laptop = True
 name_subscriber_RGB = '/hero/head_rgbd_sensor/rgb/image_raw' if not laptop else 'video_frames'
@@ -23,7 +23,7 @@ class PeopleTracker:
         rospy.init_node('listener', anonymous=True)
         self.publisher = rospy.Publisher('/hero/segmented_image', Image, queue_size=10)
         # self.subscriber = rospy.Subscriber(name_subscriber_RGB, Image, self.callback, queue_size=1)
-        self.publisher2 = rospy.Publisher('/hero/test_msg', detect_person, queue_size= 10)
+        self.publisher2 = rospy.Publisher('/hero/test_msg', DetectPerson, queue_size= 10)
 
 
         self.latest_image = None  # To store the most recent image
@@ -33,7 +33,7 @@ class PeopleTracker:
         self.subscriber = rospy.Subscriber(name_subscriber_RGB, Image, self.image_callback, queue_size=1)
 
     def msg_callback(self):
-        msg = detect_person()
+        msg = DetectPerson()
         msg.name = "hi"
         msg.age = 5
         self.publisher2.publish(msg)

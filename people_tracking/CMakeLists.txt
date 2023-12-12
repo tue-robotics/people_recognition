@@ -2,26 +2,23 @@ cmake_minimum_required(VERSION 3.0.2)
 project(people_tracking)
 
 find_package(catkin REQUIRED COMPONENTS
-    rgbd
-    rgbd_image_buffer
-    roscpp
-    sensor_msgs
-    people_recognition_msgs
-
-    rospy
-    std_msgs
-    message_generation
+  message_generation
+  people_recognition_msgs
+  rgbd
+  rgbd_image_buffer
+  roscpp
+  sensor_msgs
+  visualization_msgs
 )
 
-# TODO still needed?
 catkin_python_setup()
 
 add_message_files(
-   FILES
-   detect_person.msg
-   DetectedPerson.msg
-   ColourCheckedTarget.msg
-   ColourTarget.msg
+  FILES
+  ColourCheckedTarget.msg
+  ColourTarget.msg
+  DetectPerson.msg
+  DetectedPerson.msg
 )
 
 add_service_files(
@@ -31,15 +28,11 @@ add_service_files(
 
 generate_messages(
   DEPENDENCIES
-  std_msgs
   sensor_msgs
 )
 
-
-
 catkin_package(
-    CATKIN_DEPENDS
-    message_runtime
+  CATKIN_DEPENDS message_runtime sensor_msgs
 )
 
 include_directories(
