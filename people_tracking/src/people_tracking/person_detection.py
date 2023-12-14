@@ -160,10 +160,10 @@ class PersonDetector:
                     cv2.fillPoly(mask_depth, [seg], (255, 255, 255))
 
                     # Extract the values based on the mask
-                    # masked_pixels = cv_depth_image[mask_depth]
-                    masked_pixels = cv_depth_image[y1:y2, x1:x2]
-                    median_color =  cv2.mean(masked_pixels)#np.median(masked_pixels)
-                    # print("Median color:", median_color)
+                    masked_pixels = cv_depth_image[mask_depth]
+
+                    median_color = np.median(masked_pixels)
+                    print("Median color:", median_color)
 
 
                     # cv_depth_image[mask_depth == 0] = 0
@@ -187,7 +187,7 @@ class PersonDetector:
         x_positions = [x_positions[i] for i in sorted_idx]
         y_positions = [y_positions[i] for i in sorted_idx]
         z_positions = [z_positions[i] for i in sorted_idx]
-        rospy.loginfo(f"z: {z_positions}")
+        # rospy.loginfo(f"z: {z_positions}")
 
         # Create and Publish person_detections msg
         msg = DetectedPerson()
