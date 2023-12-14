@@ -156,10 +156,10 @@ class PersonDetector:
                     # print("Median color:", median_color)
 
 
-                    cv_depth_image[mask_depth == 0] = 0
-                    depth_cropped = cv_depth_image[y1:y2, x1:x2]
-                    image_message_depth = self.bridge.cv2_to_imgmsg(depth_cropped, encoding="passthrough")
-                    depth_detected.append(image_message_depth)
+                    # cv_depth_image[mask_depth == 0] = 0
+                    # depth_cropped = cv_depth_image[y1:y2, x1:x2]
+                    # image_message_depth = self.bridge.cv2_to_imgmsg(depth_cropped, encoding="passthrough")
+                    # depth_detected.append(image_message_depth)
 
                     # average_color = cv2.mean(cv_depth_image, mask=mask_depth)
                     # rospy.loginfo(f"color {int(average_color[0])}")
@@ -194,8 +194,8 @@ class PersonDetector:
 
         # for image_message in depth_detected:
         #     self.publisher_debug.publish(image_message)
-        for image_message in detected_persons:
-            self.publisher_debug.publish(image_message)
+        # for image_message in detected_persons:
+        #     self.publisher_debug.publish(image_message)
 
     def main_loop(self):
         """ Main loop that makes sure only the latest images are processed. """
