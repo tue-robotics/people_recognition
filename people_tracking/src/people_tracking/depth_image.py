@@ -21,6 +21,7 @@ class DepthImage:
         self.publisher = rospy.Publisher(TOPIC_PREFIX + 'depth', Image, queue_size=5)
         self.depth_images = []
         self.depth_service = rospy.Service(TOPIC_PREFIX + NODE_NAME + '/depth_data', Depth, self.get_depth_data)
+        self.bridge = CvBridge()
 
     def image_callback(self, data, time_data_stored_sec: int = 60):
         """Store recent depth data for given amount of time."""
@@ -32,12 +33,12 @@ class DepthImage:
         #     self.depth_images.pop(0)
 
         # Store the current image
-        bridge = CvBridge()
-        cv_image = bridge.imgmsg_to_cv2(data, desired_encoding='passthrough')
+        cv_image = self.bridge.imgmsg_to_cv2(data, desired_encoding='passthrough')
         self.depth_images.append([data.header.stamp.secs, cv_image])
+        rospy.loginfo("depth")
 
-        msg = data
-        self.publisher.publish(msg)
+        # msg = data
+        self.publisher.publish(data)
 
     def find_closest_index(self, desired_time):
         """Find the index of the closest image to the desired timestamp."""
