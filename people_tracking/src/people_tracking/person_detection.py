@@ -110,6 +110,8 @@ class PersonDetector:
         # Import RGB Image
         cv_image = self.bridge.imgmsg_to_cv2(latest_image, desired_encoding='passthrough')
         cv_image = cv2.GaussianBlur(cv_image, (5, 5), 0)
+        if not laptop:
+            cv_image = cv2.cvtColor(cv_image, cv2.COLOR_RGB2BGR)
 
         # Save Image
         if save_data:
@@ -127,6 +129,8 @@ class PersonDetector:
             depth_image = self.request_depth_image(self.latest_image_time).image
             cv_depth_image = self.bridge.imgmsg_to_cv2(depth_image, desired_encoding='passthrough')
             cv_depth_image = cv2.GaussianBlur(cv_depth_image, (5, 5), 0)
+            if not laptop:
+                cv_depth_image = cv2.cvtColor(cv_depth_image, cv2.COLOR_RGB2BGR)
 
             if save_data:
                 cv2.imwrite(f"{save_path}{batch_nr}_depth.jpg", cv_depth_image)
