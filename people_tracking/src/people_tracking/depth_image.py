@@ -28,8 +28,8 @@ class DepthImage:
             rospy.logwarn("Received NoneType data in image_callback.")
             return
 
-        while self.depth_images and (float(rospy.get_time()) - self.depth_images[0][0]) > time_data_stored_sec:
-            self.depth_images.pop(0)
+        # while self.depth_images and (float(rospy.get_time()) - self.depth_images[0][0]) > time_data_stored_sec:
+        #     self.depth_images.pop(0)
 
         # Store the current image
         bridge = CvBridge()
