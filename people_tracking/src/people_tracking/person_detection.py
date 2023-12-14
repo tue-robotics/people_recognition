@@ -127,6 +127,8 @@ class PersonDetector:
             depth_image = self.request_depth_image(self.latest_image_time).image
             cv_depth_image = self.bridge.imgmsg_to_cv2(depth_image, desired_encoding='passthrough')
             cv_depth_image = cv2.GaussianBlur(cv_depth_image, (5, 5), 0)
+        else:
+            cv_depth_image = None
 
         detected_persons = []
         depth_detected = []
@@ -146,7 +148,7 @@ class PersonDetector:
                 cropped_image = cv_image[y1:y2, x1:x2]
                 image_message = self.bridge.cv2_to_imgmsg(cropped_image, encoding="passthrough")
 
-                if depth_camera:
+                if depth_camera and cv_depth_image is not None:
                     mask_depth = np.zeros_like(cv_depth_image, dtype=np.uint8)
                     cv2.fillPoly(mask_depth, [seg], (255, 255, 255))
 
