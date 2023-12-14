@@ -66,7 +66,7 @@ class DepthImage:
         #     rospy.logwarn("No depth image available.")
         #     return Image()
 
-        return self.bridge.cv2_to_imgmsg(self.depth_images[-1][1], encoding="passthrough")
+        return self.depth_images[-1][1]
 
 
 if __name__ == '__main__':
