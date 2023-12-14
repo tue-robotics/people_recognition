@@ -124,7 +124,7 @@ class PersonDetector:
 
         # Import Depth Image
         if depth_camera:
-            depth_image = self.request_depth_image(self.latest_image_time).image
+            depth_image = self.request_depth_image(self.latest_image_time)#self.request_depth_image(self.latest_image_time).image
             cv_depth_image = self.bridge.imgmsg_to_cv2(depth_image, desired_encoding='passthrough')
             cv_depth_image = cv2.GaussianBlur(cv_depth_image, (5, 5), 0)
         else:
