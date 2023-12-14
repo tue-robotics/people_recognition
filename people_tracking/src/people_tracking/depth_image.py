@@ -55,16 +55,18 @@ class DepthImage:
 
     def get_depth_data(self, data):
         """Get data from image and publish it to the topic if data available."""
-        desired_time = data.desired_timestamp
-        desired_image = self.find_closest_index(desired_time)
+        # desired_time = data.desired_timestamp
+        # desired_image = self.find_closest_index(desired_time)
+        #
+        # if desired_image is not None:
+        #     bridge = CvBridge()
+        #     depth_image_msg = bridge.cv2_to_imgmsg(desired_image, encoding="passthrough")
+        #     return depth_image_msg
+        # else:
+        #     rospy.logwarn("No depth image available.")
+        #     return Image()
 
-        if desired_image is not None:
-            bridge = CvBridge()
-            depth_image_msg = bridge.cv2_to_imgmsg(desired_image, encoding="passthrough")
-            return depth_image_msg
-        else:
-            rospy.logwarn("No depth image available.")
-            return Image()
+        return self.bridge.cv2_to_imgmsg(self.depth_images[-1][1], encoding="passthrough")
 
 
 if __name__ == '__main__':
