@@ -17,8 +17,8 @@ class DepthImage:
     def __init__(self) -> None:
         # ROS Initialize
         rospy.init_node(NODE_NAME, anonymous=True)
-        self.subscriber = rospy.Subscriber('/hero/head_rgbd_sensor/depth_registered/image_raw', Image, self.image_callback, queue_size=5)
-        self.publisher = rospy.Publisher(TOPIC_PREFIX + 'depth', Image, queue_size=5)
+        self.subscriber = rospy.Subscriber('/hero/head_rgbd_sensor/depth_registered/image_raw', Image, self.image_callback, queue_size=2)
+        self.publisher = rospy.Publisher(TOPIC_PREFIX + 'depth', Image, queue_size=2)
         self.depth_images = []
         self.depth_service = rospy.Service(TOPIC_PREFIX + NODE_NAME + '/depth_data', Depth, self.get_depth_data)
         self.bridge = CvBridge()
@@ -66,7 +66,7 @@ class DepthImage:
         #     rospy.logwarn("No depth image available.")
         #     return Image()
 
-        return data#self.bridge.cv2_to_imgmsg(self.depth_images[-1][1], encoding="passthrough")
+        return self.bridge.cv2_to_imgmsg(self.depth_images[-1][1], encoding="passthrough")
 
 
 if __name__ == '__main__':
