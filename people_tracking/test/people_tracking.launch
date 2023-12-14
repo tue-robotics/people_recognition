@@ -1,6 +1,6 @@
 <!--
     On HERO run the following command: (Sets correct camera source and turns on depth data)
-    $ roslaunch people_tracking people_tracking.launch laptop:=False depth_camera:=True save_data:= False
+    $ roslaunch people_tracking people_tracking.launch laptop:=False depth_camera:=True save_data:=False
 -->
 <launch>
   <arg name="laptop" default="True" />

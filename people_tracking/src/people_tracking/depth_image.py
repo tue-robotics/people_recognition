@@ -22,7 +22,7 @@ class DepthImage:
         self.depth_images = []
         self.depth_service = rospy.Service(TOPIC_PREFIX + NODE_NAME + '/depth_data', Depth, self.get_depth_data)
 
-    def image_callback(self, data, time_data_stored_sec: int = 10):
+    def image_callback(self, data, time_data_stored_sec: int = 60):
         """Store recent depth data for given amount of time."""
         if data is None:
             rospy.logwarn("Received NoneType data in image_callback.")
