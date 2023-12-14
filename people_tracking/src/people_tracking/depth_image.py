@@ -33,8 +33,8 @@ class DepthImage:
         #     self.depth_images.pop(0)
 
         # Store the current image
-        cv_image = self.bridge.imgmsg_to_cv2(data, desired_encoding='passthrough')
-        self.depth_images.append([data.header.stamp.secs, cv_image])
+        # cv_image = self.bridge.imgmsg_to_cv2(data, desired_encoding='passthrough')
+        self.depth_images.append([data.header.stamp.secs, data])
         rospy.loginfo("depth")
 
         # msg = data
@@ -66,7 +66,7 @@ class DepthImage:
         #     rospy.logwarn("No depth image available.")
         #     return Image()
 
-        return self.bridge.cv2_to_imgmsg(self.depth_images[-1][1], encoding="passthrough")
+        return data#self.bridge.cv2_to_imgmsg(self.depth_images[-1][1], encoding="passthrough")
 
 
 if __name__ == '__main__':
