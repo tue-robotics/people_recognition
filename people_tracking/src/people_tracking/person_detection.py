@@ -151,7 +151,7 @@ class PersonDetector:
                 cropped_image = cv_image[y1:y2, x1:x2]
                 image_message = self.bridge.cv2_to_imgmsg(cropped_image, encoding="passthrough")
 
-                if depth_camera and cv_depth_image is not None:
+                if depth_camera:
                     mask_depth = np.zeros_like(cv_depth_image, dtype=np.uint8)
                     cv2.fillPoly(mask_depth, [seg], (255, 255, 255))
 
@@ -182,6 +182,7 @@ class PersonDetector:
         x_positions = [x_positions[i] for i in sorted_idx]
         y_positions = [y_positions[i] for i in sorted_idx]
         z_positions = [z_positions[i] for i in sorted_idx]
+        rospy.loginfo(f"z: {z_positions}")
 
         # Create and Publish person_detections msg
         msg = DetectedPerson()
