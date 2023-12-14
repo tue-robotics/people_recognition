@@ -665,11 +665,11 @@ class PeopleTracker:
         latest_image = self.latest_image
         cv_image = bridge.imgmsg_to_cv2(latest_image, desired_encoding='passthrough')
 
-        if not self.target_lost:
-            if len(self.approved_targets) > 0 and self.tracked_plottable:  # Plot latest approved measurement
-                x_approved = self.approved_targets[-1].x
-                y_approved = self.approved_targets[-1].y
-                cv2.circle(cv_image, (x_approved, y_approved), 5, (0, 0, 255, 50), -1)  # BGR
+        # if not self.target_lost:
+        if len(self.approved_targets) > 0 and self.tracked_plottable:  # Plot latest approved measurement
+            x_approved = self.approved_targets[-1].x
+            y_approved = self.approved_targets[-1].y
+            cv2.circle(cv_image, (x_approved, y_approved), 5, (0, 0, 255, 50), -1)  # BGR
 
         # # Get location with UKF
         # current_time = float(rospy.get_time())

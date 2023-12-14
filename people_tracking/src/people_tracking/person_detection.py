@@ -60,7 +60,7 @@ class PersonDetector:
             if time_stamp is not None:
                 response = self.depth_proxy(int(time_stamp))
                 return response
-                # rospy.loginfo(f"Depth: {response}")
+                rospy.loginfo(f"Depth: {response}")
         except rospy.ServiceException as e:
             rospy.logerr("Failed to get depth: %s", str(e))
 
@@ -114,6 +114,7 @@ class PersonDetector:
         # Save Image
         if save_data:
             cv2.imwrite(f"{save_path}{batch_nr}.jpg", cv_image)
+            cv2.imwrite(f"{save_path}{batch_nr}_depth.jpg", cv_image)
         # People detection
         classes, segmentations, bounding_box_corners = self.detect(self.model, cv_image)
         if classes is None or segmentations is None:
