@@ -160,8 +160,9 @@ class PersonDetector:
                     cv2.fillPoly(mask_depth, [seg], (255, 255, 255))
 
                     # Extract the values based on the mask
-                    masked_pixels = cv_depth_image[mask_depth]
-                    median_color =  cv2.mean(cv_depth_image, mask=mask_depth)#np.median(masked_pixels)
+                    # masked_pixels = cv_depth_image[mask_depth]
+                    masked_pixels = cv_depth_image[y1:y2, x1:x2]
+                    median_color =  cv2.mean(masked_pixels)#np.median(masked_pixels)
                     # print("Median color:", median_color)
 
 
