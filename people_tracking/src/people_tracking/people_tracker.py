@@ -718,6 +718,9 @@ class PeopleTracker:
                 rospy.loginfo( f"da: {self.rate_estimate_da:.2f} Hz, face: {self.rate_estimate_face:.2f} Hz, hoc: {self.rate_estimate_hoc:.2f} Hz")
                 time_old = current_time
 
+
+            self.move_robot()
+
             self.rate.sleep()
 
     @staticmethod
@@ -727,6 +730,45 @@ class PeopleTracker:
         """
         result = [entry for entry in lst if start_batch <= entry.nr_batch <= end_batch]
         return result
+
+
+    def move_robot(self):
+        """ How to move the robots head.
+        Convention:
+        x = to front
+        y = left
+        +x to y = Left
+
+        x,y,z tracking convention:
+        z = depth
+        x = left/right
+        y = height (up = +)
+        """
+        if len(self.approved_targets) > 0 and self.tracked_plottable:  # Plot latest approved measurement
+            x_approved = self.approved_targets[-1].x
+            y_approved = self.approved_targets[-1].y
+            z_approved = self.approved_targets[-1].z
+
+            desired_distance = 1500
+            move_x = desired_distance - z_approved
+            if move_x < -10:
+                forward = "Backwards"
+            if move_x > 10:
+                forward = "Forwards"
+            else:
+                forward = "Stop"
+
+            center_image = 320
+            rotate_x_y = 320 - x_approved
+            if rotate_x_y < -10:
+                rotation = "right"
+            if rotate_x_y > 10:
+                rotation = "left"
+            else:
+                rotation = "Stop"
+
+            rospy.loginfo(f'Move:  {forward}: {move_x},  Rotate: {rotation}: {rotate_x_y}')
+
 
 if __name__ == '__main__':
     if save_data:
