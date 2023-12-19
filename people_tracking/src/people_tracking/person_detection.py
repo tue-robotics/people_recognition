@@ -126,7 +126,7 @@ class PersonDetector:
 
         # Save Image
         if save_data:
-            cv2.imwrite(f"{save_path}{batch_nr}.jpg", cv_image)
+            cv2.imwrite(f"{save_path}{batch_nr}.png", cv_image)
 
 
 
