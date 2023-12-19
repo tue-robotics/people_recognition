@@ -9,6 +9,8 @@ from cv_bridge import CvBridge
 from sensor_msgs.msg import Image
 from people_tracking.srv import Depth
 
+
+
 NODE_NAME = 'depth'
 TOPIC_PREFIX = '/hero/'
 
@@ -35,10 +37,25 @@ class DepthImage:
         # Store the current image
         # cv_image = self.bridge.imgmsg_to_cv2(data, desired_encoding='passthrough')
         self.depth_images.append([data.header.stamp.secs, data])
-        rospy.loginfo("depth")
+        # rospy.loginfo("depth")
 
-        # msg = data
+        # # msg = data
+        # bridge = CvBridge()
+        # depth_display_image = bridge.imgmsg_to_cv2(data, desired_encoding='passthrough')
+        # cv2.normalize(depth_display_image, depth_display_image, 0, 1, cv2.NORM_MINMAX)
+        # cv2.imshow("Depth Image", depth_display_image)
         self.publisher.publish(data)
+
+    # def image_callback(self, ros_image):
+    #     bridge = CvBridge()
+    #     # Use cv_bridge() to convert the ROS image to OpenCV format
+    #
+    #     # Convert the depth image using the default passthrough encoding
+    #     depth_image = bridge.imgmsg_to_cv2(ros_image, desired_encoding="passthrough")
+    #     depth_array = np.array(depth_image, dtype=np.float32)
+    #     print(np.mean(depth_array))
+    #
+    #    # Convert the depth image to a Numpy array
 
     def find_closest_index(self, desired_time):
         """Find the index of the closest image to the desired timestamp."""

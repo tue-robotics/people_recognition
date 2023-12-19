@@ -44,8 +44,12 @@ class PersonDetector:
         self.bridge = CvBridge()
 
         # depth
-        rospy.wait_for_service(TOPIC_PREFIX + 'depth/depth_data')
-        self.depth_proxy = rospy.ServiceProxy(TOPIC_PREFIX + 'depth/depth_data', Depth)
+        # rospy.wait_for_service(TOPIC_PREFIX + 'depth/depth_data')
+        # self.depth_proxy = rospy.ServiceProxy(TOPIC_PREFIX + 'depth/depth_data', Depth)
+
+        self.subscriber = rospy.Subscriber('/hero/head_rgbd_sensor/depth_registered/image_raw', Image,
+                                           self.depth_image_callback, queue_size=2)
+        self.depth_images = []
 
     def reset(self, request):
         """ Reset all stored variables in Class to their default values."""
@@ -77,6 +81,13 @@ class PersonDetector:
 
         # rospy.loginfo("rgb: %s t: %s",data.header.seq, data.header.stamp.secs)
 
+
+    def depth_image_callback(self, data):
+        while len(self.depth_images) > 10:
+            self.depth_images.pop(0)
+        self.depth_images.append(data)
+
+
     @staticmethod
     def detect(model, frame):
         """ Return class, contour and bounding box of objects in image per class type. """
@@ -100,7 +111,7 @@ class PersonDetector:
 
     def process_latest_image(self):
         """ Get data from image and publish it to the topic."""
-
+        bridge = CvBridge()
         if self.latest_image is None:
             return
         latest_image = self.latest_image
@@ -126,14 +137,16 @@ class PersonDetector:
 
         # Import Depth Image
         if depth_camera:
-            depth_image = self.request_depth_image(self.latest_image_time).image
-            cv_depth_image = self.bridge.imgmsg_to_cv2(depth_image, desired_encoding='passthrough')
-            cv_depth_image = cv2.GaussianBlur(cv_depth_image, (5, 5), 0)
-            if not laptop:
-                cv_depth_image = cv2.cvtColor(cv_depth_image, cv2.COLOR_RGB2BGR)
+            # depth_image = self.request_depth_image(self.latest_image_time).image
+            cv_depth_image = bridge.imgmsg_to_cv2(self.depth_images[-1], desired_encoding='passthrough')
+            depth_array = np.array(cv_depth_image, dtype=np.float32)
+            # print(np.mean(depth_array))
+            # cv_depth_image = cv2.GaussianBlur(cv_depth_image, (5, 5), 0)
+            # if not laptop:
+            #     cv_depth_image = cv2.cvtColor(cv_depth_image, cv2.COLOR_RGB2BGR)
 
             if save_data:
-                cv2.imwrite(f"{save_path}{batch_nr}_depth.jpg", cv_depth_image)
+                cv2.imwrite(f"{save_path}{batch_nr}_depth.png", cv_depth_image)
         else:
             cv_depth_image = None
 
@@ -154,18 +167,31 @@ class PersonDetector:
                 cv_image[mask == 0] = 0
                 cropped_image = cv_image[y1:y2, x1:x2]
                 image_message = self.bridge.cv2_to_imgmsg(cropped_image, encoding="passthrough")
+                x = int(x1 + ((x2 - x1) / 2))
+                y = int(y1 + ((y2 - y1) / 2))
 
                 if depth_camera:
-                    mask_depth = np.zeros_like(cv_depth_image, dtype=np.uint8)
-                    cv2.fillPoly(mask_depth, [seg], (255, 255, 255))
+                    # mask_depth = np.zeros_like(cv_depth_image, dtype=np.uint8)
+                    # cv2.fillPoly(mask_depth, [seg], (255, 255, 255))
+                    #
+                    # # Extract the values based on the mask
+                    # masked_pixels = cv_depth_image[mask_depth]
+                    #
+                    # median_color = np.median(masked_pixels)#np.median(masked_pixels)
+                    # print("Median color:", median_color)
+                    roi_size = 5
+                    roi_x1 = max(0, x - roi_size // 2)
+                    roi_y1 = max(0, y - roi_size // 2)
+                    roi_x2 = min(cv_depth_image.shape[1], x + roi_size // 2)
+                    roi_y2 = min(cv_depth_image.shape[0], y + roi_size // 2)
 
-                    # Extract the values based on the mask
-                    masked_pixels = cv_depth_image[mask_depth]
+                    # Extract the depth values from the ROI
+                    depth_roi = cv_depth_image[roi_y1:roi_y2, roi_x1:roi_x2]
 
-                    median_color = np.median(masked_pixels)
-                    print("Median color:", median_color)
-
-
+                    # Calculate the average depth value
+                    average_depth = np.mean(depth_roi)
+                    print("Average Depth:", average_depth)
+                    median_color = average_depth
                     # cv_depth_image[mask_depth == 0] = 0
                     # depth_cropped = cv_depth_image[y1:y2, x1:x2]
                     # image_message_depth = self.bridge.cv2_to_imgmsg(depth_cropped, encoding="passthrough")
@@ -178,8 +204,8 @@ class PersonDetector:
                     median_color = 0
                 z_positions.append(int(median_color))
                 detected_persons.append(image_message)
-                x_positions.append(int(x1 + ((x2 - x1) / 2)))
-                y_positions.append(int(y1 + ((y2 - y1) / 2)))
+                x_positions.append(x)
+                y_positions.append(y)
 
         # Sort entries from x_distance from the center, makes sure that the first round correct data is selected
         sorted_idx = sorted(range(len(x_positions)), key=lambda k: self.key_distance(x_positions[k]))
