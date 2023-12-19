@@ -7,13 +7,13 @@
   <arg name="depth_camera" default="False" />
   <arg name="save_data" default="False"/>
 
-  <node
-    pkg="people_tracking"
-    type="depth_image.py"
-    name="depth"
-    output="screen"
-    args="$(arg laptop) $(arg depth_camera) $(arg save_data)"
-  />
+<!--   <node -->
+<!--     pkg="people_tracking" -->
+<!--     type="depth_image.py" -->
+<!--     name="depth" -->
+<!--     output="screen" -->
+<!--     args="$(arg laptop) $(arg depth_camera) $(arg save_data)" -->
+<!--   /> -->
 
   <node
     pkg="people_tracking"
