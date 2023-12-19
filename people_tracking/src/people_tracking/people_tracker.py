@@ -547,61 +547,63 @@ class PeopleTracker:
 
     def update_target(self, from_batch):
         """ Update the self.approved_targets from batch."""
-
-        exists_detection, idx_detection = self.element_exists([detection.nr_batch for detection in self.detections], from_batch)
-        if not exists_detection:  # Make sure existing batch number in detections
-            return
-
-        exist_tracked, idx_tracked = self.element_exists([detection.nr_batch for detection in self.approved_targets], from_batch)
-
-        if exist_tracked:   # Check new data with existing track.
-            idx_compare = idx_tracked-1
-            while not self.approved_targets[idx_compare].valid_measurement:
-                idx_compare -= 1
-
-            tracked_hocs = self.get_tracked_hocs(idx_tracked)
-            # print(f"tracked hocs exists: {tracked_hocs}")
-            idx_target, valid = self.get_target_value(self.detections[idx_detection], tracked_hocs,
-                                                      self.approved_targets[idx_compare-2: idx_compare],
-                                                      self.approved_targets[idx_compare].valid_measurement)
-
-            if self.approved_targets[idx_tracked].idx_person == idx_target:
-                self.update_approved_target(idx_target, idx_tracked, self.detections[idx_detection], valid)
-                # print(f"correct {valid}")
-                return
-            else:
-                # print(f"dummu {self.approved_targets[idx_tracked].idx_person} {idx_target}")
-
-                self.approved_targets = self.approved_targets[:idx_compare]
-
-                while idx_detection < len(self.detections)-1:
-                    tracked_hocs = self.get_tracked_hocs()
-                    # print(f"tracked hocs new: {tracked_hocs}")
-
-                    idx_target, valid = self.get_target_value(self.detections[idx_detection], tracked_hocs,
-                                                              self.approved_targets[-3:-1],
-                                                              self.approved_targets[-1].valid_measurement)
-                    self.add_approved_target(self.detections[idx_detection], idx_target, valid)
-
-                    idx_detection += 1
-
+        try:
+            exists_detection, idx_detection = self.element_exists([detection.nr_batch for detection in self.detections], from_batch)
+            if not exists_detection:  # Make sure existing batch number in detections
                 return
 
+            exist_tracked, idx_tracked = self.element_exists([detection.nr_batch for detection in self.approved_targets], from_batch)
+
+            if exist_tracked:   # Check new data with existing track.
+                idx_compare = idx_tracked-1
+                while not self.approved_targets[idx_compare].valid_measurement:
+                    idx_compare -= 1
+
+                tracked_hocs = self.get_tracked_hocs(idx_tracked)
+                # print(f"tracked hocs exists: {tracked_hocs}")
+                idx_target, valid = self.get_target_value(self.detections[idx_detection], tracked_hocs,
+                                                          self.approved_targets[idx_compare-2: idx_compare],
+                                                          self.approved_targets[idx_compare].valid_measurement)
+
+                if self.approved_targets[idx_tracked].idx_person == idx_target:
+                    self.update_approved_target(idx_target, idx_tracked, self.detections[idx_detection], valid)
+                    # print(f"correct {valid}")
+                    return
+                else:
+                    # print(f"dummu {self.approved_targets[idx_tracked].idx_person} {idx_target}")
+
+                    self.approved_targets = self.approved_targets[:idx_compare]
+
+                    while idx_detection < len(self.detections)-1:
+                        tracked_hocs = self.get_tracked_hocs()
+                        # print(f"tracked hocs new: {tracked_hocs}")
+
+                        idx_target, valid = self.get_target_value(self.detections[idx_detection], tracked_hocs,
+                                                                  self.approved_targets[-3:-1],
+                                                                  self.approved_targets[-1].valid_measurement)
+                        self.add_approved_target(self.detections[idx_detection], idx_target, valid)
+
+                        idx_detection += 1
+
+                    return
 
 
-        if self.approved_targets[-1].nr_batch < from_batch:  # Add single data association step to the end of target list
 
-            # Get 5 previous hoc measurements from track
-            tracked_hocs = self.get_tracked_hocs()
-            # print(f"tracked hocs new: {tracked_hocs}")
+            if self.approved_targets[-1].nr_batch < from_batch:  # Add single data association step to the end of target list
 
-            idx_target, valid = self.get_target_value(self.detections[idx_detection], tracked_hocs, self.approved_targets[-3:-1], self.approved_targets[-1].valid_measurement)
-            self.add_approved_target(self.detections[idx_detection], idx_target, valid)
+                # Get 5 previous hoc measurements from track
+                tracked_hocs = self.get_tracked_hocs()
+                # print(f"tracked hocs new: {tracked_hocs}")
 
-            return
+                idx_target, valid = self.get_target_value(self.detections[idx_detection], tracked_hocs, self.approved_targets[-3:-1], self.approved_targets[-1].valid_measurement)
+                self.add_approved_target(self.detections[idx_detection], idx_target, valid)
 
-        print("TUMMMMMM")
-        # else: # totaly new data that can be placed somewhere between already associated data, find place, do associaiton 1 back to this, this to next, if match in next return else redo everything -> For now do nothing with it
+                return
+
+            print("TUMMMMMM")
+            # else: # totaly new data that can be placed somewhere between already associated data, find place, do associaiton 1 back to this, this to next, if match in next return else redo everything -> For now do nothing with it
+        except:
+            print("error updating")
 
     @staticmethod
     def get_weights(flag_face, flag_hoc, flag_da, valid):

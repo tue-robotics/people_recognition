@@ -128,12 +128,7 @@ class PersonDetector:
         if save_data:
             cv2.imwrite(f"{save_path}{batch_nr}.jpg", cv_image)
 
-        # People detection
-        classes, segmentations, bounding_box_corners = self.detect(self.model, cv_image)
-        if classes is None or segmentations is None:
-            self.latest_image = None  # Clear the latest image after processing
-            self.latest_image_time = None
-            return
+
 
         # Import Depth Image
         if depth_camera:
@@ -146,9 +141,17 @@ class PersonDetector:
             #     cv_depth_image = cv2.cvtColor(cv_depth_image, cv2.COLOR_RGB2BGR)
 
             if save_data:
+                # Render image in opencv window
                 cv2.imwrite(f"{save_path}{batch_nr}_depth.png", cv_depth_image)
         else:
             cv_depth_image = None
+
+        # People detection
+        classes, segmentations, bounding_box_corners = self.detect(self.model, cv_image)
+        if classes is None or segmentations is None:
+            self.latest_image = None  # Clear the latest image after processing
+            self.latest_image_time = None
+            return
 
         detected_persons = []
         depth_detected = []
