@@ -719,7 +719,7 @@ class PeopleTracker:
                     validity = self.approved_targets[-val_idx].valid_measurement
                     val_idx += 1
 
-            if current_time - self.approved_targets[-val_idx].time > 2:
+            if current_time - self.approved_targets[-val_idx].time > 3:
                 rospy.loginfo("Target Lost")
                 self.target_lost = True
             else:

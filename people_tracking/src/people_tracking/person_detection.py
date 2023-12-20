@@ -121,8 +121,8 @@ class PersonDetector:
         # Import RGB Image
         cv_image = self.bridge.imgmsg_to_cv2(latest_image, desired_encoding='passthrough')
         cv_image = cv2.GaussianBlur(cv_image, (5, 5), 0)
-        if not laptop:
-            cv_image = cv2.cvtColor(cv_image, cv2.COLOR_RGB2BGR)
+        # if not laptop:
+        #     cv_image = cv2.cvtColor(cv_image, cv2.COLOR_RGB2BGR)
 
         # Save Image
         if save_data:
