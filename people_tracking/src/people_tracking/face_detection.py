@@ -1,10 +1,8 @@
 #!/usr/bin/env python
-from typing import Tuple, Any
-from typing import List, Optional
-
 import rospy
 from cv_bridge import CvBridge
 import face_recognition
+from typing import List, Optional
 
 from people_tracking.msg import DetectedPerson, FaceTarget
 from std_srvs.srv import Empty, EmptyResponse
@@ -14,6 +12,7 @@ TOPIC_PREFIX = '/hero/'
 
 
 class FacialRecognition:
+    """ Class for the facial recognition node."""
     def __init__(self) -> None:
         # ROS Initialize
         rospy.init_node(NODE_NAME, anonymous=True)
