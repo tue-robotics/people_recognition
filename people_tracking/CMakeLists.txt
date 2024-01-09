@@ -15,7 +15,7 @@ catkin_python_setup()
 
 add_message_files(
   FILES
-  ColourCheckedTarget.msg
+  FaceTarget.msg
   ColourTarget.msg
   DetectPerson.msg
   DetectedPerson.msg
@@ -41,7 +41,7 @@ include_directories(
  ${catkin_INCLUDE_DIRS}
 )
 
-add_executable(people_tracker src/people_tracker.cpp)
+add_executable(people_tracker test/experiments/people_tracker.cpp)
 target_link_libraries(people_tracker ${catkin_LIBRARIES})
 
 install(

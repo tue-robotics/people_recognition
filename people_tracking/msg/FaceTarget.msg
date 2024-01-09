@@ -6,4 +6,5 @@ int32[] y_positions
 int32[] z_positions
 sensor_msgs/Image detected_person
 
+bool[] face_detections_valid
 bool[] face_detections

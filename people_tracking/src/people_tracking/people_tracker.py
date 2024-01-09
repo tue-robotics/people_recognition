@@ -15,7 +15,7 @@ from UKFclass import *
 
 # MSGS
 from sensor_msgs.msg import Image
-from people_tracking.msg import ColourCheckedTarget, ColourTarget, DetectedPerson
+from people_tracking.msg import FaceTarget, ColourTarget, DetectedPerson
 
 # SrvS
 from std_srvs.srv import Empty
@@ -44,7 +44,7 @@ class PeopleTracker:
         rospy.init_node(NODE_NAME, anonymous=True)
         self.subscriber_hoc = rospy.Subscriber(TOPIC_PREFIX + 'HoC', ColourTarget, self.callback_hoc,
                                                queue_size=2)
-        self.subscriber_face = rospy.Subscriber(TOPIC_PREFIX + 'face_detections', ColourCheckedTarget,
+        self.subscriber_face = rospy.Subscriber(TOPIC_PREFIX + 'face_detections', FaceTarget,
                                                 self.callback_face, queue_size=2)
         self.subscriber_persons = rospy.Subscriber(TOPIC_PREFIX + 'person_detections', DetectedPerson,
                                                    self.callback_persons, queue_size=2)
@@ -135,7 +135,7 @@ class PeopleTracker:
         """ Get the most recent frame/image from the camera."""
         self.latest_image = data
 
-    def callback_hoc(self, data: ColourCheckedTarget) -> None:
+    def callback_hoc(self, data: FaceTarget) -> None:
         """ Add the latest HoC detection to the storage."""
         batch_nr = data.nr_batch
         colour_vectors = [data.colour_vectors[i:i + 32 * 3] for i in range(0, len(data.colour_vectors), 32 * 3)]
@@ -165,10 +165,12 @@ class PeopleTracker:
         else:
             rospy.loginfo("HoC detection not used")
 
-    def callback_face(self, data: ColourCheckedTarget) -> None:
+    def callback_face(self, data: FaceTarget) -> None:
         """ Add the latest Face detection to the storage."""
         batch_nr = data.batch_nr
-        face_detections = data.face_detections
+
+        face_detections = [detection if is_valid else None for is_valid, detection in zip(data.face_detections_valid, data.face_detections)]
+        print(face_detections)
         exists, idx = self.element_exists([detection.nr_batch for detection in self.detections], batch_nr)
         if exists:
             nr_batch, time, nr_persons, x_positions, y_positions, z_positions, colour_vectors, _ = self.detections[idx]
