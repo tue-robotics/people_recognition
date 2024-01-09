@@ -678,6 +678,8 @@ class PeopleTracker:
         bridge = CvBridge()
         latest_image = self.latest_image
         cv_image = bridge.imgmsg_to_cv2(latest_image, desired_encoding='passthrough')
+        if not laptop:
+            cv_image = cv2.cvtColor(cv_image, cv2.COLOR_RGB2BGR)
 
         # if not self.target_lost:
         if len(self.approved_targets) > 0 and self.tracked_plottable and not self.target_lost:  # Plot latest approved measurement

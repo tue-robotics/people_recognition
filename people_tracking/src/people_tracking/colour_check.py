@@ -87,4 +87,5 @@ if __name__ == '__main__':
         node_hoc = HOC()
         rospy.spin()
     except rospy.exceptions.ROSInterruptException:
+        rospy.loginfo("Failed to launch HoC Node")
         pass

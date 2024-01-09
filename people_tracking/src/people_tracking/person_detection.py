@@ -1,17 +1,18 @@
 #!/usr/bin/env python
 import sys
+import os
+import rospkg
+import time
 import rospy
 import cv2
 import numpy as np
 from cv_bridge import CvBridge
 from ultralytics import YOLO
 
-# MSGS
 from sensor_msgs.msg import Image
 from people_tracking.msg import DetectedPerson
-
 from std_srvs.srv import Empty, EmptyResponse
-from people_tracking.srv import Depth
+
 
 NODE_NAME = 'person_detection'
 TOPIC_PREFIX = '/hero/'
@@ -21,7 +22,9 @@ name_subscriber_RGB = 'video_frames' if laptop == "True" else '/hero/head_rgbd_s
 depth_camera = False if sys.argv[2] == "False" else True
 save_data = False if sys.argv[3] == "False" else True
 
-class PersonDetector:
+
+class PersonDetection:
+    """ Class for the person detection node."""
     def __init__(self) -> None:
         # Initialize YOLO
         model_path = "~/MEGA/developers/Donal/yolov8n-seg.pt"
@@ -31,7 +34,10 @@ class PersonDetector:
 
         # ROS Initialize
         rospy.init_node(NODE_NAME, anonymous=True)
-        self.subscriber = rospy.Subscriber(name_subscriber_RGB, Image, self.image_callback, queue_size=1)
+        self.subscriber_rgb = rospy.Subscriber(name_subscriber_RGB, Image, self.image_callback, queue_size=2)
+        self.subscriber_depth = rospy.Subscriber('/hero/head_rgbd_sensor/depth_registered/image_raw', Image,
+                                                 self.depth_image_callback, queue_size=2)
+
         self.publisher = rospy.Publisher(TOPIC_PREFIX + 'person_detections', DetectedPerson, queue_size=5)
         self.publisher_debug = rospy.Publisher(TOPIC_PREFIX + 'debug/segmented_image', Image, queue_size=5)
         self.reset_service = rospy.Service(TOPIC_PREFIX + NODE_NAME + '/reset', Empty, self.reset)
@@ -40,15 +46,6 @@ class PersonDetector:
         self.batch_nr = 0
         self.latest_image = None  # To store the most recent image
         self.latest_image_time = None
-
-        self.bridge = CvBridge()
-
-        # depth
-        # rospy.wait_for_service(TOPIC_PREFIX + 'depth/depth_data')
-        # self.depth_proxy = rospy.ServiceProxy(TOPIC_PREFIX + 'depth/depth_data', Depth)
-
-        self.subscriber = rospy.Subscriber('/hero/head_rgbd_sensor/depth_registered/image_raw', Image,
-                                           self.depth_image_callback, queue_size=2)
         self.depth_images = []
 
     def reset(self, request):
@@ -56,42 +53,28 @@ class PersonDetector:
         self.batch_nr = 0
         self.latest_image = None
         self.latest_image_time = None
+        self.depth_images = []
         return EmptyResponse()
 
-    def request_depth_image(self, time_stamp):
-
-        try:
-            if time_stamp is not None:
-                response = self.depth_proxy(int(time_stamp))
-                return response
-                rospy.loginfo(f"Depth: {response}")
-        except rospy.ServiceException as e:
-            rospy.logerr("Failed to get depth: %s", str(e))
-
-
-    def image_callback(self, data):
-        """ Make sure that only the most recent data will be processed."""
+    def image_callback(self, data: Image) -> None:
+        """ Store the latest image with its information."""
         if self.latest_image is not None:
             self.latest_image = None
 
         self.latest_image = data
-        # rospy.loginfo("%s, %s",data.header.seq, data.header.stamp.secs)
-        self.latest_image_time = data.header.stamp.secs#float(rospy.get_time())
+        self.latest_image_time = data.header.stamp.secs
         self.batch_nr = data.header.seq
 
-        # rospy.loginfo("rgb: %s t: %s",data.header.seq, data.header.stamp.secs)
-
-
-    def depth_image_callback(self, data):
-        while len(self.depth_images) > 10:
+    def depth_image_callback(self, data: Image) -> None:
+        """ Store the latest depth image. Only the most recent depth images are stored."""
+        while len(self.depth_images) > 50:
             self.depth_images.pop(0)
         self.depth_images.append(data)
-
 
     @staticmethod
     def detect(model, frame):
         """ Return class, contour and bounding box of objects in image per class type. """
-        results = model(frame)
+        results = model(frame, verbose=False)
         if results and len(results[0]) > 0:
             segmentation_contours_idx = [np.array(seg, dtype=np.int32) for seg in results[0].masks.xy]
             class_ids = np.array(results[0].boxes.cls.cpu(), dtype="int")
@@ -104,14 +87,13 @@ class PersonDetector:
             return None, None, None
 
     @staticmethod
-    def key_distance(x):
-        """ Calculate x-distance between input and center image."""
-        x_middle_image = 320
-        return abs(x - x_middle_image)
+    def key_distance(x: int, middle_image: int = 320) -> int:
+        """ Return the x-distance between input x-coordinate and center of the image."""
+        return abs(x - middle_image)
 
-    def process_latest_image(self):
-        """ Get data from image and publish it to the topic."""
-        bridge = CvBridge()
+    def process_latest_image(self) -> None:
+        """ Extract persons with position information from image and publish it to the topic."""
+
         if self.latest_image is None:
             return
         latest_image = self.latest_image
@@ -119,42 +101,31 @@ class PersonDetector:
         batch_nr = self.batch_nr
 
         # Import RGB Image
-        cv_image = self.bridge.imgmsg_to_cv2(latest_image, desired_encoding='passthrough')
+        bridge = CvBridge()
+        cv_image = bridge.imgmsg_to_cv2(latest_image, desired_encoding='passthrough')
         cv_image = cv2.GaussianBlur(cv_image, (5, 5), 0)
         # if not laptop:
         #     cv_image = cv2.cvtColor(cv_image, cv2.COLOR_RGB2BGR)
 
-        # Save Image
-        if save_data:
-            cv2.imwrite(f"{save_path}{batch_nr}.png", cv_image)
-
-
-
         # Import Depth Image
         if depth_camera:
-            # depth_image = self.request_depth_image(self.latest_image_time).image
             cv_depth_image = bridge.imgmsg_to_cv2(self.depth_images[-1], desired_encoding='passthrough')
-            depth_array = np.array(cv_depth_image, dtype=np.float32)
-            # print(np.mean(depth_array))
-            # cv_depth_image = cv2.GaussianBlur(cv_depth_image, (5, 5), 0)
-            # if not laptop:
-            #     cv_depth_image = cv2.cvtColor(cv_depth_image, cv2.COLOR_RGB2BGR)
-
-            if save_data:
-                # Render image in opencv window
-                cv2.imwrite(f"{save_path}{batch_nr}_depth.png", cv_depth_image)
         else:
             cv_depth_image = None
 
+        if save_data:
+            cv2.imwrite(f"{save_path}{batch_nr}.png", cv_image)
+            if depth_camera:
+                cv2.imwrite(f"{save_path}{batch_nr}_depth.png", cv_depth_image)
+
         # People detection
         classes, segmentations, bounding_box_corners = self.detect(self.model, cv_image)
-        if classes is None or segmentations is None:
-            self.latest_image = None  # Clear the latest image after processing
+        if classes is None or segmentations is None:    # Return if no persons detected in image
+            self.latest_image = None
             self.latest_image_time = None
             return
 
         detected_persons = []
-        depth_detected = []
         x_positions = []
         y_positions = []
         z_positions = []
@@ -169,7 +140,7 @@ class PersonDetector:
                 cv2.fillPoly(mask, [seg], (255, 255, 255))
                 cv_image[mask == 0] = 0
                 cropped_image = cv_image[y1:y2, x1:x2]
-                image_message = self.bridge.cv2_to_imgmsg(cropped_image, encoding="passthrough")
+                image_message = bridge.cv2_to_imgmsg(cropped_image, encoding="passthrough")
                 x = int(x1 + ((x2 - x1) / 2))
                 y = int(y1 + ((y2 - y1) / 2))
 
@@ -180,43 +151,37 @@ class PersonDetector:
                     # # Extract the values based on the mask
                     # masked_pixels = cv_depth_image[mask_depth]
                     #
-                    # median_color = np.median(masked_pixels)#np.median(masked_pixels)
+                    # median_color = np.median(masked_pixels)
                     # print("Median color:", median_color)
+                    #
+                    # cv_depth_image[mask_depth == 0] = 0
+                    # depth_cropped = cv_depth_image[y1:y2, x1:x2]
+                    # average_color = cv2.mean(cv_depth_image, mask=mask_depth)
+                    # rospy.loginfo(f"color {int(average_color[0])}")
                     roi_size = 5
                     roi_x1 = max(0, x - roi_size // 2)
                     roi_y1 = max(0, y - roi_size // 2)
                     roi_x2 = min(cv_depth_image.shape[1], x + roi_size // 2)
                     roi_y2 = min(cv_depth_image.shape[0], y + roi_size // 2)
-
-                    # Extract the depth values from the ROI
                     depth_roi = cv_depth_image[roi_y1:roi_y2, roi_x1:roi_x2]
+                    z_depth_roi = np.median(depth_roi)
 
-                    # Calculate the average depth value
-                    average_depth = np.mean(depth_roi)
-                    print("Average Depth:", average_depth)
-                    median_color = average_depth
-                    # cv_depth_image[mask_depth == 0] = 0
-                    # depth_cropped = cv_depth_image[y1:y2, x1:x2]
-                    # image_message_depth = self.bridge.cv2_to_imgmsg(depth_cropped, encoding="passthrough")
-                    # depth_detected.append(image_message_depth)
-
-                    # average_color = cv2.mean(cv_depth_image, mask=mask_depth)
-                    # rospy.loginfo(f"color {int(average_color[0])}")
-                    # z_positions.append(int(average_color[0]))
+                    z = z_depth_roi
+                    rospy.loginfo(f"Z-coord: {z}")
                 else:
-                    median_color = 0
-                z_positions.append(int(median_color))
+                    z = 0
+
                 detected_persons.append(image_message)
                 x_positions.append(x)
                 y_positions.append(y)
+                z_positions.append(int(z))
 
-        # Sort entries from x_distance from the center, makes sure that the first round correct data is selected
+        # Sort entries from smallest to largest  x_distance from the center
         sorted_idx = sorted(range(len(x_positions)), key=lambda k: self.key_distance(x_positions[k]))
         detected_persons = [detected_persons[i] for i in sorted_idx]
         x_positions = [x_positions[i] for i in sorted_idx]
         y_positions = [y_positions[i] for i in sorted_idx]
         z_positions = [z_positions[i] for i in sorted_idx]
-        # rospy.loginfo(f"z: {z_positions}")
 
         # Create and Publish person_detections msg
         msg = DetectedPerson()
@@ -226,27 +191,21 @@ class PersonDetector:
         msg.detected_persons = detected_persons
         msg.x_positions = x_positions
         msg.y_positions = y_positions
-        msg.z_positions = z_positions if depth_camera else [0] * nr_persons
+        msg.z_positions = z_positions
         self.publisher.publish(msg)
+
+        for image_message in detected_persons:  # Publish the segmented images of detected persons
+            self.publisher_debug.publish(image_message)
 
         self.latest_image = None  # Clear the latest image after processing
         self.latest_image_time = None
 
-        # for image_message in depth_detected:
-        #     self.publisher_debug.publish(image_message)
-        # for image_message in detected_persons:
-        #     self.publisher_debug.publish(image_message)
-
     def main_loop(self):
-        """ Main loop that makes sure only the latest images are processed. """
+        """ Loop to process most recent images. """
         while not rospy.is_shutdown():
             self.process_latest_image()
             rospy.sleep(0.001)
 
-
-import os
-import rospkg
-import time
 
 if __name__ == '__main__':
     if save_data:
@@ -255,14 +214,16 @@ if __name__ == '__main__':
             package_path = rospack.get_path("people_tracking")
             time = time.ctime(time.time())
             save_path = os.path.join(package_path, f'data/{time}_test/')
-            os.makedirs(save_path, exist_ok=True)           # Make sure the directory exists
+            os.makedirs(save_path, exist_ok=True)  # Make sure the directory exists
             print(save_path)
         except:
+            rospy.loginfo("Failed to make save path")
             pass
 
     try:
         print(f"Use Depth: {depth_camera}, Camera Source: {name_subscriber_RGB}")
-        node_pd = PersonDetector()
+        node_pd = PersonDetection()
         node_pd.main_loop()
     except rospy.exceptions.ROSInterruptException:
+        rospy.loginfo("Failed to launch Person Detection Node")
         pass
