@@ -1,20 +1,21 @@
 #!/usr/bin/env python
-from __future__ import print_function, division
 
-import PyKDL as kdl
 from collections import namedtuple
-import numpy as np
+from typing import List, Mapping
 
 import image_geometry
+import numpy as np
+import PyKDL as kdl
 import rospy
 from cv_bridge import CvBridge
-from geometry_msgs.msg import Point, Vector3, Pose, Quaternion
-from sensor_msgs.msg import Image, CameraInfo
+from geometry_msgs.msg import Point, Pose, Quaternion, Vector3
+from image_recognition_util.image_writer import color_map
+from image_recognition_pose_estimation.body_parts import BODY_PART_LINKS
+from people_recognition_msgs.msg import Person3D
+from people_recognition_msgs.srv import RecognizePeople2D
+from sensor_msgs.msg import CameraInfo, Image
 from std_msgs.msg import ColorRGBA
 from visualization_msgs.msg import Marker, MarkerArray
-
-from people_recognition_msgs.srv import RecognizePeople2D
-from people_recognition_msgs.msg import Person3D
 
 
 def _get_and_wait_for_service(srv_name, srv_class):
@@ -96,44 +97,16 @@ class Skeleton(object):
     {L, R}{Shoulder, Elbow, Wrist, Hip, Knee, Ankle, Eye, Ear}
     """
 
-    def __init__(self, body_parts):
+    def __init__(self, body_parts: Mapping[str, Joint]):
         """
         Constructor
 
         :param body_parts: {name: Joint}
         """
-        self.links = [
-            # Head left half
-            ('LEar', 'LEye'),
-            ('LEye', 'Nose'),
-            # Head right half
-            ('REar', 'REye'),
-            ('REye', 'Nose'),
-            # Head center
-            ('Nose', 'Neck'),
-
-            # Upper body left half
-            ('Neck', 'LShoulder'),
-            ('LShoulder', 'LElbow'),
-            ('LElbow', 'LWrist'),
-            # Upper body right half
-            ('Neck', 'RShoulder'),
-            ('RShoulder', 'RElbow'),
-            ('RElbow', 'RWrist'),
-
-            # Lower body left half
-            ('Neck', 'LHip'),
-            ('LHip', 'LKnee'),
-            ('LKnee', 'LAnkle'),
-            # Lower body right half
-            ('Neck', 'RHip'),
-            ('RKnee', 'RAnkle'),
-            ('RHip', 'RKnee'),
-        ]
 
         self.body_parts = body_parts
 
-    def filter_body_parts(self, threshold):
+    def filter_body_parts(self, threshold: float):
         """
         Method to remove body parts from a Skeleton object based on the
         maximum length of a link
@@ -142,7 +115,7 @@ class Skeleton(object):
         :return: Skeleton object containing body parts within the threshold
         """
         return_list = set()
-        for (a, b) in self.links:
+        for a, b in BODY_PART_LINKS:
             if a in self.body_parts and b in self.body_parts:
                 p1 = self.body_parts[a].point
                 p2 = self.body_parts[b].point
@@ -153,7 +126,7 @@ class Skeleton(object):
                     return_list.add(a)
                     return_list.add(b)
 
-        return Skeleton({
+        return self.__class__({
             name: joint
             for name, joint in self.body_parts.items() if name in return_list
         })
@@ -178,7 +151,7 @@ class Skeleton(object):
         """
         :returns [Point], with point pairs for all the links
         """
-        for (a, b) in self.links:
+        for (a, b) in BODY_PART_LINKS:
             if a in self.body_parts and b in self.body_parts:
                 yield self.body_parts[a].point
                 yield self.body_parts[b].point
@@ -189,35 +162,22 @@ class Skeleton(object):
         return '%s(%r)' % (self.__class__.__name__, self.body_parts)
 
 
-def color_map(N=256, normalized=False):
-    def bitget(byteval, idx):
-        return ((byteval & (1 << idx)) != 0)
-
-    dtype = 'float32' if normalized else 'uint8'
-    cmap = np.zeros((N, 3), dtype=dtype)
-    for i in range(N):
-        r = g = b = 0
-        c = i + 1  # skip the first color (black)
-        for j in range(8):
-            r |= bitget(c, 0) << 7 - j
-            g |= bitget(c, 1) << 7 - j
-            b |= bitget(c, 2) << 7 - j
-            c >>= 3
-
-        cmap[i] = np.array([r, g, b])
-
-    cmap = cmap / 255 if normalized else cmap
-    return cmap
-
-
 class PeopleRecognizer3D(object):
-    def __init__(self, recognize_people_srv_name, probability_threshold,
-                 link_threshold, heuristic, arm_norm_threshold,
-                 neck_norm_threshold, wave_threshold, vert_threshold,
-                 hor_threshold, padding):
+    def __init__(
+        self,
+        recognize_people_srv_name: str,
+        probability_threshold: float,
+        link_threshold: float,
+        heuristic: str,
+        arm_norm_threshold: float,
+        neck_norm_threshold: float,
+        wave_threshold: float,
+        vert_threshold: float,
+        hor_threshold: float,
+        padding: int,
+    ):
 
-        self._recognize_people_srv = _get_and_wait_for_service(
-            recognize_people_srv_name, RecognizePeople2D)
+        self._recognize_people_srv = _get_and_wait_for_service(recognize_people_srv_name, RecognizePeople2D)
 
         self._bridge = CvBridge()
 
@@ -232,9 +192,9 @@ class PeopleRecognizer3D(object):
         self._hor_threshold = hor_threshold
         self._padding = padding
 
-        rospy.loginfo('People recognizer 3D initialized')
+        rospy.loginfo("People recognizer 3D initialized")
 
-    def recognize(self, rgb, depth, camera_info):
+    def recognize(self, rgb: Image, depth: Image, camera_info: CameraInfo):
         """
         Service call function
 
@@ -487,7 +447,7 @@ class PeopleRecognizer3D(object):
 
         return new_joints
 
-    def get_person_tags(self, skeleton):
+    def get_person_tags(self, skeleton: Skeleton) -> List[str]:
         """
         Method to get tags for a skeleton. The possible elements of the tag
         list are:
@@ -548,8 +508,8 @@ class PeopleRecognizer3D(object):
         rospy.logdebug(tags)
         return tags
 
-    def get_pointing_pose(self, skeleton):
-        # We do required the shoulders for pointing calculation
+    def get_pointing_pose(self, skeleton: Skeleton):
+        # We do require the shoulders for pointing calculation
         # if "Neck" not in skeleton or "Nose" not in skeleton:
         #     return None
         #

@@ -133,7 +133,7 @@ class PeopleRecognizer2D(object):
         Get a list of all bodyparts associated with a particular group ID
 
         :param: group_id: The group ID of the bodyparts to be fetched
-        :param: recognitions: All bodyparts recieved from pose estimation
+        :param: recognitions: All bodyparts received from pose estimation
         :return: List of body_parts
         """
         return [r for r in recognitions if r.group_id == group_id]
