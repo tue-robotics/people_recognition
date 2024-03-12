@@ -171,7 +171,7 @@ class PeopleRecognizer3D(object):
         heuristic: str,
         arm_norm_threshold: float,
         neck_norm_threshold: float,
-        wave_threshold: float,
+        waving_threshold: float,
         vert_threshold: float,
         hor_threshold: float,
         padding: int,
@@ -187,7 +187,7 @@ class PeopleRecognizer3D(object):
         self._heuristic = heuristic
         self._arm_norm_threshold = arm_norm_threshold
         self._neck_norm_threshold = neck_norm_threshold
-        self._wave_threshold = wave_threshold
+        self._waving_threshold = waving_threshold
         self._vert_threshold = vert_threshold
         self._hor_threshold = hor_threshold
         self._padding = padding
@@ -451,7 +451,7 @@ class PeopleRecognizer3D(object):
         """
         Method to get tags for a skeleton. The possible elements of the tag
         list are:
-            1. LWave/LPointing | RWave/RPointing
+            1. LWaving/LPointing | RWaving/RPointing
             2. LLaying/LSitting | RLaying/RSitting
             3. LHolding | RHolding
             4. LNotHolding | RNotHolding
@@ -475,9 +475,9 @@ class PeopleRecognizer3D(object):
             except KeyError:
                 pass
             else:
-                if wrist.y < (shoulder.y - self._wave_threshold) and wrist.x < (
+                if wrist.y < (shoulder.y - self._waving_threshold) and wrist.x < (
                         shoulder.x + self._hor_threshold):
-                    tags.append(side + 'Wave')
+                    tags.append(side + 'Waving')
 
                 elif wrist.x > (shoulder.x + self._hor_threshold):
                     tags.append(side + 'Pointing')

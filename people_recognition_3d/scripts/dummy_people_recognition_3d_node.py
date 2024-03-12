@@ -38,7 +38,7 @@ class DummyPeopleRecognition3DNode:
         colors = ['black', 'orange', 'yellow']
         random.shuffle(colors)
         person.shirt_colors = colors
-        person.tags = ['LWave', 'RWave'] + random.choice([[], ["is_pointing"]])
+        person.tags = ['LWaving', 'RWaving'] + random.choice([[], ["is_pointing"]])
         # person.body_parts_pose
         person.position = Point()
         person.face.roi = RegionOfInterest(width=200, height=200)
