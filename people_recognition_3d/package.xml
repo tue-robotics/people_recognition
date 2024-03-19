@@ -23,6 +23,8 @@
   <exec_depend>cv_bridge</exec_depend>
   <exec_depend>geometry_msgs</exec_depend>
   <exec_depend>image_geometry</exec_depend>
+  <exec_depend>image_recognition_pose_estimation</exec_depend>
+  <exec_depend>image_recognition_util</exec_depend>
   <exec_depend>message_filters</exec_depend>
   <exec_depend>people_recognition_2d</exec_depend>
   <exec_depend>people_recognition_msgs</exec_depend>

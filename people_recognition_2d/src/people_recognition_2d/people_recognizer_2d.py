@@ -48,22 +48,21 @@ def _get_service_response(srv, args):
 
 
 class PeopleRecognizer2D(object):
-    def __init__(self, openpose_srv_name, openface_srv_name,
-                 keras_srv_name, color_extractor_srv_name,
+    def __init__(self, pose_estimation_srv_name, face_recognition_srv_name,
+                 face_properties_srv_name, color_extractor_srv_name,
                  enable_age_gender_detection, enable_shirt_color_extraction):
 
-        self._openpose_srv = _get_and_wait_for_service(openpose_srv_name, Recognize)
-        self._openface_srv = _get_and_wait_for_service(openface_srv_name, Recognize)
+        self._pose_estimation_srv = _get_and_wait_for_service(pose_estimation_srv_name, Recognize)
+        self._face_recognition_srv = _get_and_wait_for_service(face_recognition_srv_name, Recognize)
 
         self._enable_age_gender_detection = enable_age_gender_detection
         self._enable_shirt_color_extraction = enable_shirt_color_extraction
 
         if self._enable_age_gender_detection:
-            self._keras_srv = _get_and_wait_for_service(keras_srv_name, GetFaceProperties)
+            self._face_properties_srv = _get_and_wait_for_service(face_properties_srv_name, GetFaceProperties)
 
         if self._enable_shirt_color_extraction:
             self._color_extractor_srv = _get_and_wait_for_service(color_extractor_srv_name, Recognize)
-
 
         self._bridge = CvBridge()
 
@@ -80,12 +79,12 @@ class PeopleRecognizer2D(object):
         return [r for r in recognitions if _is_label_recognition(r)]
 
     @staticmethod
-    def _get_face_rois_ids_openpose(recognitions):
+    def _get_face_rois_ids_pose_estimation(recognitions):
         """
-        Get ROIs of faces from openpose recognitions using the nose, left ear
+        Get ROIs of faces from pose estimation using the nose, left ear
         and right ear
 
-        :param: recognitions from openpose
+        :param: recognitions from pose estimation
         """
         nose_recognitions = PeopleRecognizer2D._get_recognitions_with_label("Nose", recognitions)
         left_ear_recognitions = PeopleRecognizer2D._get_recognitions_with_label("LEar", recognitions)
@@ -129,12 +128,12 @@ class PeopleRecognizer2D(object):
         return rois, group_ids
 
     @staticmethod
-    def _get_body_parts_openpose(group_id, recognitions):
+    def _get_body_parts_pose_estimation(group_id, recognitions):
         """
         Get a list of all bodyparts associated with a particular group ID
 
         :param: group_id: The group ID of the bodyparts to be fetched
-        :param: recognitions: All bodyparts recieved from openpose
+        :param: recognitions: All bodyparts received from pose estimation
         :return: List of body_parts
         """
         return [r for r in recognitions if r.group_id == group_id]
@@ -142,10 +141,10 @@ class PeopleRecognizer2D(object):
     @staticmethod
     def _get_container_recognition(roi, recognitions, padding_factor=0.1):
         """
-        Associate OpenPose ROI with best OpenPose face ROI
+        Associate pose estimation ROI with best pose estimation face ROI
 
-        :param: roi: openpose face roi
-        :recognitions: openface recognitions
+        :param: roi: pose estimation face roi
+        :param: recognitions: face recognitions
         """
         x = roi.x_offset + .5 * roi.width
         y = roi.y_offset + .5 * roi.height
@@ -244,35 +243,38 @@ class PeopleRecognizer2D(object):
         image_annotations = []
         people = []
 
-        # OpenPose and OpenFace service calls
+        # Pose estimation and face recognition service calls
         rospy.loginfo("Starting pose and face recognition...")
         start_recognize = time.time()
-        openpose_response = _get_service_response(self._openpose_srv, image_msg)
-        openface_response = _get_service_response(self._openface_srv, image_msg)
+        pose_estimation_response = _get_service_response(self._pose_estimation_srv, image_msg)
+        face_recognition_response = _get_service_response(self._face_recognition_srv, image_msg)
         rospy.logdebug("Recognize took %.4f seconds", time.time() - start_recognize)
-        rospy.loginfo("_get_face_rois_ids_openpose...")
+        rospy.loginfo("_get_face_rois_ids_pose_estimation...")
 
-        # Extract face ROIs and their corresponding group ids from recognitions of openpose
-        openpose_face_rois, openpose_face_group_ids = PeopleRecognizer2D._get_face_rois_ids_openpose(
-            openpose_response.recognitions)
+        # Extract face ROIs and their corresponding group ids from recognitions of pose estimation
+        pose_estimation_face_rois, pose_estimation_face_group_ids = PeopleRecognizer2D._get_face_rois_ids_pose_estimation(
+            pose_estimation_response.recognitions
+        )
 
-        body_parts_array = [PeopleRecognizer2D._get_body_parts_openpose(group_id,
-                                                                        openpose_response.recognitions) for group_id in
-                            openpose_face_group_ids]
+        body_parts_array = [
+            PeopleRecognizer2D._get_body_parts_pose_estimation(group_id, pose_estimation_response.recognitions)
+            for group_id in pose_estimation_face_group_ids
+        ]
 
-        face_recognitions = [PeopleRecognizer2D._get_container_recognition(openpose_face_roi,
-                                                                           openface_response.recognitions)
-                             for openpose_face_roi in openpose_face_rois]
+        face_recognitions = [
+            PeopleRecognizer2D._get_container_recognition(pose_estimation_face_roi, face_recognition_response.recognitions)
+            for pose_estimation_face_roi in pose_estimation_face_rois
+        ]
 
         face_labels = [PeopleRecognizer2D._get_best_label(r) for r in face_recognitions]
 
-        # Keras service call
+        # Face properties service call
         if self._enable_age_gender_detection:
             rospy.loginfo("_get_face_properties...")
             face_image_msg_array = [self._bridge.cv2_to_imgmsg(PeopleRecognizer2D._image_from_roi(image, r.roi), "bgr8") for
                                     r in face_recognitions]
-            keras_response = _get_service_response(self._keras_srv, face_image_msg_array)
-            face_properties_array = keras_response.properties_array
+            face_properties_response = _get_service_response(self._face_properties_srv, face_image_msg_array)
+            face_properties_array = face_properties_response.properties_array
         else:
             face_properties_array = [FaceProperties()] * len(face_recognitions)
 

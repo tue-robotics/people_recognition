@@ -11,16 +11,16 @@ from sensor_msgs.msg import Image
 class PeopleRecognition2DNode:
     def __init__(self):
 
-        openpose_srv_name = self._get_param('~openpose_srv_name', "openpose/recognize")
-        openface_srv_name = self._get_param('~openface_srv_name', "face_recognition/recognize")
-        keras_srv_name = self._get_param('~keras_srv_name', "face_recognition/get_face_properties")
+        pose_estimation_srv_name = self._get_param('~pose_estimation_srv_name', "pose_estimation/recognize")
+        face_recognition_srv_name = self._get_param('~face_recognition_srv_name', "face_recognition/recognize")
+        face_properties_srv_name = self._get_param('~face_properties_srv_name', "face_recognition/get_face_properties")
         color_extractor_srv_name = self._get_param('~color_extractor_srv_name', "extract_color")
         enable_age_gender_detection = self._get_param('~enable_age_gender_detection', True)
         enable_shirt_color_extraction = self._get_param('~enable_shirt_color_extraction', True)
 
-        self._people_recognizer = PeopleRecognizer2D(openpose_srv_name,
-                                                     openface_srv_name,
-                                                     keras_srv_name,
+        self._people_recognizer = PeopleRecognizer2D(pose_estimation_srv_name,
+                                                     face_recognition_srv_name,
+                                                     face_properties_srv_name,
                                                      color_extractor_srv_name,
                                                      enable_age_gender_detection,
                                                      enable_shirt_color_extraction,

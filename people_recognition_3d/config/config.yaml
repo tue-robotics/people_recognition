@@ -4,7 +4,7 @@ link_threshold: 0.5
 heuristic: "shoulder"
 arm_norm_threshold: 0.5
 neck_norm_threshold: 0.7
-wave_threshold: 0.2
+waving_threshold: 0.2
 vert_threshold: 0.7
 hor_threshold: 0.4
 padding: 5

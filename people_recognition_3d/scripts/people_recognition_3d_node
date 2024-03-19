@@ -24,7 +24,7 @@ class PeopleRecognition3DNode:
         heuristic = self._get_param('~heuristic', 'shoulder')
         arm_norm_threshold = self._get_param('~arm_norm_threshold', 0.5)
         neck_norm_threshold = self._get_param('~neck_norm_threshold', 0.7)
-        wave_threshold = self._get_param('~wave_threshold', 0.2)
+        waving_threshold = self._get_param('~waving_threshold', 0.2)
         vert_threshold = self._get_param('~vert_threshold', 0.7)
         hor_threshold = self._get_param('~hor_threshold', 0.4)
         padding = self._get_param('~padding', 5)
@@ -33,7 +33,7 @@ class PeopleRecognition3DNode:
 
         self._people_recognizer_3d = PeopleRecognizer3D(
             recognize_people_srv_name, probability_threshold, link_threshold,
-            heuristic, arm_norm_threshold, neck_norm_threshold, wave_threshold,
+            heuristic, arm_norm_threshold, neck_norm_threshold, waving_threshold,
             vert_threshold, hor_threshold, padding)
 
         self._markers_pub = rospy.Publisher('~viz',

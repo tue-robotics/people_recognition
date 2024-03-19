@@ -2,9 +2,9 @@
 Node for people recognition in 2D. Defined as a service and not a publisher/subscriber.
 
 ## Custom dependencies
-- [image_recognition_openpose](https://github.com/tue-robotics/image_recognition/tree/master/image_recognition_openpose)
-- [image_recognition_openface](https://github.com/tue-robotics/image_recognition/tree/master/image_recognition_openpose)
-- [image_recognition_keras](https://github.com/tue-robotics/image_recognition/tree/master/image_recognition_keras)
+- [image_recognition_pose_estimation](https://github.com/tue-robotics/image_recognition/tree/master/image_recognition_pose_estimation)
+- [image_recognition_face_recognition](https://github.com/tue-robotics/image_recognition/tree/master/image_recognition_pose_estimation)
+- [image_recognition_age_gender](https://github.com/tue-robotics/image_recognition/tree/master/image_recognition_age_gender)
 - [image_recognition_color_extractor](https://github.com/tue-robotics/image_recognition/tree/master/image_recognition_color_extractor)
 - [image_recognition_msgs](https://github.com/tue-robotics/image_recognition/tree/master/image_recognition_msgs)
 
@@ -12,11 +12,11 @@ Node for people recognition in 2D. Defined as a service and not a publisher/subs
 ### Start the dependent nodes
 The relative namespaces of the dependent nodes must be as follows so that their advertised services are the same as the values of the [parameters](#parameters) of people recognition node:
 ```
-rosrun image_recognition_openpose openpose_node __ns:=openpose
+rosrun image_recognition_pose_estimation pose_estimation_node __ns:=pose_estimation
 
-rosrun image_recognition_openface face_recognition_node __ns:=face_recognition
+rosrun image_recognition_face_recognition face_recognition_node __ns:=face_recognition
 
-rosrun image_recognition_keras face_properties_node __ns:=face_recognition
+rosrun image_recognition_age_gender face_properties_node __ns:=face_recognition
 
 rosrun image_recognition_color_extractor color_extractor_node
 ```
@@ -30,12 +30,12 @@ This will create a service `detect_people` of type `RecognizePeople2D` and which
 custom message type `people_recognition_msgs/Person2D`
 
 ### Parameters
-| Name                         | Default Value                         |
-|------------------------------|---------------------------------------|
-| `~openpose_srv_name`         | `openpose/recognize`                  |
-| `~openface_srv_name`         | `face_recognition/recognize`          |
-| `~keras_srv_name`            | `face_recognition/get_face_properties`|
-| `~color_extractor_srv_name`  | `extract_color`                       |
+| Name                         | Default Value                          |
+|------------------------------|----------------------------------------|
+| `~pose_estimation_srv_name`  | `pose_estimation/recognize`            |
+| `~face_recognition_srv_name` | `face_recognition/recognize`           |
+| `~face_properties_srv_name`  | `face_recognition/get_face_properties` |
+| `~color_extractor_srv_name`  | `extract_color`                        |
 
 ### Message definition of Person2D
 ```
@@ -67,9 +67,9 @@ roscd people_recognition_2d/scripts
 ```
 
 # Work Flow
-The node first calls the recognize services of the openpose and openface nodes. ROIs of faces are extracted from
-the recognitions returned by OpenPose and are associated with the recognitions returned by OpenFace through the
-face ROIs to create a `Person2D` object. The ROIs of body parts returned by OpenPose are associated with each
-`Person2D` object. Face images are sent to the Keras node and properties (age and gender) are extracted and
+The node first calls the recognize services of the pose_estimation and face_recognition nodes. ROIs of faces are extracted from
+the recognitions returned by pose_estimation and are associated with the recognitions returned by face_recognition through the
+face ROIs to create a `Person2D` object. The ROIs of body parts returned by pose_estimation are associated with each
+`Person2D` object. Face images are sent to the face properties node and properties (age and gender) are extracted and
 assoicated with each 'Person2D' object. The ROIs of the faces are shifted vertically to approximate the ROIs of
 the shirts. These are sent to the color extractor to get the dominant colors.
