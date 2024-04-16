@@ -225,7 +225,7 @@ class PeopleRecognizer3D(object):
         # Starting value of group_id is 1
         max_group = max(person2d.body_parts[0].group_id for person2d in people2d) if people2d else 0
         rospy.logdebug("Creating {} color maps for 3D skeleton visualization".format(max_group + 1))
-        cmap = color_map(N=max_group+1, normalized=True)
+        cmap = color_map(n=max_group+1, normalized=True)
 
         markers = MarkerArray()
         delete_all = Marker(action=Marker.DELETEALL)
