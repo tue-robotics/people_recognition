@@ -1,0 +1,55 @@
+<?xml version="1.0"?>
+<?xml-model
+  href="http://download.ros.org/schema/package_format3.xsd"
+  schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>people_tracking</name>
+  <version>0.0.1</version>
+  <description>The people_tracking package</description>
+
+  <maintainer email="ar13pit@gmail.com">Arpit Aggarwal</maintainer>
+
+  <license>MIT</license>
+
+  <url type="bugtracker">https://github.com/tue-robotics/people_recognition/issues</url>
+  <url type="repository">https://github.com/tue-robotics/people_recognition/tree/master/people_recognition_2d</url>
+
+  <author email="ar13pit@gmail.com">Arpit Aggarwal</author>
+
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <buildtool_depend>python3-setuptools</buildtool_depend>
+
+  <depend>sensor_msgs</depend>
+
+  <build_depend>people_recognition_msgs</build_depend>
+  <build_depend>rgbd</build_depend>
+  <build_depend>rgbd_image_buffer</build_depend>
+  <build_depend>roscpp</build_depend>
+  <build_depend>visualization_msgs</build_depend>
+
+  <build_depend>message_generation</build_depend>
+
+  <exec_depend>cv_bridge</exec_depend>
+  <exec_depend>image_recognition_util</exec_depend>
+  <exec_depend>message_runtime</exec_depend>
+  <exec_depend>people_recognition_msgs</exec_depend>
+  <exec_depend>rgbd</exec_depend>
+  <exec_depend>rgbd_image_buffer</exec_depend>
+  <exec_depend>roscpp</exec_depend>
+  <exec_depend>rospy</exec_depend>
+  <exec_depend>std_msgs</exec_depend>
+  <exec_depend>visualization_msgs</exec_depend>
+
+  <test_depend>catkin_lint_cmake</test_depend>
+
+  <doc_depend>python3-sphinx</doc_depend>
+  <doc_depend>python-sphinx-autoapi-pip</doc_depend>
+  <doc_depend>python-sphinx-rtd-theme-pip</doc_depend>
+  <doc_depend>python3-yaml</doc_depend>
+
+  <export>
+    <rosdoc config="rosdoc.yaml" />
+  </export>
+
+</package>
