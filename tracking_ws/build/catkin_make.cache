@@ -1,0 +1,2 @@
+
+-DCATKIN_DEVEL_PREFIX=/home/miguel/Documents/people_recognition/tracking_ws/devel -DCMAKE_INSTALL_PREFIX=/home/miguel/Documents/people_recognition/tracking_ws/install -G Unix Makefiles
