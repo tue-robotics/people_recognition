@@ -105,6 +105,10 @@ catkin_package(
 #  DEPENDS system_lib
 )
 
+catkin_install_python(PROGRAMS scripts/publisher_node.py
+   DESTINATION${CATKIN_PACKAGE_BIN_DESTINATION} 
+)
+
 ###########
 ## Build ##
 ###########
