@@ -3,9 +3,9 @@
   href="http://download.ros.org/schema/package_format3.xsd"
   schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
-  <name>people_tracking</name>
+  <name>people_tracking_v2</name>
   <version>0.0.1</version>
-  <description>The people_tracking package</description>
+  <description>The people_tracking_v2 package</description>
 
   <maintainer email="ar13pit@gmail.com">Arpit Aggarwal</maintainer>
 

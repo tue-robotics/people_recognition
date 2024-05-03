@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.0.2)
-project(ppl)
+project(people_tracking_v2)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
 # add_compile_options(-std=c++11)
@@ -106,7 +106,7 @@ catkin_package(
 )
 
 catkin_install_python(PROGRAMS scripts/publisher_node.py
-   DESTINATION${CATKIN_PACKAGE_BIN_DESTINATION} 
+   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION} 
 )
 
 ###########
