@@ -193,8 +193,11 @@ include_directories(
 # )
 
 install(PROGRAMS
-  scripts/detect_poses
-  scripts/pose_estimation_node
+  scripts/pose_estimation/detect_poses
+  scripts/pose_estimation/pose_estimation_node
+  scripts/get_face_recognition
+  scripts/face_recognition_node
+  scripts/train_from_images
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 

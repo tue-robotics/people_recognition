@@ -13,7 +13,7 @@ from image_recognition_msgs.srv import Recognize
 from image_recognition_util import image_writer
 from sensor_msgs.msg import Image
 
-from image_recognition_pose_estimation.yolo_pose_wrapper import YoloPoseWrapper
+from pose_estimation.yolo_pose_wrapper import YoloPoseWrapper
 
 
 class PoseEstimationNode:

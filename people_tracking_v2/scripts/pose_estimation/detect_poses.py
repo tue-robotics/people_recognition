@@ -6,7 +6,7 @@ import sys
 
 import cv2
 
-from image_recognition_pose_estimation.yolo_pose_wrapper import YoloPoseWrapper
+from pose_estimation.yolo_pose_wrapper import YoloPoseWrapper
 
 
 def main(args: argparse.Namespace):
