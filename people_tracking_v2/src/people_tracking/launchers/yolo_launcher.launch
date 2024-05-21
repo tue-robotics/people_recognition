@@ -20,7 +20,7 @@
 
   <node
     pkg="people_tracking_v2"
-    type="yolo2.py"
+    type="yolo.py"
     name="People_detection"
     output="screen"
   />

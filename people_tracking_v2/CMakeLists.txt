@@ -11,7 +11,7 @@ catkin_package()
 install(PROGRAMS
   scripts/face_recognition_node.py
   scripts/pose_estimation_node.py
-  scripts/yolo2.py
+  scripts/yolo.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 

@@ -12,7 +12,7 @@ class YoloNode:
         self.bridge = CvBridge()
         self.model = YOLO("yolov8l.pt")
 
-        self.image_sub = rospy.Subscriber("/cv_camera/image_raw", Image, self.image_callback)
+        self.image_sub = rospy.Subscriber("/Webcam/image_raw", Image, self.image_callback)
         self.detection_pub = rospy.Publisher("/yolo_detections", String, queue_size=10)
 
     def image_callback(self, data):
