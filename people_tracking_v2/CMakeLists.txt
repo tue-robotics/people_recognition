@@ -1,17 +1,41 @@
 cmake_minimum_required(VERSION 3.0.2)
 project(people_tracking_v2)
 
-
-find_package(catkin REQUIRED COMPONENTS)
+find_package(catkin REQUIRED COMPONENTS
+  message_generation
+  roscpp
+  rospy
+  std_msgs
+  sensor_msgs
+)
 
 catkin_python_setup()
 
-catkin_package()
+add_message_files(
+  FILES
+  Detection.msg
+  DetectionArray.msg
+)
+
+generate_messages(
+  DEPENDENCIES
+  std_msgs
+  sensor_msgs
+)
+
+catkin_package(
+  CATKIN_DEPENDS message_runtime roscpp rospy std_msgs sensor_msgs
+)
+
+include_directories(
+  ${catkin_INCLUDE_DIRS}
+)
 
 install(PROGRAMS
   scripts/face_recognition_node.py
   scripts/pose_estimation_node.py
   scripts/yolo.py
+  scripts/HoC.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 

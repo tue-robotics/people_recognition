@@ -25,6 +25,13 @@
     output="screen"
   />
 
+  <node
+    pkg="people_tracking_v2"
+    type="HoC.py"
+    name="HoC"
+    output="screen"
+  />
+
   <!-- Uncomment these nodes when ready -->
   <!--
   <node
