@@ -2,6 +2,11 @@
 import math
 import os
 import sys
+
+current_dir = os.path.dirname(os.path.abspath(__file__))
+src_dir = os.path.join(current_dir, '..', 'src')
+sys.path.insert(0, src_dir)
+
 import diagnostic_updater
 import rospy
 from cv_bridge import CvBridge, CvBridgeError
@@ -15,7 +20,7 @@ from image_recognition_msgs.msg import (
 )
 from image_recognition_msgs.srv import Recognize, Annotate
 from image_recognition_util import image_writer
-from src.face_recognition.face_recognizer import FaceRecognizer
+from people_tracking.face_recognizer import FaceRecognizer
 
 
 class OpenfaceROS:

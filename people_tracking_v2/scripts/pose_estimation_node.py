@@ -5,6 +5,10 @@ import socket
 import sys
 from queue import Empty, Queue
 
+current_dir = os.path.dirname(os.path.abspath(__file__))
+src_dir = os.path.join(current_dir, '..', 'src')
+sys.path.insert(0, src_dir)
+
 import diagnostic_updater
 import rospy
 from cv_bridge import CvBridge, CvBridgeError
@@ -13,7 +17,7 @@ from image_recognition_msgs.srv import Recognize
 from image_recognition_util import image_writer
 from sensor_msgs.msg import Image
 
-from pose_estimation.yolo_pose_wrapper import YoloPoseWrapper
+from people_tracking.yolo_pose_wrapper import YoloPoseWrapper
 
 
 class PoseEstimationNode:
