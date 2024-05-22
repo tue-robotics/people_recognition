@@ -38,7 +38,7 @@ class YoloNode:
         human_detections = [(box, score, label) for box, score, label in zip(boxes, scores, labels) if int(label) == 0]
         rospy.loginfo(f"Human Detections: {len(human_detections)}")  # Log the number of human detections
 
-        for box, score, label in human_detections:
+        for i, (box, score, label) in enumerate(human_detections):
             detection = Detection()
             detection.x1 = float(box[0])
             detection.y1 = float(box[1])
@@ -52,9 +52,10 @@ class YoloNode:
             x1, y1, x2, y2 = map(int, box)
             color = (0, 255, 0)  # Set your desired color for bounding boxes
             thickness = 3
+            label_text = f'#{i+1} {int(label)}: {score:.2f}'
             cv2.rectangle(cv_image, (x1, y1), (x2, y2), color, thickness)
             cv2.putText(
-                cv_image, f'{int(label)}: {score:.2f}', (x1, y1 - 10),
+                cv_image, label_text, (x1, y1 - 10),
                 cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1
             )
 
