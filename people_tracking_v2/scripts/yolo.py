@@ -49,21 +49,21 @@ class YoloNode:
             detection_array.detections.append(detection)
 
         # Draw bounding boxes and labels on the frame (optional)
-        x1, y1, x2, y2 = map(int, box)
-        color = (0, 255, 0)  # Set your desired color for bounding boxes
-        thickness = 3
-        cv2.rectangle(cv_image, (x1, y1), (x2, y2), color, thickness)
-        cv2.putText(
-            cv_image, f'{int(label)}: {score:.2f}', (x1, y1 - 10),
-            cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1
-        )
+            x1, y1, x2, y2 = map(int, box)
+            color = (0, 255, 0)  # Set your desired color for bounding boxes
+            thickness = 3
+            cv2.rectangle(cv_image, (x1, y1), (x2, y2), color, thickness)
+            cv2.putText(
+                cv_image, f'{int(label)}: {score:.2f}', (x1, y1 - 10),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1
+            )
 
         # Publish detection results
         self.detection_pub.publish(detection_array)
 
         # Display the frame (optional)
-        # cv2.imshow("YOLOv8", cv_image)
-        # cv2.waitKey(3)
+        cv2.imshow("YOLOv8", cv_image)
+        cv2.waitKey(3)
 
 def main():
     rospy.init_node('yolo_node', anonymous=True)
