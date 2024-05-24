@@ -30,7 +30,7 @@ class HoCNode:
             x1, y1, x2, y2 = detection.x1, detection.y1, detection.x2, detection.y2
             roi = self.current_image[int(y1):int(y2), int(x1):int(x2)]
             hoc = self.compute_hoc(roi)
-            rospy.loginfo(f'HoC for detection #{i + 1}: {hoc}')
+            #rospy.loginfo(f'HoC for detection #{i + 1}: {hoc}')
             
     def compute_hoc(self, roi):
         hsv = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)

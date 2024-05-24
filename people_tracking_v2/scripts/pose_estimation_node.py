@@ -67,10 +67,10 @@ class PoseEstimationNode:
         # ROS IO
         self._bridge = CvBridge()
         self._recognize_srv = rospy.Service("recognize", Recognize, self._recognize_srv)
-        self._image_subscriber = rospy.Subscriber("image", Image, self._image_callback)
-        self._recognitions_publisher = rospy.Publisher("recognitions", Recognitions, queue_size=10)
+        self._image_subscriber = rospy.Subscriber("/Webcam/image_raw", Image, self._image_callback)
+        self._recognitions_publisher = rospy.Publisher("/pose_recognitions", Recognitions, queue_size=10)
         if self._topic_publish_result_image or self._service_publish_result_image:
-            self._result_image_publisher = rospy.Publisher("result_image", Image, queue_size=10)
+            self._result_image_publisher = rospy.Publisher("/pose_result_image", Image, queue_size=10)
 
         self.last_master_check = rospy.get_time()
 
@@ -96,7 +96,7 @@ class PoseEstimationNode:
 
     def _get_recognitions(self, image_msg, save_images, publish_images):
         """
-        Handles the recognition and publishes and stores the debug images (should be called in the main thread)
+         Handles the recognition and publishes and stores the debug images (should be called in the main thread)
 
         :param image_msg: Incoming image
         :param save_images: Whether to store the images
@@ -110,6 +110,12 @@ class PoseEstimationNode:
             return []
 
         recognitions, result_image = self._wrapper.detect_poses(bgr_image)
+
+        # Log the number of poses detected
+        if recognitions:
+            rospy.loginfo(f"Detected {len(recognitions)} poses")
+        else:
+            rospy.loginfo("No poses detected")
 
         # Write images
         if save_images:

@@ -63,8 +63,8 @@ class YoloNode:
         self.detection_pub.publish(detection_array)
 
         # Display the frame (optional)
-        cv2.imshow("YOLOv8", cv_image)
-        cv2.waitKey(3)
+        #cv2.imshow("YOLOv8", cv_image)
+        #cv2.waitKey(3)
 
 def main():
     rospy.init_node('yolo_node', anonymous=True)

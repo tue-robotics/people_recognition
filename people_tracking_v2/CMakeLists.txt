@@ -7,6 +7,8 @@ find_package(catkin REQUIRED COMPONENTS
   rospy
   std_msgs
   sensor_msgs
+  image_recognition_msgs
+  cv_bridge
 )
 
 catkin_python_setup()
@@ -24,7 +26,7 @@ generate_messages(
 )
 
 catkin_package(
-  CATKIN_DEPENDS message_runtime roscpp rospy std_msgs sensor_msgs
+  CATKIN_DEPENDS message_runtime roscpp rospy std_msgs sensor_msgs image_recognition_msgs cv_bridge
 )
 
 include_directories(

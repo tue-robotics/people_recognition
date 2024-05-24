@@ -32,6 +32,13 @@
     output="screen"
   />
 
+  <node
+    pkg="people_tracking_v2"
+    type="pose_estimation_node.py"
+    name="Pose_estimation"
+    output="screen"
+  />
+
   <!-- Uncomment these nodes when ready -->
   <!--
   <node
@@ -41,11 +48,5 @@
     output="screen"
   />
   
-  <node
-    pkg="people_tracking_v2"
-    type="pose_estimation_node.py"
-    name="Pose_estimation"
-    output="screen"
-  />
   -->
 </launch>
