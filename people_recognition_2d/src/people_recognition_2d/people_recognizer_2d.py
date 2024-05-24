@@ -209,28 +209,15 @@ class PeopleRecognizer2D(object):
                                        face_properties.age)
 
     @staticmethod
-    def _shirt_colors_to_label(shirt_colors):
+    def _object_colors_to_label(object_colors, object_name):
         """
-        Convert shirt colors array to label string
+        Convert object colors array to label string
 
-        :param: shirt_colors: Array to colors
+        :param: object_colors: Array to colors
         :return: string label
         """
-        label = " shirt colors:"
-        for color in shirt_colors:
-            label += " {}".format(color)
-        return label
-
-    @staticmethod
-    def _hair_colors_to_label(hair_colors):
-        """
-        Convert shirt colors array to label string
-
-        :param: shirt_colors: Array to colors
-        :return: string label
-        """
-        label = " hair colors:"
-        for color in hair_colors:
+        label = f" {object_name}  colors:"
+        for color in object_colors:
             label += " {}".format(color)
         return label
 
@@ -347,8 +334,8 @@ class PeopleRecognizer2D(object):
                                                                                                         face_recognitions):
 
             temp_label = PeopleRecognizer2D._face_properties_to_label(face_properties) + \
-                         PeopleRecognizer2D._shirt_colors_to_label(shirt_colors) + \
-                         PeopleRecognizer2D._hair_colors_to_label(hair_colors)
+                         PeopleRecognizer2D._object_colors_to_label(shirt_colors, "shirt") + \
+                         PeopleRecognizer2D._object_colors_to_label(hair_colors, "hair")
 
             if face_label:
                 image_annotations.append(face_label + " " + temp_label)
