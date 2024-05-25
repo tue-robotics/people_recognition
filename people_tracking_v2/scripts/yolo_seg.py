@@ -7,6 +7,7 @@ from ultralytics import YOLO
 from sensor_msgs.msg import Image
 from people_tracking_v2.msg import Detection, DetectionArray, SegmentedImages
 from cv_bridge import CvBridge, CvBridgeError
+from kalman_filter import KalmanFilterCV  # Import the Kalman Filter class
 
 class YoloSegNode:
     def __init__(self):
@@ -16,6 +17,10 @@ class YoloSegNode:
         self.image_sub = rospy.Subscriber("/Webcam/image_raw", Image, self.image_callback)
         self.segmented_images_pub = rospy.Publisher("/segmented_images", SegmentedImages, queue_size=10)
         self.bounding_box_image_pub = rospy.Publisher("/bounding_box_image", Image, queue_size=10)
+        self.detection_pub = rospy.Publisher("/hero/predicted_detections", DetectionArray, queue_size=10)
+
+        # Initialize the Kalman Filter
+        self.kalman_filters = {}
 
     def image_callback(self, data):
         try:
@@ -60,6 +65,24 @@ class YoloSegNode:
 
             # Draw bounding boxes and labels on the bounding_box_image
             x1, y1, x2, y2 = map(int, box)
+            x_center = (x1 + x2) / 2
+            y_center = (y1 + y2) / 2
+
+            # Initialize or update the Kalman Filter for this detection
+            if i not in self.kalman_filters:
+                self.kalman_filters[i] = KalmanFilterCV()
+            kalman_filter = self.kalman_filters[i]
+
+            # Update the Kalman Filter with the new measurement
+            kalman_filter.update(np.array([[x_center], [y_center]]))
+
+            # Predict the next position
+            kalman_filter.predict()
+            x_pred, y_pred = kalman_filter.get_state()[:2]
+
+            # Draw predicted position
+            cv2.circle(bounding_box_image, (int(x_pred), int(y_pred)), 5, (255, 0, 0), -1)
+
             color = (0, 255, 0)  # Set color for bounding boxes
             thickness = 3
             label_text = f'#{i+1} {int(label)}: {score:.2f}'
@@ -89,6 +112,9 @@ class YoloSegNode:
             self.bounding_box_image_pub.publish(bounding_box_image_msg)
         except CvBridgeError as e:
             rospy.logerr(e)
+
+        # Publish predicted detections
+        self.detection_pub.publish(detection_array)
 
 def main():
     rospy.init_node('yolo_seg_node', anonymous=True)
