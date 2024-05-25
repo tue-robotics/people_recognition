@@ -7,6 +7,11 @@ from ultralytics import YOLO
 from sensor_msgs.msg import Image
 from people_tracking_v2.msg import Detection, DetectionArray, SegmentedImages
 from cv_bridge import CvBridge, CvBridgeError
+
+# Add the path to the `kalman_filter.py` module
+import sys
+import os
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'src', 'people_tracking'))
 from kalman_filter import KalmanFilterCV  # Import the Kalman Filter class
 
 class YoloSegNode:
@@ -26,7 +31,7 @@ class YoloSegNode:
         try:
             cv_image = self.bridge.imgmsg_to_cv2(data, "bgr8")
         except CvBridgeError as e:
-            rospy.logerr(e)
+            rospy.logerr(f"CV Bridge Error: {e}")
             return
 
         # Run the YOLOv8 model on the frame
@@ -104,14 +109,15 @@ class YoloSegNode:
                 segmented_images_msg.images.append(segmented_image_msg)
 
         # Publish segmented images as a batch
-        self.segmented_images_pub.publish(segmented_images_msg)
+            self.segmented_images_pub.publish(segmented_images_msg)
 
         # Publish bounding box image
         try:
             bounding_box_image_msg = self.bridge.cv2_to_imgmsg(bounding_box_image, "bgr8")
+            rospy.loginfo("Publishing bounding box image")
             self.bounding_box_image_pub.publish(bounding_box_image_msg)
         except CvBridgeError as e:
-            rospy.logerr(e)
+            rospy.logerr(f"CV Bridge Error while publishing: {e}")
 
         # Publish predicted detections
         self.detection_pub.publish(detection_array)
