@@ -37,6 +37,7 @@ install(PROGRAMS
   scripts/face_recognition_node.py
   scripts/pose_estimation_node.py
   scripts/yolo.py
+  scripts/yolo_seg.py
   scripts/HoC.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
