@@ -3,8 +3,8 @@ import matplotlib.pyplot as plt
 import os
 
 # Expand the user directory
-hue_file_path = os.path.expanduser('~/hoc_data/hoc_hue_detection_1.npy')
-sat_file_path = os.path.expanduser('~/hoc_data/hoc_sat_detection_1.npy')
+hue_file_path = os.path.expanduser('~/hoc_data/hoc_hue_detection_8.npy')
+sat_file_path = os.path.expanduser('~/hoc_data/hoc_sat_detection_8.npy')
 
 # Load the HoC arrays from the saved files
 hoc_hue = np.load(hue_file_path)

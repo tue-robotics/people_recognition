@@ -46,11 +46,18 @@ class HoCNode:
                 rospy.logerr(f"Failed to convert segmented image: {e}")
         
     def compute_hoc(self, segmented_image):
+        # Convert to HSV
         hsv = cv2.cvtColor(segmented_image, cv2.COLOR_BGR2HSV)
         
-        # Compute histogram for Hue (180 bins) and Saturation (256 bins)
-        hist_hue = cv2.calcHist([hsv], [0], None, [180], [0, 180])
-        hist_sat = cv2.calcHist([hsv], [1], None, [256], [0, 256])
+        # Create a mask to ignore black pixels
+        mask = cv2.inRange(hsv, (0, 0, 1), (180, 255, 255))
+        
+        # Use the same number of bins for Hue and Saturation
+        bins = 256
+        
+        # Compute histogram for Hue and Saturation using the mask
+        hist_hue = cv2.calcHist([hsv], [0], mask, [bins], [0, 180])
+        hist_sat = cv2.calcHist([hsv], [1], mask, [bins], [0, 256])
         
         cv2.normalize(hist_hue, hist_hue)
         cv2.normalize(hist_sat, hist_sat)
