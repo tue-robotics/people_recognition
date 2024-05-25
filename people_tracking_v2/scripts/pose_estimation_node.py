@@ -112,10 +112,10 @@ class PoseEstimationNode:
         recognitions, result_image = self._wrapper.detect_poses(bgr_image)
 
         # Log the number of poses detected
-        if recognitions:
-            rospy.loginfo(f"Detected {len(recognitions)} poses")
-        else:
-            rospy.loginfo("No poses detected")
+        #if recognitions:
+        #    rospy.loginfo(f"Detected {len(recognitions)} poses")
+        #else:
+        #    rospy.loginfo("No poses detected")
 
         # Write images
         if save_images:

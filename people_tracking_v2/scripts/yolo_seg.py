@@ -14,8 +14,9 @@ class YoloSegNode:
         self.model = YOLO("yolov8n-seg.pt")  # Ensure the model supports segmentation
 
         self.image_sub = rospy.Subscriber("/Webcam/image_raw", Image, self.image_callback)
-        self.segmented_image_pub = rospy.Publisher("/segmented_image", Image, queue_size=10)
+        self.segmented_image_pub = rospy.Publisher("/segmented_images", Image, queue_size=10)
         self.bounding_box_image_pub = rospy.Publisher("/bounding_box_image", Image, queue_size=10)
+        self.detection_pub = rospy.Publisher("/yolo_detections", DetectionArray, queue_size=10)
 
     def image_callback(self, data):
         try:
@@ -39,9 +40,6 @@ class YoloSegNode:
 
         # Create a copy of the image for bounding box visualization
         bounding_box_image = cv_image.copy()
-
-        # Create a blank mask for accumulating all segmentation masks
-        combined_mask = np.zeros(cv_image.shape[:2], dtype=np.uint8)
 
         # Process each detection and create a Detection message, but only for humans (class 0)
         human_detections = [(box, score, label, mask) for box, score, label, mask in zip(boxes, scores, labels, masks) if int(label) == 0]
@@ -68,24 +66,23 @@ class YoloSegNode:
                 cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1
             )
 
-            # Apply segmentation mask to the combined_mask
+            # Publish each segmented image individually
             if mask is not None:
                 # Resize mask to match the original image dimensions
                 resized_mask = cv2.resize(mask, (cv_image.shape[1], cv_image.shape[0]))
                 resized_mask = resized_mask.astype(np.uint8)
 
-                # Accumulate the mask
-                combined_mask = cv2.bitwise_or(combined_mask, resized_mask)
+                # Apply the mask to the original image
+                segmented_image = cv2.bitwise_and(cv_image, cv_image, mask=resized_mask)
+                
+                try:
+                    segmented_image_msg = self.bridge.cv2_to_imgmsg(segmented_image, "bgr8")
+                    self.segmented_image_pub.publish(segmented_image_msg)
+                except CvBridgeError as e:
+                    rospy.logerr(e)
 
-        # Apply the combined mask to the original image
-        segmented_image = cv2.bitwise_and(cv_image, cv_image, mask=combined_mask)
-
-        # Publish segmented image
-        try:
-            segmented_image_msg = self.bridge.cv2_to_imgmsg(segmented_image, "bgr8")
-            self.segmented_image_pub.publish(segmented_image_msg)
-        except CvBridgeError as e:
-            rospy.logerr(e)
+        # Publish detection results
+        self.detection_pub.publish(detection_array)
 
         # Publish bounding box image
         try:
@@ -95,7 +92,7 @@ class YoloSegNode:
             rospy.logerr(e)
 
 def main():
-    rospy.init_node('yolo_node', anonymous=True)
+    rospy.init_node('yolo_seg_node', anonymous=True)
     yolo_node = YoloSegNode()
     try:
         rospy.spin()
