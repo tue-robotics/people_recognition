@@ -5,7 +5,7 @@ import cv2
 import numpy as np
 from ultralytics import YOLO
 from sensor_msgs.msg import Image
-from people_tracking_v2.msg import Detection, DetectionArray
+from people_tracking_v2.msg import Detection, DetectionArray, SegmentedImages
 from cv_bridge import CvBridge, CvBridgeError
 
 class YoloSegNode:
@@ -14,9 +14,8 @@ class YoloSegNode:
         self.model = YOLO("yolov8n-seg.pt")  # Ensure the model supports segmentation
 
         self.image_sub = rospy.Subscriber("/Webcam/image_raw", Image, self.image_callback)
-        self.segmented_image_pub = rospy.Publisher("/segmented_images", Image, queue_size=10)
+        self.segmented_images_pub = rospy.Publisher("/segmented_images", SegmentedImages, queue_size=10)
         self.bounding_box_image_pub = rospy.Publisher("/bounding_box_image", Image, queue_size=10)
-        self.detection_pub = rospy.Publisher("/yolo_detections", DetectionArray, queue_size=10)
 
     def image_callback(self, data):
         try:
@@ -40,6 +39,10 @@ class YoloSegNode:
 
         # Create a copy of the image for bounding box visualization
         bounding_box_image = cv_image.copy()
+
+        # Prepare the SegmentedImages message
+        segmented_images_msg = SegmentedImages()
+        segmented_images_msg.header.stamp = rospy.Time.now()
 
         # Process each detection and create a Detection message, but only for humans (class 0)
         human_detections = [(box, score, label, mask) for box, score, label, mask in zip(boxes, scores, labels, masks) if int(label) == 0]
@@ -66,23 +69,19 @@ class YoloSegNode:
                 cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1
             )
 
-            # Publish each segmented image individually
+            # Apply segmentation mask to the cv_image
             if mask is not None:
                 # Resize mask to match the original image dimensions
                 resized_mask = cv2.resize(mask, (cv_image.shape[1], cv_image.shape[0]))
                 resized_mask = resized_mask.astype(np.uint8)
 
-                # Apply the mask to the original image
+                # Apply mask to the original image
                 segmented_image = cv2.bitwise_and(cv_image, cv_image, mask=resized_mask)
-                
-                try:
-                    segmented_image_msg = self.bridge.cv2_to_imgmsg(segmented_image, "bgr8")
-                    self.segmented_image_pub.publish(segmented_image_msg)
-                except CvBridgeError as e:
-                    rospy.logerr(e)
+                segmented_image_msg = self.bridge.cv2_to_imgmsg(segmented_image, "bgr8")
+                segmented_images_msg.images.append(segmented_image_msg)
 
-        # Publish detection results
-        self.detection_pub.publish(detection_array)
+        # Publish segmented images as a batch
+        self.segmented_images_pub.publish(segmented_images_msg)
 
         # Publish bounding box image
         try:

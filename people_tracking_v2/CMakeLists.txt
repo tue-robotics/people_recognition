@@ -17,6 +17,7 @@ add_message_files(
   FILES
   Detection.msg
   DetectionArray.msg
+  SegmentedImages.msg
 )
 
 generate_messages(
