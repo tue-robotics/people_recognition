@@ -96,7 +96,7 @@ class PoseEstimationNode:
 
     def _get_recognitions(self, image_msg, save_images, publish_images):
         """
-         Handles the recognition and publishes and stores the debug images (should be called in the main thread)
+        Handles the recognition and publishes and stores the debug images (should be called in the main thread)
 
         :param image_msg: Incoming image
         :param save_images: Whether to store the images
