@@ -30,8 +30,8 @@ class HoCNode:
             try:
                 segmented_image = self.bridge.imgmsg_to_cv2(segmented_image_msg, "bgr8")
                 hoc_hue, hoc_sat = self.compute_hoc(segmented_image)
-                rospy.loginfo(f'HoC for segmented image #{i + 1} (Hue): {hoc_hue}')
-                rospy.loginfo(f'HoC for segmented image #{i + 1} (Saturation): {hoc_sat}')
+                #rospy.loginfo(f'HoC for segmented image #{i + 1} (Hue): {hoc_hue}')
+                #rospy.loginfo(f'HoC for segmented image #{i + 1} (Saturation): {hoc_sat}')
                 
                 # Save the HoC data
                 hue_save_path = os.path.join(self.hoc_data_dir, f'hoc_hue_detection_{i + 1}.npy')
@@ -40,8 +40,8 @@ class HoCNode:
                 np.save(sat_save_path, hoc_sat)
                 
                 # Print statements to verify file saving
-                rospy.loginfo(f'Saved Hue HoC to {hue_save_path}')
-                rospy.loginfo(f'Saved Sat HoC to {sat_save_path}')
+                #rospy.loginfo(f'Saved Hue HoC to {hue_save_path}')
+                #rospy.loginfo(f'Saved Sat HoC to {sat_save_path}')
             except CvBridgeError as e:
                 rospy.logerr(f"Failed to convert segmented image: {e}")
         
