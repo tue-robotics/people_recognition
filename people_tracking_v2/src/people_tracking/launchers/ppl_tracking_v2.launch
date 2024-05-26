@@ -39,6 +39,13 @@
     output="screen"
   />
 
+  <node
+    pkg="people_tracking_v2"
+    type="comparison_node.py"
+    name="Comparison"
+    output="screen"
+  />
+
   <!-- Uncomment these nodes when ready -->
   <!--
   <node

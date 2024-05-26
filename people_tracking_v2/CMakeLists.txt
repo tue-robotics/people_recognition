@@ -18,6 +18,7 @@ add_message_files(
   Detection.msg
   DetectionArray.msg
   SegmentedImages.msg
+  HoCVector.msg
 )
 
 generate_messages(
@@ -37,9 +38,9 @@ include_directories(
 install(PROGRAMS
   scripts/face_recognition_node.py
   scripts/pose_estimation_node.py
-  scripts/yolo.py
   scripts/yolo_seg.py
   scripts/HoC.py
+  scripts/comparison_node.py
   src/kalman_filter.py
   tools/save-HoC-data.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}

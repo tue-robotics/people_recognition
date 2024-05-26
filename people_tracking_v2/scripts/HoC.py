@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import rospy
-from people_tracking_v2.msg import SegmentedImages  # Custom message for batch segmented images
+from people_tracking_v2.msg import SegmentedImages, HoCVector  # Custom message for batch segmented images and HoC vectors
 from cv_bridge import CvBridge, CvBridgeError
 import cv2
 import numpy as np
@@ -14,6 +14,9 @@ class HoCNode:
         self.bridge = CvBridge()
         self.segmented_images_sub = rospy.Subscriber('/segmented_images', SegmentedImages, self.segmented_images_callback)
         
+        # Publisher for HoC vectors
+        self.hoc_vector_pub = rospy.Publisher('/hoc_vectors', HoCVector, queue_size=10)
+        
         if initialize_node:
             rospy.spin()
         
@@ -24,7 +27,7 @@ class HoCNode:
                 segmented_image = self.bridge.imgmsg_to_cv2(segmented_image_msg, "bgr8")
                 hoc_hue, hoc_sat = self.compute_hoc(segmented_image)
                 rospy.loginfo(f'Computed HoC for segmented image #{i + 1}')
-                # You can process hoc_hue and hoc_sat here or pass them to another node
+                self.publish_hoc_vectors(hoc_hue, hoc_sat)
             except CvBridgeError as e:
                 rospy.logerr(f"Failed to convert segmented image: {e}")
         
@@ -47,7 +50,15 @@ class HoCNode:
         
         # Flatten the histograms
         return hist_hue.flatten(), hist_sat.flatten()
-        
+    
+    def publish_hoc_vectors(self, hue_vector, sat_vector):
+        """Publish the computed HoC vectors."""
+        hoc_msg = HoCVector()
+        hoc_msg.header.stamp = rospy.Time.now()
+        hoc_msg.hue_vector = hue_vector.tolist()
+        hoc_msg.sat_vector = sat_vector.tolist()
+        self.hoc_vector_pub.publish(hoc_msg)
+
 if __name__ == '__main__':
     try:
         HoCNode()
