@@ -5,24 +5,17 @@ from people_tracking_v2.msg import SegmentedImages  # Custom message for batch s
 from cv_bridge import CvBridge, CvBridgeError
 import cv2
 import numpy as np
-import os
 
 class HoCNode:
-    def __init__(self):
-        rospy.init_node('hoc_node', anonymous=True)
+    def __init__(self, initialize_node=True):
+        if initialize_node:
+            rospy.init_node('hoc_node', anonymous=True)
         
         self.bridge = CvBridge()
         self.segmented_images_sub = rospy.Subscriber('/segmented_images', SegmentedImages, self.segmented_images_callback)
         
-        # Ensure the directory exists
-        self.hoc_data_dir = os.path.expanduser('~/hoc_data')
-        if not os.path.exists(self.hoc_data_dir):
-            os.makedirs(self.hoc_data_dir)
-            rospy.loginfo(f"Created directory: {self.hoc_data_dir}")
-        else:
-            rospy.loginfo(f"Using existing directory: {self.hoc_data_dir}")
-        
-        rospy.spin()
+        if initialize_node:
+            rospy.spin()
         
     def segmented_images_callback(self, msg):
         rospy.loginfo(f"Received batch of {len(msg.images)} segmented images")
@@ -30,18 +23,8 @@ class HoCNode:
             try:
                 segmented_image = self.bridge.imgmsg_to_cv2(segmented_image_msg, "bgr8")
                 hoc_hue, hoc_sat = self.compute_hoc(segmented_image)
-                #rospy.loginfo(f'HoC for segmented image #{i + 1} (Hue): {hoc_hue}')
-                #rospy.loginfo(f'HoC for segmented image #{i + 1} (Saturation): {hoc_sat}')
-                
-                # Save the HoC data
-                hue_save_path = os.path.join(self.hoc_data_dir, f'hoc_hue_detection_{i + 1}.npy')
-                sat_save_path = os.path.join(self.hoc_data_dir, f'hoc_sat_detection_{i + 1}.npy')
-                np.save(hue_save_path, hoc_hue)
-                np.save(sat_save_path, hoc_sat)
-                
-                # Print statements to verify file saving
-                #rospy.loginfo(f'Saved Hue HoC to {hue_save_path}')
-                #rospy.loginfo(f'Saved Sat HoC to {sat_save_path}')
+                rospy.loginfo(f'Computed HoC for segmented image #{i + 1}')
+                # You can process hoc_hue and hoc_sat here or pass them to another node
             except CvBridgeError as e:
                 rospy.logerr(f"Failed to convert segmented image: {e}")
         

@@ -41,6 +41,7 @@ install(PROGRAMS
   scripts/yolo_seg.py
   scripts/HoC.py
   src/kalman_filter.py
+  tools/save-HoC-data.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 

@@ -1,0 +1,34 @@
+<!--  <arg name="laptop" default="True" />  -->
+<!--   <arg name="depth_camera" default="False" /> -->
+<!--   <arg name="save_data" default="False"/> -->
+
+<launch>
+  <node
+    pkg="cv_camera"
+    type="cv_camera_node"
+    name="Webcam"
+    output="screen"
+  />
+
+  <node
+    pkg="people_tracking_v2"
+    type="yolo_seg.py"
+    name="Image_seg"
+    output="screen"
+  />
+
+  <node
+    pkg="people_tracking_v2"
+    type="HoC.py"
+    name="HoC"
+    output="screen"
+  />
+
+  <node
+    pkg="people_tracking_v2"
+    type="save-HoC-data.py"
+    name="Operator_HoC"
+    output="screen"
+  />
+
+</launch>
