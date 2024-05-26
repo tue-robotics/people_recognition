@@ -47,12 +47,6 @@
     name="Face"
     output="screen"
   />
-  
-    <node
-    pkg="people_tracking_v2"
-    type="yolo.py"
-    name="People_detection"
-    output="screen"
-  />
+
   -->
 </launch>
