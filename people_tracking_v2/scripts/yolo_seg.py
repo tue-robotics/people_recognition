@@ -21,6 +21,7 @@ class YoloSegNode:
 
         self.image_sub = rospy.Subscriber("/Webcam/image_raw", Image, self.image_callback)
         self.segmented_images_pub = rospy.Publisher("/segmented_images", SegmentedImages, queue_size=10)
+        self.individual_segmented_image_pub = rospy.Publisher("/individual_segmented_images", Image, queue_size=10)
         self.bounding_box_image_pub = rospy.Publisher("/bounding_box_image", Image, queue_size=10)
         self.detection_pub = rospy.Publisher("/hero/predicted_detections", DetectionArray, queue_size=10)
 
@@ -120,6 +121,9 @@ class YoloSegNode:
                 segmented_image = cv2.bitwise_and(cv_image, cv_image, mask=resized_mask)
                 segmented_image_msg = self.bridge.cv2_to_imgmsg(segmented_image, "bgr8")
                 segmented_images_msg.images.append(segmented_image_msg)
+
+                # Publish individual segmented images
+                self.individual_segmented_image_pub.publish(segmented_image_msg)
 
         # Publish segmented images as a batch
         self.segmented_images_pub.publish(segmented_images_msg)
