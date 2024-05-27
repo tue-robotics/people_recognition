@@ -19,6 +19,7 @@ add_message_files(
   DetectionArray.msg
   SegmentedImages.msg
   HoCVector.msg
+  BodySize.msg
 )
 
 generate_messages(
@@ -42,7 +43,8 @@ install(PROGRAMS
   scripts/HoC.py
   scripts/comparison_node.py
   src/kalman_filter.py
-  tools/save-HoC-data.py
+  tools/save_HoC_data.py
+  tools/save_pose_data.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 

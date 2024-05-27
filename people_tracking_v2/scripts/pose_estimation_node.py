@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#!/usr/bin/env python
 
 import os
 import socket
@@ -18,6 +18,7 @@ from image_recognition_util import image_writer
 from sensor_msgs.msg import Image
 
 from people_tracking.yolo_pose_wrapper import YoloPoseWrapper
+from people_tracking_v2.msg import PoseDistance
 
 class PoseEstimationNode:
     def __init__(
@@ -48,7 +49,7 @@ class PoseEstimationNode:
         # uses a thread per pub/sub and service. Since the openpose wrapper is created in the main thread, we have
         # to communicate our openpose requests (inputs) to the main thread where the request is processed by the
         # openpose wrapper (step 1).
-        # We have a separate spin loop in the main thread that checks whether there are items in the input q and
+        # We have a separate spin loop in the main thead that checks whether there are items in the input q and
         # processes these using the Openpose wrapper (step 2).
         # When the processing has finished, we add the result in the corresponding output queue (specified by the
         # request in the input queue) (step 3).
@@ -68,6 +69,7 @@ class PoseEstimationNode:
         self._recognize_srv = rospy.Service("recognize", Recognize, self._recognize_srv)
         self._image_subscriber = rospy.Subscriber("/Webcam/image_raw", Image, self._image_callback)
         self._recognitions_publisher = rospy.Publisher("/pose_recognitions", Recognitions, queue_size=10)
+        self._pose_distance_publisher = rospy.Publisher("/pose_distances", PoseDistance, queue_size=10)
         if self._topic_publish_result_image or self._service_publish_result_image:
             self._result_image_publisher = rospy.Publisher("/pose_result_image", Image, queue_size=10)
 
@@ -87,16 +89,20 @@ class PoseEstimationNode:
         self._input_q.put((image_msg, self._topic_save_images, self._topic_publish_result_image, False))
         recognitions, result_image, pose_details = self._wrapper.detect_poses(self._bridge.imgmsg_to_cv2(image_msg, "bgr8"))
 
-        # Calculate distances
+        # Calculate distances and publish them
         for pose in pose_details:
             try:
+                pose_distance_msg = PoseDistance()
+                pose_distance_msg.header.stamp = rospy.Time.now()
                 if "LShoulder" in pose and "LHip" in pose:
-                    left_shoulder_hip_distance = self._wrapper.compute_distance(pose["LShoulder"], pose["LHip"])
-                    rospy.loginfo(f"Left Shoulder-Hip Distance: {left_shoulder_hip_distance:.2f}")
+                    pose_distance_msg.left_shoulder_hip_distance = self._wrapper.compute_distance(pose["LShoulder"], pose["LHip"])
+                    rospy.loginfo(f"Left Shoulder-Hip Distance: {pose_distance_msg.left_shoulder_hip_distance:.2f}")
 
                 if "RShoulder" in pose and "RHip" in pose:
-                    right_shoulder_hip_distance = self._wrapper.compute_distance(pose["RShoulder"], pose["RHip"])
-                    rospy.loginfo(f"Right Shoulder-Hip Distance: {right_shoulder_hip_distance:.2f}")
+                    pose_distance_msg.right_shoulder_hip_distance = self._wrapper.compute_distance(pose["RShoulder"], pose["RHip"])
+                    rospy.loginfo(f"Right Shoulder-Hip Distance: {pose_distance_msg.right_shoulder_hip_distance:.2f}")
+
+                self._pose_distance_publisher.publish(pose_distance_msg)
             except Exception as e:
                 rospy.logerr(f"Error computing distance: {e}")
 
@@ -142,13 +148,17 @@ class PoseEstimationNode:
         # Calculate distances and log them
         for pose in pose_details:
             try:
+                pose_distance_msg = PoseDistance()
+                pose_distance_msg.header.stamp = rospy.Time.now()
                 if "LShoulder" in pose and "LHip" in pose:
-                    left_shoulder_hip_distance = self._wrapper.compute_distance(pose["LShoulder"], pose["LHip"])
-                    rospy.loginfo(f"Left Shoulder-Hip Distance: {left_shoulder_hip_distance:.2f}")
+                    pose_distance_msg.left_shoulder_hip_distance = self._wrapper.compute_distance(pose["LShoulder"], pose["LHip"])
+                    rospy.loginfo(f"Left Shoulder-Hip Distance: {pose_distance_msg.left_shoulder_hip_distance:.2f}")
 
                 if "RShoulder" in pose and "RHip" in pose:
-                    right_shoulder_hip_distance = self._wrapper.compute_distance(pose["RShoulder"], pose["RHip"])
-                    rospy.loginfo(f"Right Shoulder-Hip Distance: {right_shoulder_hip_distance:.2f}")
+                    pose_distance_msg.right_shoulder_hip_distance = self._wrapper.compute_distance(pose["RShoulder"], pose["RHip"])
+                    rospy.loginfo(f"Right Shoulder-Hip Distance: {pose_distance_msg.right_shoulder_hip_distance:.2f}")
+
+                self._pose_distance_publisher.publish(pose_distance_msg)
             except Exception as e:
                 rospy.logerr(f"Error computing distance: {e}")
 
