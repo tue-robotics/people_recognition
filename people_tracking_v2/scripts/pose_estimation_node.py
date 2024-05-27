@@ -136,15 +136,15 @@ class PoseEstimationNode:
         if publish_images:
             self._result_image_publisher.publish(self._bridge.cv2_to_imgmsg(result_image, "bgr8"))
 
-        # Calculate distances and log them
+        # Calculate distances
         for pose in pose_details:
-            if "LShoulder" in pose and "RShoulder" in pose:
-                shoulder_distance = self._wrapper.compute_distance(pose["LShoulder"], pose["RShoulder"])
-                rospy.loginfo(f"Shoulder Distance: {shoulder_distance:.2f}")
+            if "LShoulder" in pose and "LHip" in pose:
+                left_shoulder_hip_distance = self._wrapper.compute_distance(pose["LShoulder"], pose["LHip"])
+                rospy.loginfo(f"Left Shoulder-Hip Distance: {left_shoulder_hip_distance:.2f}")
 
-            if "LHip" in pose and "RHip" in pose:
-                hip_distance = self._wrapper.compute_distance(pose["LHip"], pose["RHip"])
-                rospy.loginfo(f"Hip Distance: {hip_distance:.2f}")
+            if "RShoulder" in pose and "RHip" in pose:
+                right_shoulder_hip_distance = self._wrapper.compute_distance(pose["RShoulder"], pose["RHip"])
+                rospy.loginfo(f"Right Shoulder-Hip Distance: {right_shoulder_hip_distance:.2f}")
 
         return recognitions
 

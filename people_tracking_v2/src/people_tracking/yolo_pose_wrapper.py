@@ -89,6 +89,6 @@ class YoloPoseWrapper:
         return recognitions, overlayed_image, pose_details
 
     @staticmethod
-    def compute_distance(point1: Tuple[float, float], point2: Tuple[float, float]) -> float:
+    def compute_distance(self, point1, point2):
         """Compute the Euclidean distance between two points."""
-        return np.linalg.norm(np.array(point1) - np.array(point2))
+        return np.sqrt((point1[0] - point2[0]) ** 2 + (point1[1] - point2[1]) ** 2)
