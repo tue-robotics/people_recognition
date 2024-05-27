@@ -19,7 +19,6 @@ from sensor_msgs.msg import Image
 
 from people_tracking.yolo_pose_wrapper import YoloPoseWrapper
 
-
 class PoseEstimationNode:
     def __init__(
         self,
@@ -49,7 +48,7 @@ class PoseEstimationNode:
         # uses a thread per pub/sub and service. Since the openpose wrapper is created in the main thread, we have
         # to communicate our openpose requests (inputs) to the main thread where the request is processed by the
         # openpose wrapper (step 1).
-        # We have a separate spin loop in the main thead that checks whether there are items in the input q and
+        # We have a separate spin loop in the main thread that checks whether there are items in the input q and
         # processes these using the Openpose wrapper (step 2).
         # When the processing has finished, we add the result in the corresponding output queue (specified by the
         # request in the input queue) (step 3).
@@ -86,6 +85,18 @@ class PoseEstimationNode:
 
     def _image_callback(self, image_msg):
         self._input_q.put((image_msg, self._topic_save_images, self._topic_publish_result_image, False))
+        recognitions, result_image, pose_details = self._wrapper.detect_poses(self._bridge.imgmsg_to_cv2(image_msg, "bgr8"))
+
+        # Calculate distances
+        for pose in pose_details:
+            if "LShoulder" in pose and "RShoulder" in pose:
+                shoulder_distance = self._wrapper.compute_distance(pose["LShoulder"], pose["RShoulder"])
+                rospy.loginfo(f"Shoulder Distance: {shoulder_distance:.2f}")
+
+            if "LHip" in pose and "RHip" in pose:
+                hip_distance = self._wrapper.compute_distance(pose["LHip"], pose["RHip"])
+                rospy.loginfo(f"Hip Distance: {hip_distance:.2f}")
+
         self._recognitions_publisher.publish(
             Recognitions(header=image_msg.header, recognitions=self._subscriber_output_q.get())
         )
@@ -109,13 +120,13 @@ class PoseEstimationNode:
             rospy.logerr(f"Could not convert to opencv image: {e}")
             return []
 
-        recognitions, result_image = self._wrapper.detect_poses(bgr_image)
+        recognitions, result_image, pose_details = self._wrapper.detect_poses(bgr_image)
 
         # Log the number of poses detected
-        #if recognitions:
-        #    rospy.loginfo(f"Detected {len(recognitions)} poses")
-        #else:
-        #    rospy.loginfo("No poses detected")
+        if recognitions:
+            rospy.loginfo(f"Detected {len(recognitions)} poses")
+        else:
+            rospy.loginfo("No poses detected")
 
         # Write images
         if save_images:
@@ -125,7 +136,16 @@ class PoseEstimationNode:
         if publish_images:
             self._result_image_publisher.publish(self._bridge.cv2_to_imgmsg(result_image, "bgr8"))
 
-        # Service response
+        # Calculate distances and log them
+        for pose in pose_details:
+            if "LShoulder" in pose and "RShoulder" in pose:
+                shoulder_distance = self._wrapper.compute_distance(pose["LShoulder"], pose["RShoulder"])
+                rospy.loginfo(f"Shoulder Distance: {shoulder_distance:.2f}")
+
+            if "LHip" in pose and "RHip" in pose:
+                hip_distance = self._wrapper.compute_distance(pose["LHip"], pose["RHip"])
+                rospy.loginfo(f"Hip Distance: {hip_distance:.2f}")
+
         return recognitions
 
     def spin(self, check_master: bool = False):
@@ -152,7 +172,6 @@ class PoseEstimationNode:
                         return 1  # This should result in a non-zero error code of the entire program
 
         return 0
-
 
 if __name__ == "__main__":
     rospy.init_node("pose_estimation")

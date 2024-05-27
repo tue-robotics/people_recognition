@@ -15,7 +15,6 @@ YOLO_POSE_PATTERN = re.compile(r"^yolov8(?:([nsml])|(x))-pose(?(2)-p6|)?.pt$")
 
 ALLOWED_DEVICE_TYPES = ["cpu", "cuda"]
 
-
 class YoloPoseWrapper:
     def __init__(self, model_name: str = "yolov8n-pose.pt", device: str = "cuda:0", verbose: bool = False):
         try:
@@ -51,21 +50,23 @@ class YoloPoseWrapper:
 
         self._model = YOLO(model=model_name, task="pose", verbose=verbose).to(device)
 
-    def detect_poses(self, image: np.ndarray, conf: float = 0.25) -> Tuple[List[Recognition], np.ndarray]:
+    def detect_poses(self, image: np.ndarray, conf: float = 0.25) -> Tuple[List[Recognition], np.ndarray, List[dict]]:
         # Detect poses
         # This is a wrapper of predict, but we might want to use track
         results: List[Results] = self._model(image, conf=conf)  # Accepts a list
 
         if not results:
-            return [], image
+            return [], image, []
 
         recognitions = []
+        pose_details = []
         result = results[0]  # Only using
         overlayed_image = result.plot(boxes=False)
 
         body_parts = list(BODY_PARTS.values())
 
         for i, person in enumerate(result.keypoints.cpu().numpy()):
+            pose = {}
             for j, (x, y, pred_conf) in enumerate(person.data[0]):
                 if pred_conf > 0 and x > 0 and y > 0:
                     recognitions.append(
@@ -82,5 +83,12 @@ class YoloPoseWrapper:
                             ),
                         )
                     )
+                    pose[body_parts[j]] = (x, y)
+            pose_details.append(pose)
 
-        return recognitions, overlayed_image
+        return recognitions, overlayed_image, pose_details
+
+    @staticmethod
+    def compute_distance(point1: Tuple[float, float], point2: Tuple[float, float]) -> float:
+        """Compute the Euclidean distance between two points."""
+        return np.linalg.norm(np.array(point1) - np.array(point2))
