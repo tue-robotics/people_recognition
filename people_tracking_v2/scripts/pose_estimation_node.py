@@ -89,13 +89,16 @@ class PoseEstimationNode:
 
         # Calculate distances
         for pose in pose_details:
-            if "LShoulder" in pose and "RShoulder" in pose:
-                shoulder_distance = self._wrapper.compute_distance(pose["LShoulder"], pose["RShoulder"])
-                rospy.loginfo(f"Shoulder Distance: {shoulder_distance:.2f}")
+            try:
+                if "LShoulder" in pose and "LHip" in pose:
+                    left_shoulder_hip_distance = self._wrapper.compute_distance(pose["LShoulder"], pose["LHip"])
+                    rospy.loginfo(f"Left Shoulder-Hip Distance: {left_shoulder_hip_distance:.2f}")
 
-            if "LHip" in pose and "RHip" in pose:
-                hip_distance = self._wrapper.compute_distance(pose["LHip"], pose["RHip"])
-                rospy.loginfo(f"Hip Distance: {hip_distance:.2f}")
+                if "RShoulder" in pose and "RHip" in pose:
+                    right_shoulder_hip_distance = self._wrapper.compute_distance(pose["RShoulder"], pose["RHip"])
+                    rospy.loginfo(f"Right Shoulder-Hip Distance: {right_shoulder_hip_distance:.2f}")
+            except Exception as e:
+                rospy.logerr(f"Error computing distance: {e}")
 
         self._recognitions_publisher.publish(
             Recognitions(header=image_msg.header, recognitions=self._subscriber_output_q.get())
@@ -136,15 +139,18 @@ class PoseEstimationNode:
         if publish_images:
             self._result_image_publisher.publish(self._bridge.cv2_to_imgmsg(result_image, "bgr8"))
 
-        # Calculate distances
+        # Calculate distances and log them
         for pose in pose_details:
-            if "LShoulder" in pose and "LHip" in pose:
-                left_shoulder_hip_distance = self._wrapper.compute_distance(pose["LShoulder"], pose["LHip"])
-                rospy.loginfo(f"Left Shoulder-Hip Distance: {left_shoulder_hip_distance:.2f}")
+            try:
+                if "LShoulder" in pose and "LHip" in pose:
+                    left_shoulder_hip_distance = self._wrapper.compute_distance(pose["LShoulder"], pose["LHip"])
+                    rospy.loginfo(f"Left Shoulder-Hip Distance: {left_shoulder_hip_distance:.2f}")
 
-            if "RShoulder" in pose and "RHip" in pose:
-                right_shoulder_hip_distance = self._wrapper.compute_distance(pose["RShoulder"], pose["RHip"])
-                rospy.loginfo(f"Right Shoulder-Hip Distance: {right_shoulder_hip_distance:.2f}")
+                if "RShoulder" in pose and "RHip" in pose:
+                    right_shoulder_hip_distance = self._wrapper.compute_distance(pose["RShoulder"], pose["RHip"])
+                    rospy.loginfo(f"Right Shoulder-Hip Distance: {right_shoulder_hip_distance:.2f}")
+            except Exception as e:
+                rospy.logerr(f"Error computing distance: {e}")
 
         return recognitions
 

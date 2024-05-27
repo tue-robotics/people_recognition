@@ -10,7 +10,6 @@ from sensor_msgs.msg import RegionOfInterest
 from ultralytics import YOLO
 from ultralytics.engine.results import Results
 
-
 YOLO_POSE_PATTERN = re.compile(r"^yolov8(?:([nsml])|(x))-pose(?(2)-p6|)?.pt$")
 
 ALLOWED_DEVICE_TYPES = ["cpu", "cuda"]
@@ -52,23 +51,23 @@ class YoloPoseWrapper:
 
     def detect_poses(self, image: np.ndarray, conf: float = 0.25) -> Tuple[List[Recognition], np.ndarray, List[dict]]:
         # Detect poses
-        # This is a wrapper of predict, but we might want to use track
         results: List[Results] = self._model(image, conf=conf)  # Accepts a list
 
         if not results:
             return [], image, []
 
         recognitions = []
-        pose_details = []
-        result = results[0]  # Only using
+        result = results[0]  # Only using the first result
         overlayed_image = result.plot(boxes=False)
 
         body_parts = list(BODY_PARTS.values())
+        pose_details = []  # Extracted pose details for calculating distances
 
         for i, person in enumerate(result.keypoints.cpu().numpy()):
             pose = {}
             for j, (x, y, pred_conf) in enumerate(person.data[0]):
                 if pred_conf > 0 and x > 0 and y > 0:
+                    pose[body_parts[j]] = (x, y)
                     recognitions.append(
                         Recognition(
                             group_id=i,
@@ -83,12 +82,10 @@ class YoloPoseWrapper:
                             ),
                         )
                     )
-                    pose[body_parts[j]] = (x, y)
             pose_details.append(pose)
 
         return recognitions, overlayed_image, pose_details
 
-    @staticmethod
     def compute_distance(self, point1, point2):
         """Compute the Euclidean distance between two points."""
         return np.sqrt((point1[0] - point2[0]) ** 2 + (point1[1] - point2[1]) ** 2)
