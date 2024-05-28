@@ -2,7 +2,7 @@
 
 import rospy
 import numpy as np
-from people_tracking_v2.msg import PoseDistance
+from people_tracking_v2.msg import BodySize
 import os
 
 class SavePoseDataNode:
@@ -11,7 +11,7 @@ class SavePoseDataNode:
         rospy.init_node('save_pose_data_node', anonymous=True)
         
         # Subscriber to pose distance data
-        self.pose_sub = rospy.Subscriber('/pose_distances', PoseDistance, self.pose_callback)
+        self.pose_sub = rospy.Subscriber('/pose_distances', BodySize, self.pose_callback)
         
         # File to save pose data
         self.pose_data_file = os.path.expanduser('~/pose_data/pose_data.npz')

@@ -18,7 +18,7 @@ from image_recognition_util import image_writer
 from sensor_msgs.msg import Image
 
 from people_tracking.yolo_pose_wrapper import YoloPoseWrapper
-from people_tracking_v2.msg import PoseDistance
+from people_tracking_v2.msg import BodySize
 
 class PoseEstimationNode:
     def __init__(
@@ -69,7 +69,7 @@ class PoseEstimationNode:
         self._recognize_srv = rospy.Service("recognize", Recognize, self._recognize_srv)
         self._image_subscriber = rospy.Subscriber("/Webcam/image_raw", Image, self._image_callback)
         self._recognitions_publisher = rospy.Publisher("/pose_recognitions", Recognitions, queue_size=10)
-        self._pose_distance_publisher = rospy.Publisher("/pose_distances", PoseDistance, queue_size=10)
+        self._pose_distance_publisher = rospy.Publisher("/pose_distances", BodySize, queue_size=10)
         if self._topic_publish_result_image or self._service_publish_result_image:
             self._result_image_publisher = rospy.Publisher("/pose_result_image", Image, queue_size=10)
 
@@ -92,7 +92,7 @@ class PoseEstimationNode:
         # Calculate distances and publish them
         for pose in pose_details:
             try:
-                pose_distance_msg = PoseDistance()
+                pose_distance_msg = BodySize()
                 pose_distance_msg.header.stamp = rospy.Time.now()
                 if "LShoulder" in pose and "LHip" in pose:
                     pose_distance_msg.left_shoulder_hip_distance = self._wrapper.compute_distance(pose["LShoulder"], pose["LHip"])
@@ -148,7 +148,7 @@ class PoseEstimationNode:
         # Calculate distances and log them
         for pose in pose_details:
             try:
-                pose_distance_msg = PoseDistance()
+                pose_distance_msg = BodySize()
                 pose_distance_msg.header.stamp = rospy.Time.now()
                 if "LShoulder" in pose and "LHip" in pose:
                     pose_distance_msg.left_shoulder_hip_distance = self._wrapper.compute_distance(pose["LShoulder"], pose["LHip"])

@@ -12,22 +12,15 @@
 
   <node
     pkg="people_tracking_v2"
-    type="yolo_seg.py"
-    name="Image_seg"
+    type="pose_estimation_node.py"
+    name="Pose"
     output="screen"
   />
 
   <node
     pkg="people_tracking_v2"
-    type="HoC.py"
-    name="HoC"
-    output="screen"
-  />
-
-  <node
-    pkg="people_tracking_v2"
-    type="save-HoC-data.py"
-    name="Operator_HoC"
+    type="save_pose_data.py"
+    name="Operator_pose"
     output="screen"
   />
 
