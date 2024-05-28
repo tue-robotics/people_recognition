@@ -26,11 +26,11 @@ class HoCNode:
             try:
                 segmented_image = self.bridge.imgmsg_to_cv2(segmented_image_msg, "bgr8")
                 hoc_hue, hoc_sat = self.compute_hoc(segmented_image)
-                rospy.loginfo(f'Computed HoC for segmented image #{i + 1}')
+                rospy.loginfo(f'Computed HoC for segmented image #{i}')
 
                 # Extract the ID from the incoming message
                 detection_id = msg.ids[i]
-                rospy.loginfo(f"Received Detection ID: {detection_id} for segmented image #{i + 1}")
+                rospy.loginfo(f"Received Detection ID: {detection_id} for segmented image #{i}")
 
                 # Publish the HoC vectors with the detection ID
                 self.publish_hoc_vectors(hoc_hue, hoc_sat, detection_id)

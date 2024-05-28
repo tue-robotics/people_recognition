@@ -28,11 +28,6 @@ class ComparisonNode:
         self.latest_hoc_vectors = {}
         self.latest_pose_data = {}
 
-        
-        # Initialize storage for the latest incoming data
-        self.latest_hoc_vectors = []
-        self.latest_pose_data = None
-
         rospy.spin()
     
     def load_hoc_data(self):
@@ -66,43 +61,51 @@ class ComparisonNode:
             rospy.logerr("No saved HoC data available for comparison")
             return
         
-        self.latest_hoc_vectors.append(msg)
+        # Store the HoC vector with its ID
+        self.latest_hoc_vectors[msg.id] = msg
         self.compare_data()
 
     def pose_callback(self, msg):
         """Callback function to handle new BodySize data (Pose)."""
-        self.latest_pose_data = msg
+        # Store the pose data with its ID
+        self.latest_pose_data[msg.id] = msg
         self.compare_data()
 
     def compare_data(self):
         """Compare HoC and pose data if both are available (General)."""
-        if not self.latest_hoc_vectors or self.latest_pose_data is None or self.saved_pose_data is None:
+        if not self.latest_hoc_vectors or not self.latest_pose_data or self.saved_pose_data is None:
             return
 
-        for i, hoc_vector in enumerate(self.latest_hoc_vectors):
+        # Iterate through the detections by ID
+        for detection_id, hoc_vector in self.latest_hoc_vectors.items():
+            if detection_id not in self.latest_pose_data:
+                continue
+
             # Compare HoC data
             hue_vector = hoc_vector.hue_vector
             sat_vector = hoc_vector.sat_vector
             hoc_distance_score = self.compute_hoc_distance_score(hue_vector, sat_vector)
-            rospy.loginfo(f"Detection #{i+1}: HoC Distance score: {hoc_distance_score}")
+            rospy.loginfo(f"Detection ID {detection_id}: HoC Distance score: {hoc_distance_score:.2f}")
 
-        # Compare pose data
-        left_shoulder_hip_distance = self.latest_pose_data.left_shoulder_hip_distance
-        right_shoulder_hip_distance = self.latest_pose_data.right_shoulder_hip_distance
-        left_shoulder_hip_saved = np.mean(self.saved_pose_data['left_shoulder_hip_distance'])
-        right_shoulder_hip_saved = np.mean(self.saved_pose_data['right_shoulder_hip_distance'])
-        
-        left_distance = self.compute_distance(left_shoulder_hip_distance, left_shoulder_hip_saved)
-        right_distance = self.compute_distance(right_shoulder_hip_distance, right_shoulder_hip_saved)
-        pose_distance_score = (left_distance + right_distance) / 2
-        rospy.loginfo(f"Pose Distance score for detection: {pose_distance_score}")
+            # Compare pose data
+            pose_data = self.latest_pose_data[detection_id]
+            left_shoulder_hip_distance = pose_data.left_shoulder_hip_distance
+            right_shoulder_hip_distance = pose_data.right_shoulder_hip_distance
+            left_shoulder_hip_saved = np.mean(self.saved_pose_data['left_shoulder_hip_distance'])
+            right_shoulder_hip_saved = np.mean(self.saved_pose_data['right_shoulder_hip_distance'])
 
-        # Publish debug information
-        self.publish_debug_info(hoc_distance_score, pose_distance_score)
+            left_distance = self.compute_distance(left_shoulder_hip_distance, left_shoulder_hip_saved)
+            right_distance = self.compute_distance(right_shoulder_hip_distance, right_shoulder_hip_saved)
+            pose_distance_score = (left_distance + right_distance) / 2
+            rospy.loginfo(f"Detection ID {detection_id}: Pose Distance score: {pose_distance_score:.2f}")
 
-        # Clear the latest HoC vectors after processing
+            # Publish debug information
+            self.publish_debug_info(hoc_distance_score, pose_distance_score, detection_id)
+
+        # Clear the latest data after processing
         self.latest_hoc_vectors.clear()
-    
+        self.latest_pose_data.clear()
+
     def compute_hoc_distance_score(self, hue_vector, sat_vector):
         """Compute the distance score between the current detection and saved data (HoC)."""
         hue_vector = np.array(hue_vector)
@@ -117,10 +120,10 @@ class ComparisonNode:
         """Compute the Euclidean distance between two vectors (General)."""
         return np.linalg.norm(vector1 - vector2)
     
-    def publish_debug_info(self, hoc_distance_score, pose_distance_score):
+    def publish_debug_info(self, hoc_distance_score, pose_distance_score, detection_id):
         """Publish debug information about the current comparison (General)."""
         debug_msg = String()
-        debug_msg.data = f"HoC Distance score: {hoc_distance_score}, Pose Distance score: {pose_distance_score}"
+        debug_msg.data = f"Detection ID {detection_id}: HoC Distance score: {hoc_distance_score:.2f}, Pose Distance score: {pose_distance_score:.2f}"
         self.publisher_debug.publish(debug_msg)
 
 if __name__ == '__main__':

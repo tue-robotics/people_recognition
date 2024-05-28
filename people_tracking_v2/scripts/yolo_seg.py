@@ -20,7 +20,6 @@ class YoloSegNode:
         self.model = YOLO("yolov8n-seg.pt")  # Ensure the model supports segmentation
 
         self.image_sub = rospy.Subscriber("/Webcam/image_raw", Image, self.image_callback)
-        #self.depth_sub = rospy.Subscriber("/depth_registered/image", Image, self.image_callback)
         self.segmented_images_pub = rospy.Publisher("/segmented_images", SegmentedImages, queue_size=10)
         self.individual_segmented_image_pub = rospy.Publisher("/individual_segmented_images", Image, queue_size=10)
         self.bounding_box_image_pub = rospy.Publisher("/bounding_box_image", Image, queue_size=10)
@@ -48,9 +47,6 @@ class YoloSegNode:
         rospy.loginfo(f"Total Detections: {len(labels)}")  # Log the total number of detections
 
         detection_array = DetectionArray()
-        segmented_images_msg = SegmentedImages()
-        segmented_images_msg.header.stamp = rospy.Time.now()
-        segmented_images_msg.ids = []  # Initialize the ids list
 
         # Create a copy of the image for bounding box visualization
         bounding_box_image = cv_image.copy()
@@ -60,13 +56,9 @@ class YoloSegNode:
         segmented_images_msg.header.stamp = rospy.Time.now()
 
         # Process each detection and create a Detection message, but only for humans (class 0)
-        human_detections = [(box, score, label, mask) for box, score, label, mask in zip(boxes, scores, labels, masks) if int(label) == 0]
-        rospy.loginfo(f"Human Detections: {len(human_detections)}")  # Log the number of human detections
-
-        for i, (box, score, label, mask) in enumerate(human_detections):
+        for i, (box, score, label, mask) in enumerate(zip(boxes, scores, labels, masks)):
             detection = Detection()
-            detection.id = i + 1  # Assigning sequential ID starting from 1
-            rospy.loginfo(f"Detection ID: {id} for box: {box}")
+            detection.id = i + 1  # Assign a unique ID to each detection
             detection.x1 = float(box[0])
             detection.y1 = float(box[1])
             detection.x2 = float(box[2])
@@ -75,15 +67,17 @@ class YoloSegNode:
             detection.label = int(label)
             detection_array.detections.append(detection)
 
+            rospy.loginfo(f"Detection ID: {detection.id} for box: {box}")
+
             # Draw bounding boxes and labels on the bounding_box_image
             x1, y1, x2, y2 = map(int, box)
             x_center = (x1 + x2) / 2
             y_center = (y1 + y2) / 2
 
             # Initialize or update the Kalman Filter for this detection
-            if i not in self.kalman_filters:
-                self.kalman_filters[i] = KalmanFilterCV()
-            kalman_filter = self.kalman_filters[i]
+            if detection.id not in self.kalman_filters:
+                self.kalman_filters[detection.id] = KalmanFilterCV()
+            kalman_filter = self.kalman_filters[detection.id]
 
             # Update the Kalman Filter with the new measurement
             kalman_filter.update(np.array([[x_center], [y_center]]))
@@ -106,11 +100,11 @@ class YoloSegNode:
 
             # Calculate IoU
             iou = self.calculate_iou([x1, y1, x2, y2], [x_pred1, y_pred1, x_pred2, y_pred2])
-            rospy.loginfo(f"Detection {i}: IoU={iou:.2f}")
+            rospy.loginfo(f"Detection {detection.id}: IoU={iou:.2f}")
 
             color = (0, 255, 0)  # Set color for bounding boxes
             thickness = 3
-            label_text = f'#{i+1} {int(label)}: {score:.2f} IoU={iou:.2f}'
+            label_text = f'#{detection.id} {int(label)}: {score:.2f} IoU={iou:.2f}'
             cv2.rectangle(bounding_box_image, (x1, y1), (x2, y2), color, thickness)
             cv2.putText(
                 bounding_box_image, label_text, (x1, y1 - 10),
@@ -127,10 +121,7 @@ class YoloSegNode:
                 segmented_image = cv2.bitwise_and(cv_image, cv_image, mask=resized_mask)
                 segmented_image_msg = self.bridge.cv2_to_imgmsg(segmented_image, "bgr8")
                 segmented_images_msg.images.append(segmented_image_msg)
-
-                # Publish individual segmented images
-                self.individual_segmented_image_pub.publish(segmented_image_msg)
-                segmented_images_msg.ids.append(i + 1)  # Add the ID to the ids list
+                segmented_images_msg.ids.append(detection.id)  # Append detection ID
 
         # Publish segmented images as a batch
         rospy.loginfo(f"Publishing Segmented Images with IDs: {segmented_images_msg.ids}")

@@ -18,7 +18,7 @@ from image_recognition_util import image_writer
 from sensor_msgs.msg import Image
 
 from people_tracking.yolo_pose_wrapper import YoloPoseWrapper
-from people_tracking_v2.msg import BodySize
+from people_tracking_v2.msg import DetectionArray, BodySize
 
 class PoseEstimationNode:
     def __init__(
@@ -49,7 +49,7 @@ class PoseEstimationNode:
         # uses a thread per pub/sub and service. Since the openpose wrapper is created in the main thread, we have
         # to communicate our openpose requests (inputs) to the main thread where the request is processed by the
         # openpose wrapper (step 1).
-        # We have a separate spin loop in the main thead that checks whether there are items in the input q and
+        # We have a separate spin loop in the main thread that checks whether there are items in the input q and
         # processes these using the Openpose wrapper (step 2).
         # When the processing has finished, we add the result in the corresponding output queue (specified by the
         # request in the input queue) (step 3).
@@ -70,8 +70,9 @@ class PoseEstimationNode:
         self._image_subscriber = rospy.Subscriber("/Webcam/image_raw", Image, self._image_callback)
         self._recognitions_publisher = rospy.Publisher("/pose_recognitions", Recognitions, queue_size=10)
         self._pose_distance_publisher = rospy.Publisher("/pose_distances", BodySize, queue_size=10)
-        #if self._topic_publish_result_image or self._service_publish_result_image:
-        self._result_image_publisher = rospy.Publisher("/pose_result_image", Image, queue_size=10)
+        self._detection_subscriber = rospy.Subscriber("/hero/predicted_detections", DetectionArray, self.detection_callback)  # Add this subscriber
+        if self._topic_publish_result_image or self._service_publish_result_image:
+            self._result_image_publisher = rospy.Publisher("/pose_result_image", Image, queue_size=10)
 
         self.last_master_check = rospy.get_time()
 
@@ -85,18 +86,21 @@ class PoseEstimationNode:
         rospy.loginfo(f" - {service_publish_result_image=}")
         rospy.loginfo(f" - {save_images_folder=}")
 
+        self.current_detections = []
+
+    def detection_callback(self, msg):
+        """Callback function to handle new detections from YOLO (DetectionArray)."""
+        self.current_detections = msg.detections
+
     def _image_callback(self, image_msg):
         self._input_q.put((image_msg, self._topic_save_images, self._topic_publish_result_image, False))
         recognitions, result_image, pose_details = self._wrapper.detect_poses(self._bridge.imgmsg_to_cv2(image_msg, "bgr8"))
 
         # Calculate distances and publish them
-        for i, pose in enumerate(pose_details):
+        for pose in pose_details:
             try:
                 pose_distance_msg = BodySize()
                 pose_distance_msg.header.stamp = rospy.Time.now()
-                pose_distance_msg.id = i + 1  # Assigning the same sequential ID
-                rospy.loginfo(f"Processing Pose with ID: {pose_distance_msg.id}")
-                
                 if "LShoulder" in pose and "LHip" in pose:
                     pose_distance_msg.left_shoulder_hip_distance = self._wrapper.compute_distance(pose["LShoulder"], pose["LHip"])
                     rospy.loginfo(f"Left Shoulder-Hip Distance: {pose_distance_msg.left_shoulder_hip_distance:.2f}")
@@ -104,6 +108,12 @@ class PoseEstimationNode:
                 if "RShoulder" in pose and "RHip" in pose:
                     pose_distance_msg.right_shoulder_hip_distance = self._wrapper.compute_distance(pose["RShoulder"], pose["RHip"])
                     rospy.loginfo(f"Right Shoulder-Hip Distance: {pose_distance_msg.right_shoulder_hip_distance:.2f}")
+
+                # Find the corresponding detection ID
+                for detection in self.current_detections:
+                    if self.is_pose_within_detection(pose, detection):
+                        pose_distance_msg.id = detection.id
+                        break
 
                 self._pose_distance_publisher.publish(pose_distance_msg)
             except Exception as e:
@@ -149,11 +159,10 @@ class PoseEstimationNode:
             self._result_image_publisher.publish(self._bridge.cv2_to_imgmsg(result_image, "bgr8"))
 
         # Calculate distances and log them
-        for i, pose in enumerate(pose_details):
+        for pose in pose_details:
             try:
                 pose_distance_msg = BodySize()
                 pose_distance_msg.header.stamp = rospy.Time.now()
-                pose_distance_msg.id = i + 1  # Assigning the same sequential ID
                 if "LShoulder" in pose and "LHip" in pose:
                     pose_distance_msg.left_shoulder_hip_distance = self._wrapper.compute_distance(pose["LShoulder"], pose["LHip"])
                     rospy.loginfo(f"Left Shoulder-Hip Distance: {pose_distance_msg.left_shoulder_hip_distance:.2f}")
@@ -162,11 +171,26 @@ class PoseEstimationNode:
                     pose_distance_msg.right_shoulder_hip_distance = self._wrapper.compute_distance(pose["RShoulder"], pose["RHip"])
                     rospy.loginfo(f"Right Shoulder-Hip Distance: {pose_distance_msg.right_shoulder_hip_distance:.2f}")
 
+                # Find the corresponding detection ID
+                for detection in self.current_detections:
+                    if self.is_pose_within_detection(pose, detection):
+                        pose_distance_msg.id = detection.id
+                        break
+
                 self._pose_distance_publisher.publish(pose_distance_msg)
             except Exception as e:
                 rospy.logerr(f"Error computing distance: {e}")
 
         return recognitions
+
+    def is_pose_within_detection(self, pose, detection):
+        """Check if the pose is within the detection bounding box."""
+        x_center = (detection.x1 + detection.x2) / 2
+        y_center = (detection.y1 + detection.y2) / 2
+
+        if detection.x1 <= x_center <= detection.x2 and detection.y1 <= y_center <= detection.y2:
+            return True
+        return False
 
     def spin(self, check_master: bool = False):
         """
