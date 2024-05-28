@@ -74,12 +74,12 @@ class ComparisonNode:
         if not self.latest_hoc_vectors or self.latest_pose_data is None or self.saved_pose_data is None:
             return
 
-        for hoc_vector in self.latest_hoc_vectors:
+        for i, hoc_vector in enumerate(self.latest_hoc_vectors):
             # Compare HoC data
             hue_vector = hoc_vector.hue_vector
             sat_vector = hoc_vector.sat_vector
             hoc_distance_score = self.compute_hoc_distance_score(hue_vector, sat_vector)
-            rospy.loginfo(f"HoC Distance score for detection: {hoc_distance_score}")
+            rospy.loginfo(f"Detection #{i+1}: HoC Distance score: {hoc_distance_score}")
 
         # Compare pose data
         left_shoulder_hip_distance = self.latest_pose_data.left_shoulder_hip_distance
@@ -94,6 +94,9 @@ class ComparisonNode:
 
         # Publish debug information
         self.publish_debug_info(hoc_distance_score, pose_distance_score)
+
+        # Clear the latest HoC vectors after processing
+        self.latest_hoc_vectors.clear()
     
     def compute_hoc_distance_score(self, hue_vector, sat_vector):
         """Compute the distance score between the current detection and saved data (HoC)."""
