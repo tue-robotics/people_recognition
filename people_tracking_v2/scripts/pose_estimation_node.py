@@ -70,8 +70,8 @@ class PoseEstimationNode:
         self._image_subscriber = rospy.Subscriber("/Webcam/image_raw", Image, self._image_callback)
         self._recognitions_publisher = rospy.Publisher("/pose_recognitions", Recognitions, queue_size=10)
         self._pose_distance_publisher = rospy.Publisher("/pose_distances", BodySize, queue_size=10)
-        if self._topic_publish_result_image or self._service_publish_result_image:
-            self._result_image_publisher = rospy.Publisher("/pose_result_image", Image, queue_size=10)
+        #if self._topic_publish_result_image or self._service_publish_result_image:
+        self._result_image_publisher = rospy.Publisher("/pose_result_image", Image, queue_size=10)
 
         self.last_master_check = rospy.get_time()
 
@@ -95,6 +95,7 @@ class PoseEstimationNode:
                 pose_distance_msg = BodySize()
                 pose_distance_msg.header.stamp = rospy.Time.now()
                 pose_distance_msg.id = i + 1  # Assigning the same sequential ID
+                rospy.loginfo(f"Processing Pose with ID: {pose_distance_msg.id}")
                 
                 if "LShoulder" in pose and "LHip" in pose:
                     pose_distance_msg.left_shoulder_hip_distance = self._wrapper.compute_distance(pose["LShoulder"], pose["LHip"])

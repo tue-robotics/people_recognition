@@ -30,6 +30,7 @@ class HoCNode:
 
                 # Extract the ID from the incoming message
                 detection_id = msg.ids[i]
+                rospy.loginfo(f"Received Detection ID: {detection_id} for segmented image #{i + 1}")
 
                 # Publish the HoC vectors with the detection ID
                 self.publish_hoc_vectors(hoc_hue, hoc_sat, detection_id)

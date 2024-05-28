@@ -20,6 +20,7 @@ class YoloSegNode:
         self.model = YOLO("yolov8n-seg.pt")  # Ensure the model supports segmentation
 
         self.image_sub = rospy.Subscriber("/Webcam/image_raw", Image, self.image_callback)
+        #self.depth_sub = rospy.Subscriber("/depth_registered/image", Image, self.image_callback)
         self.segmented_images_pub = rospy.Publisher("/segmented_images", SegmentedImages, queue_size=10)
         self.individual_segmented_image_pub = rospy.Publisher("/individual_segmented_images", Image, queue_size=10)
         self.bounding_box_image_pub = rospy.Publisher("/bounding_box_image", Image, queue_size=10)
@@ -65,6 +66,7 @@ class YoloSegNode:
         for i, (box, score, label, mask) in enumerate(human_detections):
             detection = Detection()
             detection.id = i + 1  # Assigning sequential ID starting from 1
+            rospy.loginfo(f"Detection ID: {id} for box: {box}")
             detection.x1 = float(box[0])
             detection.y1 = float(box[1])
             detection.x2 = float(box[2])
@@ -131,6 +133,7 @@ class YoloSegNode:
                 segmented_images_msg.ids.append(i + 1)  # Add the ID to the ids list
 
         # Publish segmented images as a batch
+        rospy.loginfo(f"Publishing Segmented Images with IDs: {segmented_images_msg.ids}")
         self.segmented_images_pub.publish(segmented_images_msg)
 
         # Publish bounding box image
