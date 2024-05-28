@@ -90,10 +90,12 @@ class PoseEstimationNode:
         recognitions, result_image, pose_details = self._wrapper.detect_poses(self._bridge.imgmsg_to_cv2(image_msg, "bgr8"))
 
         # Calculate distances and publish them
-        for pose in pose_details:
+        for i, pose in enumerate(pose_details):
             try:
                 pose_distance_msg = BodySize()
                 pose_distance_msg.header.stamp = rospy.Time.now()
+                pose_distance_msg.id = i + 1  # Assigning the same sequential ID
+                
                 if "LShoulder" in pose and "LHip" in pose:
                     pose_distance_msg.left_shoulder_hip_distance = self._wrapper.compute_distance(pose["LShoulder"], pose["LHip"])
                     rospy.loginfo(f"Left Shoulder-Hip Distance: {pose_distance_msg.left_shoulder_hip_distance:.2f}")
@@ -146,10 +148,11 @@ class PoseEstimationNode:
             self._result_image_publisher.publish(self._bridge.cv2_to_imgmsg(result_image, "bgr8"))
 
         # Calculate distances and log them
-        for pose in pose_details:
+        for i, pose in enumerate(pose_details):
             try:
                 pose_distance_msg = BodySize()
                 pose_distance_msg.header.stamp = rospy.Time.now()
+                pose_distance_msg.id = i + 1  # Assigning the same sequential ID
                 if "LShoulder" in pose and "LHip" in pose:
                     pose_distance_msg.left_shoulder_hip_distance = self._wrapper.compute_distance(pose["LShoulder"], pose["LHip"])
                     rospy.loginfo(f"Left Shoulder-Hip Distance: {pose_distance_msg.left_shoulder_hip_distance:.2f}")

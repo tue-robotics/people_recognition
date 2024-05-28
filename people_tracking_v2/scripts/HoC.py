@@ -27,9 +27,16 @@ class HoCNode:
                 segmented_image = self.bridge.imgmsg_to_cv2(segmented_image_msg, "bgr8")
                 hoc_hue, hoc_sat = self.compute_hoc(segmented_image)
                 rospy.loginfo(f'Computed HoC for segmented image #{i + 1}')
-                self.publish_hoc_vectors(hoc_hue, hoc_sat)
+
+                # Extract the ID from the incoming message
+                detection_id = msg.ids[i]
+
+                # Publish the HoC vectors with the detection ID
+                self.publish_hoc_vectors(hoc_hue, hoc_sat, detection_id)
             except CvBridgeError as e:
-                rospy.logerr(f"Failed to convert segmented image: {e}")
+                rospy.logerr(f"Failed to convert segmented image: {e}") 
+            except IndexError as e:
+                rospy.logerr(f"IndexError: {e}. This might happen if there are more segmented images than detections.")
         
     def compute_hoc(self, segmented_image):
         # Convert to HSV
@@ -51,10 +58,11 @@ class HoCNode:
         # Flatten the histograms
         return hist_hue.flatten(), hist_sat.flatten()
     
-    def publish_hoc_vectors(self, hue_vector, sat_vector):
+    def publish_hoc_vectors(self, hue_vector, sat_vector, detection_id):
         """Publish the computed HoC vectors."""
         hoc_msg = HoCVector()
         hoc_msg.header.stamp = rospy.Time.now()
+        hoc_msg.id = detection_id
         hoc_msg.hue_vector = hue_vector.tolist()
         hoc_msg.sat_vector = sat_vector.tolist()
         self.hoc_vector_pub.publish(hoc_msg)

@@ -1,3 +1,5 @@
+# Detection.msg
+int32 id
 float32 x1
 float32 y1
 float32 x2

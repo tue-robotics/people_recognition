@@ -23,6 +23,11 @@ class ComparisonNode:
         self.pose_data_file = os.path.expanduser('~/pose_data/pose_data.npz')
         self.load_hoc_data()
         self.load_pose_data()
+
+        # Initialize storage for the latest incoming data
+        self.latest_hoc_vectors = {}
+        self.latest_pose_data = {}
+
         
         # Initialize storage for the latest incoming data
         self.latest_hoc_vectors = []

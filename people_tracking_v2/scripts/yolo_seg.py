@@ -47,6 +47,9 @@ class YoloSegNode:
         rospy.loginfo(f"Total Detections: {len(labels)}")  # Log the total number of detections
 
         detection_array = DetectionArray()
+        segmented_images_msg = SegmentedImages()
+        segmented_images_msg.header.stamp = rospy.Time.now()
+        segmented_images_msg.ids = []  # Initialize the ids list
 
         # Create a copy of the image for bounding box visualization
         bounding_box_image = cv_image.copy()
@@ -61,6 +64,7 @@ class YoloSegNode:
 
         for i, (box, score, label, mask) in enumerate(human_detections):
             detection = Detection()
+            detection.id = i + 1  # Assigning sequential ID starting from 1
             detection.x1 = float(box[0])
             detection.y1 = float(box[1])
             detection.x2 = float(box[2])
@@ -124,6 +128,7 @@ class YoloSegNode:
 
                 # Publish individual segmented images
                 self.individual_segmented_image_pub.publish(segmented_image_msg)
+                segmented_images_msg.ids.append(i + 1)  # Add the ID to the ids list
 
         # Publish segmented images as a batch
         self.segmented_images_pub.publish(segmented_images_msg)
