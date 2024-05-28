@@ -300,7 +300,7 @@ class PeopleRecognizer2D(object):
         if self._enable_shirt_color_extraction:
             rospy.loginfo("_get_color_extractor...")
             shirt_colors_array = []
-            hair_colors_array = []
+            hair_color_array = []
             for r in face_recognitions:
                 shirt_roi = PeopleRecognizer2D._shirt_roi_from_face_roi(r.roi, image.shape)
                 hair_roi = PeopleRecognizer2D._hair_roi_from_face_roi(r.roi, image.shape)
@@ -319,23 +319,25 @@ class PeopleRecognizer2D(object):
                                     color_shirt_extractor_response.recognitions[0].categorical_distribution.probabilities]
                     hair_colors = [p.label for p in
                                     color_hair_extractor_response.recognitions[0].categorical_distribution.probabilities]
+                    hair_color = hair_colors[0] if hair_colors else ""
+
                 shirt_colors_array.append(shirt_colors)
-                hair_colors_array.append(hair_colors)
+                hair_color_array.append(hair_color)
         else:
             shirt_colors_array = [[]] * len(face_recognitions)
-            hair_colors_array = [[]] * len(face_recognitions)
+            hair_color_array = [""] * len(face_recognitions)
 
         # Prepare image annotation labels and People message
-        for face_label, face_properties, shirt_colors, hair_colors, body_parts, face_recognition in zip(face_labels,
+        for face_label, face_properties, shirt_colors, hair_color, body_parts, face_recognition in zip(face_labels,
                                                                                                         face_properties_array,
                                                                                                         shirt_colors_array,
-                                                                                                        hair_colors_array,
+                                                                                                        hair_color_array,
                                                                                                         body_parts_array,
                                                                                                         face_recognitions):
 
             temp_label = PeopleRecognizer2D._face_properties_to_label(face_properties) + \
                          PeopleRecognizer2D._object_colors_to_label(shirt_colors, "shirt") + \
-                         PeopleRecognizer2D._object_colors_to_label(hair_colors, "hair")
+                         f" hair color: {hair_color}"
 
             if face_label:
                 image_annotations.append(face_label + " " + temp_label)
@@ -347,6 +349,7 @@ class PeopleRecognizer2D(object):
                                    gender=face_properties.gender,
                                    gender_confidence=face_properties.gender_confidence,
                                    shirt_colors=shirt_colors,
+                                   hair_color=hair_color,
                                    body_parts=body_parts,
                                    face=face_recognition))
 
