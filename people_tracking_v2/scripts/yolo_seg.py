@@ -123,6 +123,10 @@ class YoloSegNode:
                 segmented_images_msg.images.append(segmented_image_msg)
                 segmented_images_msg.ids.append(detection.id)  # Append detection ID
 
+                # Publish individual segmented images
+                rospy.loginfo(f"Publishing individual segmented image with ID: {detection.id}")
+                self.individual_segmented_image_pub.publish(segmented_image_msg)
+
         # Publish segmented images as a batch
         rospy.loginfo(f"Publishing Segmented Images with IDs: {segmented_images_msg.ids}")
         self.segmented_images_pub.publish(segmented_images_msg)
