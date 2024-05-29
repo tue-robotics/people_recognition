@@ -1,8 +1,0 @@
-prefix=/home/miguel/ros/noetic/system/src/people_tracking_v2/build/devel
-
-Name: people_tracking_v2
-Description: Description of people_tracking_v2
-Version: 0.0.1
-Cflags: -I/home/miguel/ros/noetic/system/src/people_tracking_v2/build/devel/include
-Libs: -L${prefix}/lib 
-Requires: message_runtime roscpp rospy std_msgs sensor_msgs image_recognition_msgs cv_bridge

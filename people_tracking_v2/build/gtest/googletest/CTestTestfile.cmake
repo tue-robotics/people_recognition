@@ -1,6 +1,0 @@
-# CMake generated Testfile for 
-# Source directory: /usr/src/googletest/googletest
-# Build directory: /home/miguel/ros/noetic/system/src/people_tracking_v2/build/gtest/googletest
-# 
-# This file includes the relevant testing commands required for 
-# testing this directory and lists subdirectories to be tested as well.

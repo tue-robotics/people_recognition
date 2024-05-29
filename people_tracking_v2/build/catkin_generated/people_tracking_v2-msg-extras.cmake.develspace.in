@@ -1,2 +1,0 @@
-set(people_tracking_v2_MESSAGE_FILES "/home/miguel/ros/noetic/system/src/people_tracking_v2/msg/Detection.msg;/home/miguel/ros/noetic/system/src/people_tracking_v2/msg/DetectionArray.msg;/home/miguel/ros/noetic/system/src/people_tracking_v2/msg/SegmentedImages.msg;/home/miguel/ros/noetic/system/src/people_tracking_v2/msg/HoCVector.msg;/home/miguel/ros/noetic/system/src/people_tracking_v2/msg/BodySize.msg")
-set(people_tracking_v2_SERVICE_FILES "")
