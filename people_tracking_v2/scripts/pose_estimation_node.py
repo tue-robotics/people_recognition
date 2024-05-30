@@ -67,7 +67,7 @@ class PoseEstimationNode:
         # ROS IO
         self._bridge = CvBridge()
         self._recognize_srv = rospy.Service("recognize", Recognize, self._recognize_srv)
-        self._image_subscriber = rospy.Subscriber("/Webcam/image_raw", Image, self._image_callback)
+        self._image_subscriber = rospy.Subscriber("/bounding_box_image", Image, self._image_callback)
         self._recognitions_publisher = rospy.Publisher("/pose_recognitions", Recognitions, queue_size=10)
         self._pose_distance_publisher = rospy.Publisher("/pose_distances", BodySize, queue_size=10)
         self._detection_subscriber = rospy.Subscriber("/hero/predicted_detections", DetectionArray, self.detection_callback)  # Add this subscriber
