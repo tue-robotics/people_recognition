@@ -47,14 +47,14 @@ class YoloSegNode:
         rospy.loginfo(f"Total Detections: {len(labels)}")  # Log the total number of detections
 
         detection_array = DetectionArray()
-        detection_array.header.stamp = rospy.Time.now()  # Add timestamp to the DetectionArray
+        detection_array.header.stamp = data.header.stamp  #  Use timestamp from incoming image
 
         # Create a copy of the image for bounding box visualization
         bounding_box_image = cv_image.copy()
 
         # Prepare the SegmentedImages message
         segmented_images_msg = SegmentedImages()
-        segmented_images_msg.header.stamp = detection_array.header.stamp  # Use the same timestamp
+        segmented_images_msg.header.stamp = data.header.stamp  # Use the same timestamp as the YOLO image
         segmented_images_msg.ids = []  # Initialize the IDs list
 
         # Process each detection and create a Detection message, but only for humans (class 0)
@@ -136,6 +136,7 @@ class YoloSegNode:
         # Publish bounding box image
         try:
             bounding_box_image_msg = self.bridge.cv2_to_imgmsg(bounding_box_image, "bgr8")
+            bounding_box_image_msg.header.stamp = data.header.stamp  # Use the same timestamp
             rospy.loginfo("Publishing bounding box image")
             self.bounding_box_image_pub.publish(bounding_box_image_msg)
         except CvBridgeError as e:

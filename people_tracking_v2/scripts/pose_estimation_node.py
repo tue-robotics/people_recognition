@@ -100,7 +100,7 @@ class PoseEstimationNode:
         for pose in pose_details:
             try:
                 pose_distance_msg = BodySize()
-                pose_distance_msg.header.stamp = rospy.Time.now()
+                pose_distance_msg.header.stamp = image_msg.header.stamp  # Use the timestamp from the incoming YOLO image
                 if "LShoulder" in pose and "LHip" in pose:
                     pose_distance_msg.left_shoulder_hip_distance = self._wrapper.compute_distance(pose["LShoulder"], pose["LHip"])
                     rospy.loginfo(f"Left Shoulder-Hip Distance: {pose_distance_msg.left_shoulder_hip_distance:.2f}")

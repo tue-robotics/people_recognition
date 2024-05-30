@@ -33,7 +33,7 @@ class HoCNode:
                 rospy.loginfo(f"Received Detection ID: {detection_id} for segmented image #{i}")
 
                 # Publish the HoC vectors with the detection ID
-                self.publish_hoc_vectors(hoc_hue, hoc_sat, detection_id)
+                self.publish_hoc_vectors(hoc_hue, hoc_sat, detection_id, msg.header.stamp)  # Pass the timestamp
             except CvBridgeError as e:
                 rospy.logerr(f"Failed to convert segmented image: {e}") 
             except IndexError as e:
@@ -59,10 +59,10 @@ class HoCNode:
         # Flatten the histograms
         return hist_hue.flatten(), hist_sat.flatten()
     
-    def publish_hoc_vectors(self, hue_vector, sat_vector, detection_id):
+    def publish_hoc_vectors(self, hue_vector, sat_vector, detection_id, timestamp):
         """Publish the computed HoC vectors."""
         hoc_msg = HoCVector()
-        hoc_msg.header.stamp = rospy.Time.now()
+        hoc_msg.header.stamp = timestamp  # Use the timestamp from the incoming message
         hoc_msg.id = detection_id
         hoc_msg.hue_vector = hue_vector.tolist()
         hoc_msg.sat_vector = sat_vector.tolist()
