@@ -89,6 +89,7 @@ class PoseEstimationNode:
         self.current_detections = []
 
     def detection_callback(self, msg):
+        rospy.loginfo(f"First detection received at: {rospy.Time.now()}")  # Log first message timestamp
         """Callback function to handle new detections from YOLO (DetectionArray)."""
         self.current_detections = msg.detections
 
