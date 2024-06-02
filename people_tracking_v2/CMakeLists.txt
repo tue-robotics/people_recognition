@@ -20,6 +20,7 @@ add_message_files(
   SegmentedImages.msg
   HoCVector.msg
   BodySize.msg
+  ComparisonScores.msg
 )
 
 generate_messages(
@@ -42,6 +43,7 @@ install(PROGRAMS
   scripts/yolo_seg.py
   scripts/HoC.py
   scripts/comparison_node.py
+  scripts/decision_node.py
   src/kalman_filter.py
   tools/save_HoC_data.py
   tools/save_pose_data.py

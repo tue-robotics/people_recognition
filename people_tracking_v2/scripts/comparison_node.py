@@ -3,7 +3,7 @@
 import rospy
 import numpy as np
 import message_filters
-from people_tracking_v2.msg import HoCVector, BodySize  # Import the custom message types
+from people_tracking_v2.msg import HoCVector, BodySize, ComparisonScores  # Import the custom message types
 from std_msgs.msg import String
 import os
 
@@ -19,8 +19,8 @@ class ComparisonNode:
         ts = message_filters.ApproximateTimeSynchronizer([hoc_sub, pose_sub], queue_size=10, slop=0.1)
         ts.registerCallback(self.sync_callback)
         
-        # Publisher for debug information or status updates
-        self.publisher_debug = rospy.Publisher('/comparison/debug', String, queue_size=10)
+        # Publisher for comparison scores
+        self.comparison_pub = rospy.Publisher('/comparison/scores', ComparisonScores, queue_size=10)
         
         # Load saved HoC and Pose data
         self.hoc_data_file = os.path.expanduser('~/hoc_data/hoc_data.npz')
@@ -82,8 +82,13 @@ class ComparisonNode:
         pose_distance_score = (left_distance + right_distance) / 2
         rospy.loginfo(f"Detection ID {pose_msg.id}: Pose Distance score: {pose_distance_score:.2f}")
 
-        # Publish debug information
-        self.publish_debug_info(hoc_distance_score, pose_distance_score, hoc_msg.id)
+        # Publish comparison scores
+        comparison_scores_msg = ComparisonScores()
+        comparison_scores_msg.header.stamp = rospy.Time.now()
+        comparison_scores_msg.id = hoc_msg.id
+        comparison_scores_msg.hoc_distance_score = hoc_distance_score
+        comparison_scores_msg.pose_distance_score = pose_distance_score
+        self.comparison_pub.publish(comparison_scores_msg)
 
     def compute_hoc_distance_score(self, hue_vector, sat_vector):
         """Compute the distance score between the current detection and saved data (HoC)."""

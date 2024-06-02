@@ -21,6 +21,7 @@ class HoCNode:
             rospy.spin()
         
     def segmented_images_callback(self, msg):
+        rospy.loginfo(f"First segmented image received at: {rospy.Time.now()}")  # Log first message timestamp
         rospy.loginfo(f"Received batch of {len(msg.images)} segmented images")
         for i, segmented_image_msg in enumerate(msg.images):
             try:
