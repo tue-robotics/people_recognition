@@ -13,6 +13,13 @@ find_package(catkin REQUIRED COMPONENTS
 
 catkin_python_setup()
 
+add_service_files(
+  FILES
+  ProcessImages.srv
+  ProcessDetections.srv
+)
+
+
 add_message_files(
   FILES
   Detection.msg
