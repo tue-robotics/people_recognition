@@ -3,12 +3,16 @@ import matplotlib.pyplot as plt
 import os
 
 # Expand the user directory
-hue_file_path = os.path.expanduser('~/hoc_data/hoc_hue_detection_1.npy')
-sat_file_path = os.path.expanduser('~/hoc_data/hoc_sat_detection_1.npy')
+npz_file_path = os.path.expanduser('~/hoc_data/hoc_data.npz')
 
-# Load the HoC arrays from the saved files
-hoc_hue = np.load(hue_file_path)
-hoc_sat = np.load(sat_file_path)
+# Load the HoC arrays from the .npz file
+with np.load(npz_file_path) as data:
+    all_hue_histograms = data['hue']
+    all_sat_histograms = data['sat']
+
+# Select the first histogram for plotting (or change index as needed)
+hoc_hue = all_hue_histograms[0]
+hoc_sat = all_sat_histograms[0]
 
 # Plot the Hue and Saturation HoC arrays
 plt.figure(figsize=(10, 6))
