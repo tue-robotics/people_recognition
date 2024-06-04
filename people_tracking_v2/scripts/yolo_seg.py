@@ -23,7 +23,7 @@ class YoloSegNode:
         self.segmented_images_pub = rospy.Publisher("/segmented_images", SegmentedImages, queue_size=10)
         self.individual_segmented_image_pub = rospy.Publisher("/individual_segmented_images", Image, queue_size=10)
         self.bounding_box_image_pub = rospy.Publisher("/bounding_box_image", Image, queue_size=10)
-        self.detection_pub = rospy.Publisher("/hero/predicted_detections", DetectionArray, queue_size=10)
+        self.detection_pub = rospy.Publisher("/detections", DetectionArray, queue_size=10)
 
         # Initialize the Kalman Filter
         self.kalman_filters = {}
@@ -128,7 +128,7 @@ class YoloSegNode:
                 segmented_images_msg.ids.append(detection.id)  # Append detection ID
 
                 # Publish individual segmented images
-                rospy.loginfo(f"Publishing individual segmented image with ID: {detection.id}")
+                #rospy.loginfo(f"Publishing individual segmented image with ID: {detection.id}")
                 self.individual_segmented_image_pub.publish(segmented_image_msg)
 
         # Publish segmented images as a batch

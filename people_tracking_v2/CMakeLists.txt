@@ -26,7 +26,9 @@ add_message_files(
   DetectionArray.msg
   SegmentedImages.msg
   HoCVector.msg
+  HoCVectorArray.msg
   BodySize.msg
+  BodySizeArray.msg
   ComparisonScores.msg
 )
 
