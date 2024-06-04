@@ -44,8 +44,6 @@ class YoloSegNode:
         labels = results.boxes.cls.cpu().numpy()
         masks = results.masks.data.cpu().numpy() if results.masks else None
 
-        rospy.loginfo(f"Total Detections: {len(labels)}")  # Log the total number of detections
-
         detection_array = DetectionArray()
         detection_array.header.stamp = data.header.stamp  #  Use timestamp from incoming image
 
@@ -59,6 +57,10 @@ class YoloSegNode:
 
         # Process each detection and create a Detection message, but only for humans (class 0)
         for i, (box, score, label, mask) in enumerate(zip(boxes, scores, labels, masks)):
+
+            if label != 0:  # Only process if the label is 0 (human)
+                continue
+
             detection = Detection()
             detection.id = i + 1  # Assign a unique ID to each detection
             detection.x1 = float(box[0])
