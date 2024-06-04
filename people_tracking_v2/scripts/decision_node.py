@@ -36,7 +36,7 @@ class DecisionNode:
         decision_msg = String()
         decision_msg.data = f"Detection ID {msg.id}: Is known operator: {is_operator}"
         self.decision_pub.publish(decision_msg)
-        rospy.loginfo(decision_msg.data)
+        #rospy.loginfo(decision_msg.data)
 
 if __name__ == '__main__':
     try:

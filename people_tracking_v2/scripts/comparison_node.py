@@ -36,7 +36,7 @@ class ComparisonNode:
             data = np.load(self.hoc_data_file)
             self.saved_hue = data['hue'][0]
             self.saved_sat = data['sat'][0]
-            rospy.loginfo(f"Loaded HoC data from {self.hoc_data_file}")
+            #rospy.loginfo(f"Loaded HoC data from {self.hoc_data_file}")
         else:
             rospy.logerr(f"HoC data file {self.hoc_data_file} not found")
             self.saved_hue = None
@@ -50,7 +50,7 @@ class ComparisonNode:
                 'left_shoulder_hip_distance': data['left_shoulder_hip_distance'],
                 'right_shoulder_hip_distance': data['right_shoulder_hip_distance']
             }
-            rospy.loginfo(f"Loaded Pose data from {self.pose_data_file}")
+            #rospy.loginfo(f"Loaded Pose data from {self.pose_data_file}")
         else:
             rospy.logerr(f"Pose data file {self.pose_data_file} not found")
             self.saved_pose_data = None
@@ -62,14 +62,14 @@ class ComparisonNode:
             return
 
         # Log timestamps and IDs for synchronization verification
-        rospy.loginfo(f"Synchronized messages: HoC timestamp: {hoc_msg.header.stamp}, Pose timestamp: {pose_msg.header.stamp}")
-        rospy.loginfo(f"Detection ID {hoc_msg.id}: HoC and Pose data synchronized")
+        #rospy.loginfo(f"Synchronized messages: HoC timestamp: {hoc_msg.header.stamp}, Pose timestamp: {pose_msg.header.stamp}")
+        #rospy.loginfo(f"Detection ID {hoc_msg.id}: HoC and Pose data synchronized")
 
         # Compare HoC data
         hue_vector = hoc_msg.hue_vector
         sat_vector = hoc_msg.sat_vector
         hoc_distance_score = self.compute_hoc_distance_score(hue_vector, sat_vector)
-        rospy.loginfo(f"Detection ID {hoc_msg.id}: HoC Distance score: {hoc_distance_score:.2f}")
+        #rospy.loginfo(f"Detection ID {hoc_msg.id}: HoC Distance score: {hoc_distance_score:.2f}")
 
         # Compare pose data
         left_shoulder_hip_distance = pose_msg.left_shoulder_hip_distance
@@ -80,7 +80,7 @@ class ComparisonNode:
         left_distance = self.compute_distance(left_shoulder_hip_distance, left_shoulder_hip_saved)
         right_distance = self.compute_distance(right_shoulder_hip_distance, right_shoulder_hip_saved)
         pose_distance_score = (left_distance + right_distance) / 2
-        rospy.loginfo(f"Detection ID {pose_msg.id}: Pose Distance score: {pose_distance_score:.2f}")
+        #rospy.loginfo(f"Detection ID {pose_msg.id}: Pose Distance score: {pose_distance_score:.2f}")
 
         # Publish comparison scores
         comparison_scores_msg = ComparisonScores()

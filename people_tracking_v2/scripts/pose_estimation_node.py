@@ -98,7 +98,7 @@ class PoseEstimationNode:
         if self.current_mode != "YOLO_HOC_POSE":
             return  # Skip processing if the current mode is not YOLO_HOC_POSE
 
-        rospy.loginfo(f"First detection received at: {rospy.Time.now()}")  # Log first message timestamp
+        #rospy.loginfo(f"First detection received at: {rospy.Time.now()}")  # Log first message timestamp
         """Callback function to handle new detections from YOLO (DetectionArray)."""
         self.current_detections = msg.detections
 
@@ -116,11 +116,11 @@ class PoseEstimationNode:
                 pose_distance_msg.header.stamp = image_msg.header.stamp  # Use the timestamp from the incoming YOLO image
                 if "LShoulder" in pose and "LHip" in pose:
                     pose_distance_msg.left_shoulder_hip_distance = self._wrapper.compute_distance(pose["LShoulder"], pose["LHip"])
-                    rospy.loginfo(f"Left Shoulder-Hip Distance: {pose_distance_msg.left_shoulder_hip_distance:.2f}")
+                    #rospy.loginfo(f"Left Shoulder-Hip Distance: {pose_distance_msg.left_shoulder_hip_distance:.2f}")
 
                 if "RShoulder" in pose and "RHip" in pose:
                     pose_distance_msg.right_shoulder_hip_distance = self._wrapper.compute_distance(pose["RShoulder"], pose["RHip"])
-                    rospy.loginfo(f"Right Shoulder-Hip Distance: {pose_distance_msg.right_shoulder_hip_distance:.2f}")
+                    #rospy.loginfo(f"Right Shoulder-Hip Distance: {pose_distance_msg.right_shoulder_hip_distance:.2f}")
 
                 # Find the corresponding detection ID
                 for detection in self.current_detections:
@@ -158,10 +158,10 @@ class PoseEstimationNode:
         recognitions, result_image, pose_details = self._wrapper.detect_poses(bgr_image)
 
         # Log the number of poses detected
-        if recognitions:
-            rospy.loginfo(f"Detected {len(recognitions)} poses")
-        else:
-            rospy.loginfo("No poses detected")
+        #if recognitions:
+            #rospy.loginfo(f"Detected {len(recognitions)} poses")
+        #else:
+            #rospy.loginfo("No poses detected")
 
         # Write images
         if save_images:
@@ -178,11 +178,11 @@ class PoseEstimationNode:
                 pose_distance_msg.header.stamp = rospy.Time.now()
                 if "LShoulder" in pose and "LHip" in pose:
                     pose_distance_msg.left_shoulder_hip_distance = self._wrapper.compute_distance(pose["LShoulder"], pose["LHip"])
-                    rospy.loginfo(f"Left Shoulder-Hip Distance: {pose_distance_msg.left_shoulder_hip_distance:.2f}")
+                    #rospy.loginfo(f"Left Shoulder-Hip Distance: {pose_distance_msg.left_shoulder_hip_distance:.2f}")
 
                 if "RShoulder" in pose and "RHip" in pose:
                     pose_distance_msg.right_shoulder_hip_distance = self._wrapper.compute_distance(pose["RShoulder"], pose["RHip"])
-                    rospy.loginfo(f"Right Shoulder-Hip Distance: {pose_distance_msg.right_shoulder_hip_distance:.2f}")
+                    #rospy.loginfo(f"Right Shoulder-Hip Distance: {pose_distance_msg.right_shoulder_hip_distance:.2f}")
 
                 # Find the corresponding detection ID
                 for detection in self.current_detections:

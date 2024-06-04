@@ -51,6 +51,7 @@ install(PROGRAMS
   scripts/HoC.py
   scripts/comparison_node.py
   scripts/decision_node.py
+  scripts/central_node.py
   src/kalman_filter.py
   tools/save_HoC_data.py
   tools/save_pose_data.py
