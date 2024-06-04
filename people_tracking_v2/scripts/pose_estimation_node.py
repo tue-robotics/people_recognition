@@ -24,8 +24,9 @@ class PoseEstimationNode:
         self._wrapper = YoloPoseWrapper(model_name="yolov8n-pose.pt", device="cuda:0")
         
         self.image_sub = rospy.Subscriber("/bounding_box_image", Image, self.image_callback)
-        self.pose_distance_pub = rospy.Publisher("/pose_distances", BodySizeArray, queue_size=10)
-        self.detection_sub = rospy.Subscriber("/detections", DetectionArray, self.detection_callback)
+        self.pose_distance_pub = rospy.Publisher("/pose_distances_array", BodySizeArray, queue_size=10)
+        self.detection_sub = rospy.Subscriber("/hero/predicted_detections", DetectionArray, self.detection_callback)
+        self._result_image_publisher = rospy.Publisher("/pose_result_image", Image, queue_size=10)
         
         self.current_detections = []
         rospy.spin()
@@ -60,6 +61,14 @@ class PoseEstimationNode:
                 pose_distance_array.distances.append(pose_distance_msg)
 
             self.pose_distance_pub.publish(pose_distance_array)
+
+            # Publish the result image
+            try:
+                result_image_msg = self.bridge.cv2_to_imgmsg(result_image, "bgr8")
+                result_image_msg.header.stamp = image_msg.header.stamp  # Use the same timestamp
+                self._result_image_publisher.publish(result_image_msg)
+            except CvBridgeError as e:
+                rospy.logerr(f"CV Bridge Error while publishing result image: {e}")
         except CvBridgeError as e:
             rospy.logerr(f"CV Bridge Error: {e}")
         except Exception as e:

@@ -2,8 +2,7 @@
 
 import rospy
 import numpy as np
-import message_filters
-from people_tracking_v2.msg import HoCVector, BodySize, ComparisonScores  # Import the custom message types
+from people_tracking_v2.msg import HoCVectorArray, BodySizeArray, ComparisonScores, ComparisonScoresArray  # Import the custom message types
 from std_msgs.msg import String
 import os
 
@@ -12,21 +11,21 @@ class ComparisonNode:
         # Initialize the ROS node
         rospy.init_node('comparison_node', anonymous=True)
         
-        # Synchronize the subscribers using message_filters
-        hoc_sub = message_filters.Subscriber('/hoc_vectors', HoCVector)
-        pose_sub = message_filters.Subscriber('/pose_distances', BodySize)
+        # Subscribers for batch messages
+        self.hoc_sub = rospy.Subscriber('/hoc_vectors_array', HoCVectorArray, self.hoc_callback)
+        self.pose_sub = rospy.Subscriber('/pose_distances_array', BodySizeArray, self.pose_callback)
         
-        ts = message_filters.ApproximateTimeSynchronizer([hoc_sub, pose_sub], queue_size=10, slop=0.1)
-        ts.registerCallback(self.sync_callback)
-        
-        # Publisher for comparison scores
-        self.comparison_pub = rospy.Publisher('/comparison/scores', ComparisonScores, queue_size=10)
+        # Publisher for comparison scores batch
+        self.comparison_pub = rospy.Publisher('/comparison/scores_array', ComparisonScoresArray, queue_size=10)
         
         # Load saved HoC and Pose data
         self.hoc_data_file = os.path.expanduser('~/hoc_data/hoc_data.npz')
         self.pose_data_file = os.path.expanduser('~/pose_data/pose_data.npz')
         self.load_hoc_data()
         self.load_pose_data()
+
+        self.hoc_data = {}
+        self.pose_data = {}
         
         rospy.spin()
     
@@ -36,7 +35,6 @@ class ComparisonNode:
             data = np.load(self.hoc_data_file)
             self.saved_hue = data['hue'][0]
             self.saved_sat = data['sat'][0]
-            #rospy.loginfo(f"Loaded HoC data from {self.hoc_data_file}")
         else:
             rospy.logerr(f"HoC data file {self.hoc_data_file} not found")
             self.saved_hue = None
@@ -50,65 +48,67 @@ class ComparisonNode:
                 'left_shoulder_hip_distance': data['left_shoulder_hip_distance'],
                 'right_shoulder_hip_distance': data['right_shoulder_hip_distance']
             }
-            #rospy.loginfo(f"Loaded Pose data from {self.pose_data_file}")
         else:
             rospy.logerr(f"Pose data file {self.pose_data_file} not found")
             self.saved_pose_data = None
 
-    def sync_callback(self, hoc_msg, pose_msg):
-        """Callback function to handle synchronized HoC and pose data."""
-        if self.saved_hue is None or self.saved_sat is None:
-            rospy.logerr("No saved HoC data available for comparison")
+    def hoc_callback(self, msg):
+        """Callback function to handle batch HoC data."""
+        for vector in msg.vectors:
+            self.hoc_data[vector.id] = vector
+        self.compare_and_publish()
+
+    def pose_callback(self, msg):
+        """Callback function to handle batch pose data."""
+        for distance in msg.distances:
+            self.pose_data[distance.id] = distance
+        self.compare_and_publish()
+
+    def compare_and_publish(self):
+        """Compare HoC and pose data for detections present in both batches and publish results."""
+        if not self.hoc_data or not self.pose_data:
             return
+        
+        comparison_scores_array = ComparisonScoresArray()
+        comparison_scores_array.header.stamp = rospy.Time.now()
 
-        # Log timestamps and IDs for synchronization verification
-        #rospy.loginfo(f"Synchronized messages: HoC timestamp: {hoc_msg.header.stamp}, Pose timestamp: {pose_msg.header.stamp}")
-        #rospy.loginfo(f"Detection ID {hoc_msg.id}: HoC and Pose data synchronized")
+        for detection_id in self.hoc_data.keys() & self.pose_data.keys():
+            hoc_vector = self.hoc_data[detection_id]
+            pose_distance = self.pose_data[detection_id]
 
-        # Compare HoC data
-        hue_vector = hoc_msg.hue_vector
-        sat_vector = hoc_msg.sat_vector
-        hoc_distance_score = self.compute_hoc_distance_score(hue_vector, sat_vector)
-        #rospy.loginfo(f"Detection ID {hoc_msg.id}: HoC Distance score: {hoc_distance_score:.2f}")
+            # Compare HoC data
+            hue_vector = np.array(hoc_vector.hue_vector)
+            sat_vector = np.array(hoc_vector.sat_vector)
+            hoc_distance_score = self.compute_hoc_distance_score(hue_vector, sat_vector)
 
-        # Compare pose data
-        left_shoulder_hip_distance = pose_msg.left_shoulder_hip_distance
-        right_shoulder_hip_distance = pose_msg.right_shoulder_hip_distance
-        left_shoulder_hip_saved = np.mean(self.saved_pose_data['left_shoulder_hip_distance'])
-        right_shoulder_hip_saved = np.mean(self.saved_pose_data['right_shoulder_hip_distance'])
+            # Compare pose data
+            left_shoulder_hip_distance = pose_distance.left_shoulder_hip_distance
+            right_shoulder_hip_distance = pose_distance.right_shoulder_hip_distance
+            left_shoulder_hip_saved = np.mean(self.saved_pose_data['left_shoulder_hip_distance'])
+            right_shoulder_hip_saved = np.mean(self.saved_pose_data['right_shoulder_hip_distance'])
 
-        left_distance = self.compute_distance(left_shoulder_hip_distance, left_shoulder_hip_saved)
-        right_distance = self.compute_distance(right_shoulder_hip_distance, right_shoulder_hip_saved)
-        pose_distance_score = (left_distance + right_distance) / 2
-        #rospy.loginfo(f"Detection ID {pose_msg.id}: Pose Distance score: {pose_distance_score:.2f}")
+            left_distance = self.compute_distance(left_shoulder_hip_distance, left_shoulder_hip_saved)
+            right_distance = self.compute_distance(right_shoulder_hip_distance, right_shoulder_hip_saved)
+            pose_distance_score = (left_distance + right_distance) / 2
 
-        # Publish comparison scores
-        comparison_scores_msg = ComparisonScores()
-        comparison_scores_msg.header.stamp = rospy.Time.now()
-        comparison_scores_msg.id = hoc_msg.id
-        comparison_scores_msg.hoc_distance_score = hoc_distance_score
-        comparison_scores_msg.pose_distance_score = pose_distance_score
-        self.comparison_pub.publish(comparison_scores_msg)
+            # Create and append comparison score
+            comparison_scores_msg = ComparisonScores()
+            comparison_scores_msg.id = detection_id
+            comparison_scores_msg.hoc_distance_score = hoc_distance_score
+            comparison_scores_msg.pose_distance_score = pose_distance_score
+            comparison_scores_array.scores.append(comparison_scores_msg)
+
+        self.comparison_pub.publish(comparison_scores_array)
 
     def compute_hoc_distance_score(self, hue_vector, sat_vector):
         """Compute the distance score between the current detection and saved data (HoC)."""
-        hue_vector = np.array(hue_vector)
-        sat_vector = np.array(sat_vector)
-        
         hue_distance = self.compute_distance(hue_vector, self.saved_hue)
         sat_distance = self.compute_distance(sat_vector, self.saved_sat)
-        
         return (hue_distance + sat_distance) / 2
     
     def compute_distance(self, vector1, vector2):
         """Compute the Euclidean distance between two vectors (General)."""
         return np.linalg.norm(vector1 - vector2)
-    
-    def publish_debug_info(self, hoc_distance_score, pose_distance_score, detection_id):
-        """Publish debug information about the current comparison (General)."""
-        debug_msg = String()
-        debug_msg.data = f"Detection ID {detection_id}: HoC Distance score: {hoc_distance_score:.2f}, Pose Distance score: {pose_distance_score:.2f}"
-        self.publisher_debug.publish(debug_msg)
 
 if __name__ == '__main__':
     try:

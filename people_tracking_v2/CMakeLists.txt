@@ -30,6 +30,7 @@ add_message_files(
   BodySize.msg
   BodySizeArray.msg
   ComparisonScores.msg
+  ComparisonScoresArray.msg
 )
 
 generate_messages(
