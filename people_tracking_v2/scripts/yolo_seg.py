@@ -71,7 +71,7 @@ class YoloSegNode:
             detection.label = int(label)
             detection_array.detections.append(detection)
 
-            rospy.loginfo(f"Detection ID: {detection.id} for box: {box}")
+            #rospy.loginfo(f"Detection ID: {detection.id} for box: {box}")
 
             # Draw bounding boxes and labels on the bounding_box_image
             x1, y1, x2, y2 = map(int, box)
@@ -104,7 +104,7 @@ class YoloSegNode:
 
             # Calculate IoU
             iou = self.calculate_iou([x1, y1, x2, y2], [x_pred1, y_pred1, x_pred2, y_pred2])
-            rospy.loginfo(f"Detection {detection.id}: IoU={iou:.2f}")
+            #rospy.loginfo(f"Detection {detection.id}: IoU={iou:.2f}")
 
             color = (0, 255, 0)  # Set color for bounding boxes
             thickness = 3
@@ -132,7 +132,7 @@ class YoloSegNode:
                 self.individual_segmented_image_pub.publish(segmented_image_msg)
 
         # Publish segmented images as a batch
-        rospy.loginfo(f"Publishing Segmented Images with IDs: {segmented_images_msg.ids}")
+        #rospy.loginfo(f"Publishing Segmented Images with IDs: {segmented_images_msg.ids}")
         self.segmented_images_pub.publish(segmented_images_msg)
 
         # Publish bounding box image

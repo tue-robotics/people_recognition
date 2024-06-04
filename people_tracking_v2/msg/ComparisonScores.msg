@@ -1,4 +1,4 @@
-Header header
-int32[] ids
-float32[] hoc_distance_scores
-float32[] pose_distance_scores
+std_msgs/Header header
+int32 id
+float32 hoc_distance_score
+float32 pose_distance_score

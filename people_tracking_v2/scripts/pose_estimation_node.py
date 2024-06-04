@@ -25,7 +25,7 @@ class PoseEstimationNode:
         
         self.image_sub = rospy.Subscriber("/bounding_box_image", Image, self.image_callback)
         self.pose_distance_pub = rospy.Publisher("/pose_distances_array", BodySizeArray, queue_size=10)
-        self.detection_sub = rospy.Subscriber("/hero/predicted_detections", DetectionArray, self.detection_callback)
+        self.detection_sub = rospy.Subscriber("/detections", DetectionArray, self.detection_callback)
         self._result_image_publisher = rospy.Publisher("/pose_result_image", Image, queue_size=10)
         
         self.current_detections = []
