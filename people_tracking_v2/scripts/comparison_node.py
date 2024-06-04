@@ -55,47 +55,41 @@ class ComparisonNode:
             rospy.logerr(f"Pose data file {self.pose_data_file} not found")
             self.saved_pose_data = None
 
-    def sync_callback(self, hoc_msg, pose_msg):
+    def sync_callback(self, hoc_array, pose_array):
         """Callback function to handle synchronized HoC and pose data."""
         if self.saved_hue is None or self.saved_sat is None:
             rospy.logerr("No saved HoC data available for comparison")
             return
 
-        # Log timestamps and IDs for synchronization verification
-        rospy.loginfo(f"Synchronized messages: HoC timestamp: {hoc_msg.header.stamp}, Pose timestamp: {pose_msg.header.stamp}")
-
         comparison_scores_array = ComparisonScoresArray()
-        comparison_scores_array.header.stamp = rospy.Time.now()
+        comparison_scores_array.header.stamp = hoc_array.header.stamp
 
-        for hoc_vector in hoc_msg.vectors:
-            detection_id = hoc_vector.id
-            hue_vector = hoc_vector.hue_vector
-            sat_vector = hoc_vector.sat_vector
+        for hoc_msg, pose_msg in zip(hoc_array.vectors, pose_array.poses):
+            # Compare HoC data
+            hue_vector = hoc_msg.hue_vector
+            sat_vector = hoc_msg.sat_vector
             hoc_distance_score = self.compute_hoc_distance_score(hue_vector, sat_vector)
+            rospy.loginfo(f"Detection ID {hoc_msg.id}: HoC Distance score: {hoc_distance_score:.2f}")
 
-            # Find corresponding pose data
-            corresponding_pose = next((pose for pose in pose_msg.poses if pose.id == detection_id), None)
-            if corresponding_pose:
-                left_shoulder_hip_distance = corresponding_pose.left_shoulder_hip_distance
-                right_shoulder_hip_distance = corresponding_pose.right_shoulder_hip_distance
-                left_shoulder_hip_saved = np.mean(self.saved_pose_data['left_shoulder_hip_distance'])
-                right_shoulder_hip_saved = np.mean(self.saved_pose_data['right_shoulder_hip_distance'])
+            # Compare pose data
+            left_shoulder_hip_distance = pose_msg.left_shoulder_hip_distance
+            right_shoulder_hip_distance = pose_msg.right_shoulder_hip_distance
+            left_shoulder_hip_saved = np.mean(self.saved_pose_data['left_shoulder_hip_distance'])
+            right_shoulder_hip_saved = np.mean(self.saved_pose_data['right_shoulder_hip_distance'])
 
-                left_distance = self.compute_distance(left_shoulder_hip_distance, left_shoulder_hip_saved)
-                right_distance = self.compute_distance(right_shoulder_hip_distance, right_shoulder_hip_saved)
-                pose_distance_score = (left_distance + right_distance) / 2
+            left_distance = self.compute_distance(left_shoulder_hip_distance, left_shoulder_hip_saved)
+            right_distance = self.compute_distance(right_shoulder_hip_distance, right_shoulder_hip_saved)
+            pose_distance_score = (left_distance + right_distance) / 2
+            rospy.loginfo(f"Detection ID {pose_msg.id}: Pose Distance score: {pose_distance_score:.2f}")
 
-                # Create ComparisonScores message
-                comparison_scores_msg = ComparisonScores()
-                comparison_scores_msg.header.stamp = rospy.Time.now()
-                comparison_scores_msg.id = detection_id
-                comparison_scores_msg.hoc_distance_score = hoc_distance_score
-                comparison_scores_msg.pose_distance_score = pose_distance_score
+            # Create and append ComparisonScores message
+            comparison_scores_msg = ComparisonScores()
+            comparison_scores_msg.id = hoc_msg.id
+            comparison_scores_msg.hoc_distance_score = hoc_distance_score
+            comparison_scores_msg.pose_distance_score = pose_distance_score
+            comparison_scores_array.scores.append(comparison_scores_msg)
 
-                # Add to array
-                comparison_scores_array.scores.append(comparison_scores_msg)
-
-        # Publish comparison scores array
+        # Publish the comparison scores as a batch
         self.comparison_pub.publish(comparison_scores_array)
 
     def compute_hoc_distance_score(self, hue_vector, sat_vector):
@@ -111,6 +105,12 @@ class ComparisonNode:
     def compute_distance(self, vector1, vector2):
         """Compute the Euclidean distance between two vectors (General)."""
         return np.linalg.norm(vector1 - vector2)
+    
+    def publish_debug_info(self, hoc_distance_score, pose_distance_score, detection_id):
+        """Publish debug information about the current comparison (General)."""
+        debug_msg = String()
+        debug_msg.data = f"Detection ID {detection_id}: HoC Distance score: {hoc_distance_score:.2f}, Pose Distance score: {pose_distance_score:.2f}"
+        self.publisher_debug.publish(debug_msg)
 
 if __name__ == '__main__':
     try:

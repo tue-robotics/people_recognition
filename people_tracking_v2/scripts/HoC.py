@@ -15,14 +15,14 @@ class HoCNode:
         self.segmented_images_sub = rospy.Subscriber('/segmented_images', SegmentedImages, self.segmented_images_callback)
         
         # Publisher for HoC vectors
-        self.hoc_vector_pub = rospy.Publisher('/hoc_vectors_array', HoCVectorArray, queue_size=10)
+        self.hoc_vector_pub = rospy.Publisher('/hoc_vectors', HoCVectorArray, queue_size=10)
         
         if initialize_node:
             rospy.spin()
         
     def segmented_images_callback(self, msg):
-        #rospy.loginfo(f"First segmented image received at: {rospy.Time.now()}")  # Log first message timestamp
-        #rospy.loginfo(f"Received batch of {len(msg.images)} segmented images")
+        # rospy.loginfo(f"First segmented image received at: {rospy.Time.now()}")  # Log first message timestamp
+        # rospy.loginfo(f"Received batch of {len(msg.images)} segmented images")
         
         hoc_vectors = HoCVectorArray()
         hoc_vectors.header.stamp = msg.header.stamp  # Use the same timestamp as the incoming message

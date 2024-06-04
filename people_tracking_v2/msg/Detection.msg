@@ -6,3 +6,4 @@ float32 x2
 float32 y2
 float32 score
 int32 label
+float32 iou
