@@ -57,14 +57,22 @@ class ComparisonNode:
 
     def sync_callback(self, hoc_array, pose_array):
         """Callback function to handle synchronized HoC and pose data."""
+        rospy.loginfo("sync_callback invoked")
+
         if self.saved_hue is None or self.saved_sat is None:
             rospy.logerr("No saved HoC data available for comparison")
+            return
+
+        if not hoc_array.vectors or not pose_array.distances:
+            rospy.logerr("Received empty HoC or Pose array")
             return
 
         comparison_scores_array = ComparisonScoresArray()
         comparison_scores_array.header.stamp = hoc_array.header.stamp
 
-        for hoc_msg, pose_msg in zip(hoc_array.vectors, pose_array.poses):
+        for hoc_msg, pose_msg in zip(hoc_array.vectors, pose_array.distances):
+            rospy.loginfo(f"Processing Detection ID {hoc_msg.id}")
+
             # Compare HoC data
             hue_vector = hoc_msg.hue_vector
             sat_vector = hoc_msg.sat_vector
@@ -84,6 +92,8 @@ class ComparisonNode:
 
             # Create and append ComparisonScores message
             comparison_scores_msg = ComparisonScores()
+            comparison_scores_msg.header.stamp = hoc_msg.header.stamp  # Use the timestamp from the HoC message
+            comparison_scores_msg.header.frame_id = hoc_msg.header.frame_id
             comparison_scores_msg.id = hoc_msg.id
             comparison_scores_msg.hoc_distance_score = hoc_distance_score
             comparison_scores_msg.pose_distance_score = pose_distance_score
