@@ -16,9 +16,8 @@ class CentralNode:
         self.mode_pub = rospy.Publisher('/central/mode', String, queue_size=10)
         
         self.operator_id = None
-        self.operator_iou = 0.0
         self.iou_threshold = 0.9
-        self.current_mode = "YOLO_ONLY"
+        self.current_mode = "YOLO_HOC_POSE"  # Define initial mode
         
         rospy.spin()
     
@@ -26,36 +25,31 @@ class CentralNode:
         """Callback function to handle YOLO detections."""
         for detection in msg.detections:
             if detection.id == self.operator_id:
-                self.operator_iou = detection.iou  # Assuming IoU is a field in the detection message
-                if self.operator_iou > self.iou_threshold:
-                    self.set_mode("YOLO_ONLY")
-                    return
+                if detection.iou > self.iou_threshold:
+                    self.set_mode("YOLO_ONLY")  # Set mode to YOLO_ONLY if IoU is above the threshold
                 else:
-                    self.set_mode("YOLO_HOC_POSE")
-                    return
-        self.set_mode("YOLO_HOC_POSE")
+                    self.set_mode("YOLO_HOC_POSE")  # Set mode to YOLO_HOC_POSE if IoU is below the threshold
+                return  # Exit after processing the operator detection
+        self.set_mode("YOLO_HOC_POSE")  # If operator is not detected at all
     
     def comparison_callback(self, msg):
-        """Callback function to handle comparison scores and make the final decision."""
-        hoc_distance_score = msg.hoc_distance_score
-        pose_distance_score = msg.pose_distance_score
-
+        """Callback function to handle comparison scores and update operator ID."""
         hoc_threshold = 0.1
         pose_threshold = 10.0
 
-        if hoc_distance_score < hoc_threshold and pose_distance_score < pose_threshold:
-            self.operator_id = msg.id
+        if msg.hoc_distance_score < hoc_threshold and msg.pose_distance_score < pose_threshold:
+            self.operator_id = msg.id  # Update operator ID if scores are below thresholds
         else:
-            self.operator_id = None
+            self.operator_id = None  # Reset operator ID if scores are above thresholds
 
     def set_mode(self, mode):
         """Set the current mode and publish it."""
         if self.current_mode != mode:
-            self.current_mode = mode
+            self.current_mode = mode  # Update current mode
             mode_msg = String()
-            mode_msg.data = f"Current Mode: {self.current_mode}"
-            self.mode_pub.publish(mode_msg)
-            rospy.loginfo(mode_msg.data)
+            mode_msg.data = f"Current Mode: {self.current_mode}"  # Define mode message
+            self.mode_pub.publish(mode_msg)  # Publish mode message to /central/mode topic
+            rospy.loginfo(mode_msg.data)  # Log the current mode
 
 if __name__ == '__main__':
     try:

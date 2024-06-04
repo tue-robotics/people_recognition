@@ -2,6 +2,7 @@
 
 import rospy
 from people_tracking_v2.msg import SegmentedImages, HoCVector  # Custom message for batch segmented images and HoC vectors
+from std_msgs.msg import String
 from cv_bridge import CvBridge, CvBridgeError
 import cv2
 import numpy as np
@@ -13,14 +14,24 @@ class HoCNode:
         
         self.bridge = CvBridge()
         self.segmented_images_sub = rospy.Subscriber('/segmented_images', SegmentedImages, self.segmented_images_callback)
+        self.mode_sub = rospy.Subscriber('/central/mode', String, self.mode_callback)
         
         # Publisher for HoC vectors
         self.hoc_vector_pub = rospy.Publisher('/hoc_vectors', HoCVector, queue_size=10)
         
+        self.current_mode = "YOLO_HOC_POSE"  # Initial mode
+        
         if initialize_node:
             rospy.spin()
+
+    def mode_callback(self, msg):
+        """Callback to update the current mode."""
+        self.current_mode = msg.data.split(": ")[1]
         
     def segmented_images_callback(self, msg):
+        if self.current_mode != "YOLO_HOC_POSE":
+            return  # Skip processing if the current mode is not YOLO_HOC_POSE
+
         rospy.loginfo(f"First segmented image received at: {rospy.Time.now()}")  # Log first message timestamp
         rospy.loginfo(f"Received batch of {len(msg.images)} segmented images")
         for i, segmented_image_msg in enumerate(msg.images):

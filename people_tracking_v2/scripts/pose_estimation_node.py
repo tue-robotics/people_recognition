@@ -16,7 +16,7 @@ from image_recognition_msgs.msg import Recognitions
 from image_recognition_msgs.srv import Recognize
 from image_recognition_util import image_writer
 from sensor_msgs.msg import Image
-
+from std_msgs.msg import String
 from people_tracking.yolo_pose_wrapper import YoloPoseWrapper
 from people_tracking_v2.msg import DetectionArray, BodySize
 
@@ -68,6 +68,7 @@ class PoseEstimationNode:
         self._bridge = CvBridge()
         self._recognize_srv = rospy.Service("recognize", Recognize, self._recognize_srv)
         self._image_subscriber = rospy.Subscriber("/bounding_box_image", Image, self._image_callback)
+        self._mode_sub = rospy.Subscriber('/central/mode', String, self.mode_callback)
         self._recognitions_publisher = rospy.Publisher("/pose_recognitions", Recognitions, queue_size=10)
         self._pose_distance_publisher = rospy.Publisher("/pose_distances", BodySize, queue_size=10)
         self._detection_subscriber = rospy.Subscriber("/hero/predicted_detections", DetectionArray, self.detection_callback)  # Add this subscriber
@@ -75,6 +76,7 @@ class PoseEstimationNode:
             self._result_image_publisher = rospy.Publisher("/pose_result_image", Image, queue_size=10)
 
         self.last_master_check = rospy.get_time()
+        self.current_mode = "YOLO_HOC_POSE"
 
         rospy.loginfo("PoseEstimationNode initialized:")
         rospy.loginfo(f" - {model_name=}")
@@ -88,12 +90,22 @@ class PoseEstimationNode:
 
         self.current_detections = []
 
+    def mode_callback(self, msg):
+        """Callback to update the current mode."""
+        self.current_mode = msg.data.split(": ")[1]
+
     def detection_callback(self, msg):
+        if self.current_mode != "YOLO_HOC_POSE":
+            return  # Skip processing if the current mode is not YOLO_HOC_POSE
+
         rospy.loginfo(f"First detection received at: {rospy.Time.now()}")  # Log first message timestamp
         """Callback function to handle new detections from YOLO (DetectionArray)."""
         self.current_detections = msg.detections
 
     def _image_callback(self, image_msg):
+        if self.current_mode != "YOLO_HOC_POSE":
+            return  # Skip processing if the current mode is not YOLO_HOC_POSE
+
         self._input_q.put((image_msg, self._topic_save_images, self._topic_publish_result_image, False))
         recognitions, result_image, pose_details = self._wrapper.detect_poses(self._bridge.imgmsg_to_cv2(image_msg, "bgr8"))
 
