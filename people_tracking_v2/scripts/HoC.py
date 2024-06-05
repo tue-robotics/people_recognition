@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import rospy
-from people_tracking_v2.msg import SegmentedImages, HoCVectorArray, HoCVector  # Custom message for batch segmented images and HoC vectors
+from people_tracking_v2.msg import SegmentedImages, HoCVectorArray, HoCVector, DetectionArray  # Custom messages
 from cv_bridge import CvBridge, CvBridgeError
 from std_msgs.msg import Float32  # Import the Float32 message type
 import cv2
@@ -14,12 +14,15 @@ class HoCNode:
         
         self.bridge = CvBridge()
         self.segmented_images_sub = rospy.Subscriber('/segmented_images', SegmentedImages, self.segmented_images_callback)
+        self.detections_sub = rospy.Subscriber('/detections_info', DetectionArray, self.detections_callback)
         self.iou_threshold_sub = rospy.Subscriber('/iou_threshold', Float32, self.iou_threshold_callback)
         self.iou_threshold = 0.9  # Default threshold value
         
         # Publisher for HoC vectors
         self.hoc_vector_pub = rospy.Publisher('/hoc_vectors', HoCVectorArray, queue_size=10)
         
+        self.detections = []  # Store detections info
+
         if initialize_node:
             rospy.spin()
 
@@ -27,16 +30,15 @@ class HoCNode:
         """Callback function to update the IoU threshold."""
         self.iou_threshold = msg.data
         rospy.loginfo(f"Updated IoU threshold to {self.iou_threshold}")
-        
+
+    def detections_callback(self, msg):
+        """Callback function to store detections info."""
+        self.detections = msg.detections
+
     def segmented_images_callback(self, msg):
-        # Check IoU values and decide whether to process
-        should_process = all(detection.iou <= self.iou_threshold for detection in msg.detections)
-        if not should_process:
-            rospy.loginfo("Skipping processing due to high IoU value with operator")
+        if not self.detections:
+            rospy.loginfo("No detections available, skipping processing.")
             return
-        
-        #rospy.loginfo(f"First segmented image received at: {rospy.Time.now()}")  # Log first message timestamp
-        #rospy.loginfo(f"Received batch of {len(msg.images)} segmented images")
         
         hoc_vectors = HoCVectorArray()
         hoc_vectors.header.stamp = msg.header.stamp  # Use the same timestamp as the incoming message
@@ -50,6 +52,16 @@ class HoCNode:
                 # Extract the ID from the incoming message
                 detection_id = msg.ids[i]
                 rospy.loginfo(f"Received Detection ID: {detection_id} for segmented image #{i}")
+
+                # Find the corresponding detection with the same ID
+                detection = next((d for d in self.detections if d.id == detection_id), None)
+                if detection is None:
+                    rospy.logerr(f"No matching detection found for ID: {detection_id}")
+                    continue
+
+                if detection.iou > self.iou_threshold:
+                    rospy.loginfo(f"Skipping detection ID {detection_id} due to high IoU value with operator: {detection.iou:.2f}")
+                    continue
 
                 # Create HoCVector message
                 hoc_vector = HoCVector()
