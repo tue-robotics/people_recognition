@@ -1,3 +1,5 @@
+#BodySize.msg
+
 Header header
 int32 id
 float32 left_shoulder_hip_distance
