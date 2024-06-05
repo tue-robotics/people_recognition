@@ -1,8 +1,9 @@
 #!/usr/bin/env python
 
 import rospy
-from people_tracking_v2.msg import SegmentedImages, HoCVector, HoCVectorArray  # Custom message for batch segmented images and HoC vectors
+from people_tracking_v2.msg import SegmentedImages, HoCVectorArray, HoCVector  # Custom message for batch segmented images and HoC vectors
 from cv_bridge import CvBridge, CvBridgeError
+from std_msgs.msg import Float32  # Import the Float32 message type
 import cv2
 import numpy as np
 
@@ -13,16 +14,29 @@ class HoCNode:
         
         self.bridge = CvBridge()
         self.segmented_images_sub = rospy.Subscriber('/segmented_images', SegmentedImages, self.segmented_images_callback)
+        self.iou_threshold_sub = rospy.Subscriber('/iou_threshold', Float32, self.iou_threshold_callback)
+        self.iou_threshold = 0.9  # Default threshold value
         
         # Publisher for HoC vectors
         self.hoc_vector_pub = rospy.Publisher('/hoc_vectors', HoCVectorArray, queue_size=10)
         
         if initialize_node:
             rospy.spin()
+
+    def iou_threshold_callback(self, msg):
+        """Callback function to update the IoU threshold."""
+        self.iou_threshold = msg.data
+        rospy.loginfo(f"Updated IoU threshold to {self.iou_threshold}")
         
     def segmented_images_callback(self, msg):
-        # rospy.loginfo(f"First segmented image received at: {rospy.Time.now()}")  # Log first message timestamp
-        # rospy.loginfo(f"Received batch of {len(msg.images)} segmented images")
+        # Check IoU values and decide whether to process
+        should_process = all(detection.iou <= self.iou_threshold for detection in msg.detections)
+        if not should_process:
+            rospy.loginfo("Skipping processing due to high IoU value with operator")
+            return
+        
+        #rospy.loginfo(f"First segmented image received at: {rospy.Time.now()}")  # Log first message timestamp
+        #rospy.loginfo(f"Received batch of {len(msg.images)} segmented images")
         
         hoc_vectors = HoCVectorArray()
         hoc_vectors.header.stamp = msg.header.stamp  # Use the same timestamp as the incoming message

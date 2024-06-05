@@ -4,6 +4,7 @@ import rospy
 from people_tracking_v2.msg import DetectionArray, BodySize, BodySizeArray
 from cv_bridge import CvBridge, CvBridgeError
 from sensor_msgs.msg import Image
+from std_msgs.msg import Float32  # Import the Float32 message type
 import numpy as np
 import os
 import sys
@@ -20,14 +21,27 @@ class PoseEstimationNode:
         self.detection_sub = rospy.Subscriber("/detections_info", DetectionArray, self.detection_callback)
         self.pose_pub = rospy.Publisher("/pose_distances", BodySizeArray, queue_size=10)
         self.image_sub = rospy.Subscriber("/bounding_box_image", Image, self.image_callback)
+        self.iou_threshold_sub = rospy.Subscriber('/iou_threshold', Float32, self.iou_threshold_callback)
+        self.iou_threshold = 0.9  # Default threshold value
 
         self.current_detections = []
+
+    def iou_threshold_callback(self, msg):
+        """Callback function to update the IoU threshold."""
+        self.iou_threshold = msg.data
+        rospy.loginfo(f"Updated IoU threshold to {self.iou_threshold}")
 
     def detection_callback(self, msg):
         rospy.loginfo(f"First detection received at: {rospy.Time.now()}")  # Log first message timestamp
         self.current_detections = msg.detections
 
     def image_callback(self, image_msg):
+        # Check IoU values and decide whether to process
+        should_process = all(detection.iou <= self.iou_threshold for detection in self.current_detections)
+        if not should_process:
+            rospy.loginfo("Skipping processing due to high IoU value with operator")
+            return
+
         recognitions, result_image, pose_details = self._wrapper.detect_poses(self.bridge.imgmsg_to_cv2(image_msg, "bgr8"))
 
         pose_distance_array = BodySizeArray()

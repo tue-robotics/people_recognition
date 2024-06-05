@@ -7,6 +7,7 @@ from ultralytics import YOLO
 from sensor_msgs.msg import Image
 from people_tracking_v2.msg import Detection, DetectionArray, SegmentedImages
 from cv_bridge import CvBridge, CvBridgeError
+from std_msgs.msg import Float32  # Import the Float32 message type
 
 # Add the path to the `kalman_filter.py` module
 import sys
@@ -28,6 +29,9 @@ class YoloSegNode:
         # Initialize the Kalman Filter for the operator
         self.kalman_filter_operator = KalmanFilterCV()
         self.operator_id = None  # To be set by an external node
+
+        self.iou_threshold_pub = rospy.Publisher('/iou_threshold', Float32, queue_size=10)
+        self.iou_threshold = 0.9  # Default threshold value
 
     def set_operator(self, operator_id):
         """Set the ID of the operator to track."""
@@ -66,7 +70,6 @@ class YoloSegNode:
 
         # Process each detection and create a Detection message
         for i, (box, score, label, mask) in enumerate(zip(boxes, scores, labels, masks)):
-            
             if int(label) != 0:  # Only process humans (class 0)
                 continue
 
@@ -146,6 +149,11 @@ class YoloSegNode:
                     cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1
                 )
 
+        # Publish the IoU threshold
+        iou_threshold_msg = Float32()
+        iou_threshold_msg.data = self.iou_threshold
+        self.iou_threshold_pub.publish(iou_threshold_msg)
+
         # Publish segmented images as a batch
         rospy.loginfo(f"Publishing Segmented Images with IDs: {segmented_images_msg.ids}")
         self.segmented_images_pub.publish(segmented_images_msg)
@@ -189,6 +197,11 @@ def main():
     # Set the operator ID (this should be dynamically set by another process in practice)
     operator_id = 1  # Example operator ID
     yolo_node.set_operator(operator_id)
+
+    # Publish the IoU threshold
+    iou_threshold_msg = Float32()
+    iou_threshold_msg.data = yolo_node.iou_threshold
+    yolo_node.iou_threshold_pub.publish(iou_threshold_msg)
 
     try:
         rospy.spin()
