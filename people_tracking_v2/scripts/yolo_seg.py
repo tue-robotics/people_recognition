@@ -9,18 +9,30 @@ from people_tracking_v2.msg import Detection, DetectionArray, SegmentedImages
 from cv_bridge import CvBridge, CvBridgeError
 from std_msgs.msg import Float32, Int32  # Import the Int32 message type for operator ID
 
-# Add the path to the `kalman_filter.py` module
 import sys
 import os
+import rospkg
+import time
+
+# Add the path to the `kalman_filter.py` module
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'src', 'people_tracking'))
 from kalman_filter import KalmanFilterCV  # Import the Kalman Filter class
+
+
+laptop = True #sys.argv[1]
+name_subscriber_RGB = 'Webcam/image_raw' if laptop else '/hero/head_rgbd_sensor/rgb/image_raw'
+depth_camera = False #if sys.argv[2] == "False" else True
+save_data = False #if sys.argv[3] == "False" else True
 
 class YoloSegNode:
     def __init__(self):
         self.bridge = CvBridge()
         self.model = YOLO("yolov8n-seg.pt")  # Ensure the model supports segmentation
 
-        self.image_sub = rospy.Subscriber("/Webcam/image_raw", Image, self.image_callback)
+        self.image_sub = rospy.Subscriber(name_subscriber_RGB, Image, self.image_callback)
+        if depth_camera:
+            self.depth_sub = rospy.Subscriber('/hero/head_rgbd_sensor/depth_registered/image_raw', Image, self.depth_image_callback)
+
         self.segmented_images_pub = rospy.Publisher("/segmented_images", SegmentedImages, queue_size=10)
         self.individual_segmented_image_pub = rospy.Publisher("/individual_segmented_images", Image, queue_size=10)
         self.bounding_box_image_pub = rospy.Publisher("/bounding_box_image", Image, queue_size=10)
@@ -36,6 +48,11 @@ class YoloSegNode:
         self.iou_threshold_pub = rospy.Publisher('/iou_threshold', Float32, queue_size=10)
         self.iou_threshold = 0.9  # Default threshold value
 
+        # Initialize variables for saving data and depth processing
+        self.latest_image = None
+        self.depth_images = []
+        self.batch_nr = 0
+
     def operator_id_callback(self, msg):
         """Callback function to update the operator ID."""
         self.operator_id = msg.data
@@ -45,12 +62,31 @@ class YoloSegNode:
         """Set the ID of the operator to track."""
         self.operator_id = operator_id
 
+    def depth_image_callback(self, data):
+        """Store the latest depth image. Only the most recent depth images are stored."""
+        while len(self.depth_images) > 50:
+            self.depth_images.pop(0)
+        self.depth_images.append(data)
+
     def image_callback(self, data):
         try:
             cv_image = self.bridge.imgmsg_to_cv2(data, "bgr8")
+            self.batch_nr = data.header.seq
         except CvBridgeError as e:
             rospy.logerr(f"CV Bridge Error: {e}")
             return
+
+        # Import Depth Image
+        if depth_camera:
+            cv_depth_image = self.bridge.imgmsg_to_cv2(self.depth_images[-1], desired_encoding='passthrough')
+        else:
+            cv_depth_image = None
+
+        # Save RGB and Depth Images if required
+        if save_data:
+            cv2.imwrite(f"{self.save_path}{self.batch_nr}.png", cv_image)
+            if depth_camera:
+                cv2.imwrite(f"{self.save_path}self.{self.batch_nr}_depth.png", cv_depth_image)
 
         # Run the YOLOv8 model on the frame
         results = self.model(cv_image)[0]
@@ -199,10 +235,23 @@ class YoloSegNode:
         return inter_area / union_area if union_area > 0 else 0
 
 def main():
+    if save_data:
+        try:
+            rospack = rospkg.RosPack()
+            package_path = rospack.get_path("people_tracking_v2")
+            time = time.ctime(time.time())
+            save_path = os.path.join(package_path, f'data/{time}_test/')
+            os.makedirs(save_path, exist_ok=True)  # Make sure the directory exists
+            print(save_path)
+        except:
+            rospy.loginfo("Failed to make save path")
+            pass
+
     rospy.init_node('yolo_seg_node', anonymous=True)
     yolo_node = YoloSegNode()
 
     try:
+        print(f"Use Depth: {depth_camera}, Camera Source: {name_subscriber_RGB}")
         rospy.spin()
     except KeyboardInterrupt:
         print("Shutting down")
