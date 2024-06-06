@@ -36,9 +36,6 @@ class YoloSegNode:
         self.iou_threshold_pub = rospy.Publisher('/iou_threshold', Float32, queue_size=10)
         self.iou_threshold = 0.9  # Default threshold value
 
-        # Tracking previous detections
-        self.previous_detections = []
-
     def operator_id_callback(self, msg):
         """Callback function to update the operator ID."""
         self.operator_id = msg.data
@@ -78,7 +75,6 @@ class YoloSegNode:
         segmented_images_msg.ids = []  # Initialize the IDs list
 
         operator_box = None
-        current_detections = []
 
         # Process each detection and create a Detection message
         for i, (box, score, label, mask) in enumerate(zip(boxes, scores, labels, masks)):
@@ -86,28 +82,22 @@ class YoloSegNode:
                 continue
 
             detection = Detection()
+            detection.id = i + 1  # Assign a unique ID to each detection
             detection.x1 = float(box[0])
             detection.y1 = float(box[1])
             detection.x2 = float(box[2])
             detection.y2 = float(box[3])
             detection.score = float(score)
             detection.label = int(label)
-            current_detections.append(detection)
-
-        # Assign IDs to current detections based on previous detections
-        assigned_ids = self.assign_ids(self.previous_detections, current_detections)
-
-        for detection, assigned_id in zip(current_detections, assigned_ids):
-            detection.id = assigned_id
             detection_array.detections.append(detection)
 
-            rospy.loginfo(f"Detection ID: {detection.id} for box: {[detection.x1, detection.y1, detection.x2, detection.y2]}")
+            rospy.loginfo(f"Detection ID: {detection.id} for box: {box}")
 
             # Draw bounding boxes and labels on the bounding_box_image
-            x1, y1, x2, y2 = map(int, [detection.x1, detection.y1, detection.x2, detection.y2])
+            x1, y1, x2, y2 = map(int, box)
             color = (0, 255, 0)  # Set color for bounding boxes
             thickness = 3
-            label_text = f'#{detection.id} {int(detection.label)}: {detection.score:.2f}'
+            label_text = f'#{detection.id} {int(label)}: {score:.2f}'
 
             cv2.rectangle(bounding_box_image, (x1, y1), (x2, y2), color, thickness)
             cv2.putText(
@@ -187,43 +177,6 @@ class YoloSegNode:
 
         # Publish predicted detections
         self.detection_pub.publish(detection_array)
-
-        # Update previous detections
-        self.previous_detections = current_detections
-
-    def assign_ids(self, previous_detections, current_detections):
-        """Assign IDs to current detections based on the closest detection in the previous frame."""
-        if not previous_detections:
-            return list(range(1, len(current_detections) + 1))
-
-        assigned_ids = []
-        for curr_det in current_detections:
-            min_distance = float('inf')
-            assigned_id = None
-            for prev_det in previous_detections:
-                distance = self.euclidean_distance(curr_det, prev_det)
-                if distance < min_distance:
-                    min_distance = distance
-                    assigned_id = prev_det.id
-            assigned_ids.append(assigned_id)
-            # Remove the assigned previous detection to avoid multiple assignments
-            previous_detections = [det for det in previous_detections if det.id != assigned_id]
-
-        # Assign new IDs to any remaining detections
-        next_id = max(assigned_ids) + 1 if assigned_ids else 1
-        for _ in range(len(current_detections) - len(assigned_ids)):
-            assigned_ids.append(next_id)
-            next_id += 1
-
-        return assigned_ids
-
-    def euclidean_distance(self, det1, det2):
-        """Calculate the Euclidean distance between the centers of two detections."""
-        x1_center = (det1.x1 + det1.x2) / 2
-        y1_center = (det1.y1 + det1.y2) / 2
-        x2_center = (det2.x1 + det2.x2) / 2
-        y2_center = (det2.y2 + det2.y2) / 2
-        return np.sqrt((x2_center - x1_center) ** 2 + (y2_center - y1_center) ** 2)
 
     def calculate_iou(self, box1, box2):
         """Calculate the Intersection over Union (IoU) of two bounding boxes."""
