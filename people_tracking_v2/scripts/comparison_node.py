@@ -34,8 +34,8 @@ class ComparisonNode:
         """Load the saved HoC data from the .npz file (HoC)."""
         if os.path.exists(self.hoc_data_file):
             data = np.load(self.hoc_data_file)
-            self.saved_hue = data['hue'][0]
-            self.saved_sat = data['sat'][0]
+            self.saved_hue = data['hue']
+            self.saved_sat = data['sat']
             rospy.loginfo(f"Loaded HoC data from {self.hoc_data_file}")
         else:
             rospy.logerr(f"HoC data file {self.hoc_data_file} not found")
