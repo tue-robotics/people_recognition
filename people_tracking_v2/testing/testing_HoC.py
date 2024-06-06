@@ -32,7 +32,7 @@ class HoCComparisonNode:
         # Threshold for determining operator
         self.operator_threshold = 0.6
 
-        # File to save operator detection IDs
+        # File to save operator detection IDs and scores
         self.operator_log_file = os.path.expanduser('~/operator_detections.csv')
         self.init_operator_log_file()
         
@@ -54,7 +54,7 @@ class HoCComparisonNode:
         """Initialize the operator log file."""
         with open(self.operator_log_file, mode='w') as file:
             writer = csv.writer(file)
-            writer.writerow(['Frame Timestamp', 'Operator Detection ID'])
+            writer.writerow(['Frame Timestamp', 'Operator Detection ID', 'HoC Distance Score'])
         rospy.loginfo(f"Initialized operator log file at {self.operator_log_file}")
 
     def hoc_callback(self, hoc_array):
@@ -72,7 +72,9 @@ class HoCComparisonNode:
         comparison_scores_array = ComparisonScoresArray()
         comparison_scores_array.header.stamp = hoc_array.header.stamp
 
-        operator_detected = False
+        best_score = float('inf')
+        best_detection_id = None
+
         for hoc_msg in hoc_array.vectors:
             rospy.loginfo(f"Processing Detection ID {hoc_msg.id}")
 
@@ -82,14 +84,10 @@ class HoCComparisonNode:
             hoc_distance_score = self.compute_hoc_distance_score(hue_vector, sat_vector)
             rospy.loginfo(f"Detection ID {hoc_msg.id}: HoC Distance score: {hoc_distance_score:.2f}")
 
-            # Determine if this detection is the operator
-            is_operator = hoc_distance_score < self.operator_threshold
-            operator_status = "Operator" if is_operator else "Not Operator"
-            rospy.loginfo(f"Detection ID {hoc_msg.id}: {operator_status}")
-
-            if is_operator:
-                self.save_operator_detection(hoc_array.header.stamp, hoc_msg.id)
-                operator_detected = True
+            # Check if this is the best (smallest distance) operator candidate
+            if hoc_distance_score < self.operator_threshold and hoc_distance_score < best_score:
+                best_score = hoc_distance_score
+                best_detection_id = hoc_msg.id
 
             # Create and append ComparisonScores message
             comparison_scores_msg = ComparisonScores()
@@ -100,23 +98,28 @@ class HoCComparisonNode:
             comparison_scores_msg.pose_distance_score = 0.0  # Set to 0.0 since it's not used
             comparison_scores_array.scores.append(comparison_scores_msg)
 
-            # Publish operator identification result
-            operator_msg = String()
-            operator_msg.data = f"Detection ID {hoc_msg.id}: {operator_status}"
-            self.operator_pub.publish(operator_msg)
+        # Determine and save the operator
+        if best_detection_id is not None:
+            operator_status = f"Operator (Distance score: {best_score:.2f})"
+            self.save_operator_detection(hoc_array.header.stamp, best_detection_id, best_score)
+        else:
+            operator_status = "None"
+            self.save_operator_detection(hoc_array.header.stamp, "None", None)
 
-        if not operator_detected:
-            self.save_operator_detection(hoc_array.header.stamp, "None")
+        # Publish the operator identification result
+        operator_msg = String()
+        operator_msg.data = f"Detection ID {best_detection_id}: {operator_status}"
+        self.operator_pub.publish(operator_msg)
 
         # Publish the comparison scores as a batch
         self.comparison_pub.publish(comparison_scores_array)
 
-    def save_operator_detection(self, timestamp, detection_id):
-        """Save the operator detection ID for each frame."""
+    def save_operator_detection(self, timestamp, detection_id, score):
+        """Save the operator detection ID and score for each frame."""
         with open(self.operator_log_file, mode='a') as file:
             writer = csv.writer(file)
-            writer.writerow([timestamp, detection_id])
-        rospy.loginfo(f"Saved operator detection ID {detection_id} at timestamp {timestamp}")
+            writer.writerow([timestamp, detection_id, score])
+        rospy.loginfo(f"Saved operator detection ID {detection_id} with score {score} at timestamp {timestamp}")
 
     def compute_hoc_distance_score(self, hue_vector, sat_vector):
         """Compute the distance score between the current detection and saved data (HoC)."""
