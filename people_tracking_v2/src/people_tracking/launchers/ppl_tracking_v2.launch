@@ -53,13 +53,6 @@
     output="screen"
   />
 
-  <node
-    pkg="people_tracking_v2"
-    type="central_node.py"
-    name="central"
-    output="screen"
-  />
-
   <!-- Uncomment these nodes when ready -->
   <!--
   <node

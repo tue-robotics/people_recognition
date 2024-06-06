@@ -3,30 +3,38 @@
 import rospy
 import numpy as np
 import message_filters
-from people_tracking_v2.msg import HoCVectorArray, BodySizeArray, ComparisonScoresArray, ComparisonScores  # Import the custom message types
+from people_tracking_v2.msg import HoCVectorArray, ComparisonScoresArray, ComparisonScores  # Import the custom message types
 from std_msgs.msg import String
 import os
+import csv
 
-class ComparisonNode:
+class HoCComparisonNode:
     def __init__(self):
         # Initialize the ROS node
-        rospy.init_node('comparison_node', anonymous=True)
+        rospy.init_node('hoc_comparison_node', anonymous=True)
         
-        # Synchronize the subscribers using message_filters
+        # Subscriber for HoC vectors
         hoc_sub = message_filters.Subscriber('/hoc_vectors', HoCVectorArray)
-        pose_sub = message_filters.Subscriber('/pose_distances', BodySizeArray)
         
-        ts = message_filters.ApproximateTimeSynchronizer([hoc_sub, pose_sub], queue_size=10, slop=0.1)
-        ts.registerCallback(self.sync_callback)
+        # Synchronize the subscriber using message_filters
+        ts = message_filters.ApproximateTimeSynchronizer([hoc_sub], queue_size=10, slop=0.1)
+        ts.registerCallback(self.hoc_callback)
         
         # Publisher for comparison scores
         self.comparison_pub = rospy.Publisher('/comparison/scores_array', ComparisonScoresArray, queue_size=10)
+        # Publisher for operator identification results
+        self.operator_pub = rospy.Publisher('/operator_identification', String, queue_size=10)
         
-        # Load saved HoC and Pose data
+        # Load saved HoC data
         self.hoc_data_file = os.path.expanduser('~/hoc_data/hoc_data.npz')
-        self.pose_data_file = os.path.expanduser('~/pose_data/pose_data.npz')
         self.load_hoc_data()
-        self.load_pose_data()
+        
+        # Threshold for determining operator
+        self.operator_threshold = 0.6
+
+        # File to save operator detection IDs
+        self.operator_log_file = os.path.expanduser('~/operator_detections.csv')
+        self.init_operator_log_file()
         
         rospy.spin()
     
@@ -34,43 +42,38 @@ class ComparisonNode:
         """Load the saved HoC data from the .npz file (HoC)."""
         if os.path.exists(self.hoc_data_file):
             data = np.load(self.hoc_data_file)
-            self.saved_hue = data['hue'][0]
-            self.saved_sat = data['sat'][0]
+            self.saved_hue = data['hue']
+            self.saved_sat = data['sat']
             rospy.loginfo(f"Loaded HoC data from {self.hoc_data_file}")
         else:
             rospy.logerr(f"HoC data file {self.hoc_data_file} not found")
             self.saved_hue = None
             self.saved_sat = None
 
-    def load_pose_data(self):
-        """Load the saved Pose data from the .npz file (Pose)."""
-        if os.path.exists(self.pose_data_file):
-            data = np.load(self.pose_data_file)
-            self.saved_pose_data = {
-                'left_shoulder_hip_distance': data['left_shoulder_hip_distance'],
-                'right_shoulder_hip_distance': data['right_shoulder_hip_distance']
-            }
-            rospy.loginfo(f"Loaded Pose data from {self.pose_data_file}")
-        else:
-            rospy.logerr(f"Pose data file {self.pose_data_file} not found")
-            self.saved_pose_data = None
+    def init_operator_log_file(self):
+        """Initialize the operator log file."""
+        with open(self.operator_log_file, mode='w') as file:
+            writer = csv.writer(file)
+            writer.writerow(['Frame Timestamp', 'Operator Detection ID'])
+        rospy.loginfo(f"Initialized operator log file at {self.operator_log_file}")
 
-    def sync_callback(self, hoc_array, pose_array):
-        """Callback function to handle synchronized HoC and pose data."""
-        rospy.loginfo("sync_callback invoked")
+    def hoc_callback(self, hoc_array):
+        """Callback function to handle HoC data."""
+        rospy.loginfo("hoc_callback invoked")
 
         if self.saved_hue is None or self.saved_sat is None:
             rospy.logerr("No saved HoC data available for comparison")
             return
 
-        if not hoc_array.vectors or not pose_array.distances:
-            rospy.logerr("Received empty HoC or Pose array")
+        if not hoc_array.vectors:
+            rospy.logerr("Received empty HoC array")
             return
 
         comparison_scores_array = ComparisonScoresArray()
         comparison_scores_array.header.stamp = hoc_array.header.stamp
 
-        for hoc_msg, pose_msg in zip(hoc_array.vectors, pose_array.distances):
+        operator_detected = False
+        for hoc_msg in hoc_array.vectors:
             rospy.loginfo(f"Processing Detection ID {hoc_msg.id}")
 
             # Compare HoC data
@@ -79,16 +82,14 @@ class ComparisonNode:
             hoc_distance_score = self.compute_hoc_distance_score(hue_vector, sat_vector)
             rospy.loginfo(f"Detection ID {hoc_msg.id}: HoC Distance score: {hoc_distance_score:.2f}")
 
-            # Compare pose data
-            left_shoulder_hip_distance = pose_msg.left_shoulder_hip_distance
-            right_shoulder_hip_distance = pose_msg.right_shoulder_hip_distance
-            left_shoulder_hip_saved = np.mean(self.saved_pose_data['left_shoulder_hip_distance'])
-            right_shoulder_hip_saved = np.mean(self.saved_pose_data['right_shoulder_hip_distance'])
+            # Determine if this detection is the operator
+            is_operator = hoc_distance_score < self.operator_threshold
+            operator_status = "Operator" if is_operator else "Not Operator"
+            rospy.loginfo(f"Detection ID {hoc_msg.id}: {operator_status}")
 
-            left_distance = self.compute_distance(left_shoulder_hip_distance, left_shoulder_hip_saved)
-            right_distance = self.compute_distance(right_shoulder_hip_distance, right_shoulder_hip_saved)
-            pose_distance_score = (left_distance + right_distance) / 2
-            rospy.loginfo(f"Detection ID {pose_msg.id}: Pose Distance score: {pose_distance_score:.2f}")
+            if is_operator:
+                self.save_operator_detection(hoc_array.header.stamp, hoc_msg.id)
+                operator_detected = True
 
             # Create and append ComparisonScores message
             comparison_scores_msg = ComparisonScores()
@@ -96,11 +97,26 @@ class ComparisonNode:
             comparison_scores_msg.header.frame_id = hoc_msg.header.frame_id
             comparison_scores_msg.id = hoc_msg.id
             comparison_scores_msg.hoc_distance_score = hoc_distance_score
-            comparison_scores_msg.pose_distance_score = pose_distance_score
+            comparison_scores_msg.pose_distance_score = 0.0  # Set to 0.0 since it's not used
             comparison_scores_array.scores.append(comparison_scores_msg)
+
+            # Publish operator identification result
+            operator_msg = String()
+            operator_msg.data = f"Detection ID {hoc_msg.id}: {operator_status}"
+            self.operator_pub.publish(operator_msg)
+
+        if not operator_detected:
+            self.save_operator_detection(hoc_array.header.stamp, "None")
 
         # Publish the comparison scores as a batch
         self.comparison_pub.publish(comparison_scores_array)
+
+    def save_operator_detection(self, timestamp, detection_id):
+        """Save the operator detection ID for each frame."""
+        with open(self.operator_log_file, mode='a') as file:
+            writer = csv.writer(file)
+            writer.writerow([timestamp, detection_id])
+        rospy.loginfo(f"Saved operator detection ID {detection_id} at timestamp {timestamp}")
 
     def compute_hoc_distance_score(self, hue_vector, sat_vector):
         """Compute the distance score between the current detection and saved data (HoC)."""
@@ -115,15 +131,9 @@ class ComparisonNode:
     def compute_distance(self, vector1, vector2):
         """Compute the Euclidean distance between two vectors (General)."""
         return np.linalg.norm(vector1 - vector2)
-    
-    def publish_debug_info(self, hoc_distance_score, pose_distance_score, detection_id):
-        """Publish debug information about the current comparison (General)."""
-        debug_msg = String()
-        debug_msg.data = f"Detection ID {detection_id}: HoC Distance score: {hoc_distance_score:.2f}, Pose Distance score: {pose_distance_score:.2f}"
-        self.publisher_debug.publish(debug_msg)
 
 if __name__ == '__main__':
     try:
-        ComparisonNode()
+        HoCComparisonNode()
     except rospy.ROSInterruptException:
         pass
