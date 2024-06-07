@@ -6,6 +6,7 @@ from cv_bridge import CvBridge, CvBridgeError
 from sensor_msgs.msg import Image
 from std_msgs.msg import Float32  # Import the Float32 message type
 import numpy as np
+import cv2
 import os
 import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'src', 'people_tracking'))
@@ -47,7 +48,8 @@ class PoseEstimationNode:
             rospy.loginfo("Skipping processing due to high IoU value with operator")
             return
 
-        recognitions, result_image, pose_details = self._wrapper.detect_poses(self.bridge.imgmsg_to_cv2(image_msg, "bgr8"))
+        cv_image = self.bridge.imgmsg_to_cv2(image_msg, "bgr8")
+        recognitions, result_image, pose_details = self._wrapper.detect_poses(cv_image)
 
         pose_distance_array = BodySizeArray()
         pose_distance_array.header.stamp = image_msg.header.stamp
@@ -71,11 +73,22 @@ class PoseEstimationNode:
                         break
 
                 pose_distance_array.distances.append(pose_distance_msg)
+
+                # Draw the pose on the image
+                result_image = self.draw_pose(result_image, pose)
+
             except Exception as e:
                 rospy.logerr(f"Error computing distance: {e}")
 
         # Publish the pose distances as a batch
         self.pose_pub.publish(pose_distance_array)
+
+        # Convert the result image to ROS Image message and publish
+        try:
+            result_image_msg = self.bridge.cv2_to_imgmsg(result_image, "bgr8")
+            self._result_image_publisher.publish(result_image_msg)
+        except CvBridgeError as e:
+            rospy.logerr(f"CV Bridge Error: {e}")
 
     def is_pose_within_detection(self, pose, detection):
         """Check if the pose is within the detection bounding box."""
@@ -94,6 +107,13 @@ class PoseEstimationNode:
         else:
             normalized_size = size  # If depth is not available, use the original size
         return normalized_size
+
+    def draw_pose(self, image, pose):
+        """Draw the pose on the image."""
+        for part in pose:
+            x, y = pose[part]
+            cv2.circle(image, (int(x), int(y)), 5, (0, 255, 0), -1)
+        return image
 
 if __name__ == "__main__":
     try:

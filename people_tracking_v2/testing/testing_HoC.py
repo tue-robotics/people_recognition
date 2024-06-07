@@ -9,10 +9,7 @@ import os
 import csv
 
 class HoCComparisonNode:
-    def __init__(self):
-        # Initialize the ROS node
-        rospy.init_node('hoc_comparison_node', anonymous=True)
-        
+    def __init__(self):     
         # Subscriber for HoC vectors
         hoc_sub = message_filters.Subscriber('/hoc_vectors', HoCVectorArray)
         

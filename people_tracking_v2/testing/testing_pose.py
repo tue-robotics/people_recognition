@@ -4,7 +4,6 @@ import rospy
 import numpy as np
 import message_filters
 from people_tracking_v2.msg import BodySizeArray, ComparisonScoresArray, ComparisonScores  # Import the custom message types
-from std_msgs.msg import String
 import os
 import csv
 
@@ -31,8 +30,6 @@ class PoseComparisonNode:
         self.detection_log_file = os.path.expanduser('~/detection_scores_pose.csv')
         self.init_detection_log_file()
         
-        rospy.spin()
-    
     def load_pose_data(self):
         """Load the saved pose data from the .npz file."""
         if os.path.exists(self.pose_data_file):
@@ -49,7 +46,7 @@ class PoseComparisonNode:
         """Initialize the detection log file."""
         with open(self.detection_log_file, mode='w') as file:
             writer = csv.writer(file)
-            writer.writerow(['Frame Timestamp', 'Detection ID', 'Pose Distance Score'])
+            writer.writerow(['Frame Timestamp', 'Detection ID', 'Head-Feet Distance', 'Pose Distance Score'])
         rospy.loginfo(f"Initialized detection log file at {self.detection_log_file}")
 
     def pose_callback(self, pose_array):
@@ -78,7 +75,7 @@ class PoseComparisonNode:
             rospy.loginfo(f"Detection ID {pose_msg.id}: Pose Distance score: {distance_score:.2f}")
 
             # Record each person's score and ID
-            self.save_detection_score(pose_array.header.stamp, pose_msg.id, distance_score)
+            self.save_detection_score(pose_array.header.stamp, pose_msg.id, head_feet_distance, distance_score)
 
             # Create and append ComparisonScores message
             comparison_scores_msg = ComparisonScores()
@@ -92,12 +89,12 @@ class PoseComparisonNode:
         # Publish the comparison scores as a batch
         self.comparison_pub.publish(comparison_scores_array)
 
-    def save_detection_score(self, timestamp, detection_id, score):
-        """Save the detection ID and score for each frame."""
+    def save_detection_score(self, timestamp, detection_id, pose_distance, score):
+        """Save the detection ID, head-feet distance, and score for each frame."""
         with open(self.detection_log_file, mode='a') as file:
             writer = csv.writer(file)
-            writer.writerow([timestamp, detection_id, score])
-        rospy.loginfo(f"Saved detection ID {detection_id} with score {score} at timestamp {timestamp}")
+            writer.writerow([timestamp, detection_id, pose_distance, score])
+        rospy.loginfo(f"Saved detection ID {detection_id} with head-feet distance {pose_distance} and score {score} at timestamp {timestamp}")
 
     def compute_distance(self, distance1, distance2):
         """Compute the Euclidean distance between two scalar values."""
@@ -106,5 +103,6 @@ class PoseComparisonNode:
 if __name__ == '__main__':
     try:
         PoseComparisonNode()
+        rospy.spin()
     except rospy.ROSInterruptException:
         pass
