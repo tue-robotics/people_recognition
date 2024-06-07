@@ -1,13 +1,15 @@
-<!--  <arg name="laptop" default="True" />  -->
-<!--   <arg name="depth_camera" default="False" /> -->
-<!--   <arg name="save_data" default="False"/> -->
-
 <launch>
+
+  <arg name="laptop" default="True" />
+  <arg name="depth_camera" default="False" />
+  <arg name="save_data" default="False"/>
+
   <node
     pkg="cv_camera"
     type="cv_camera_node"
     name="Webcam"
     output="screen"
+    args="$(arg laptop) $(arg depth_camera) $(arg save_data)"
   />
 
   <node
@@ -15,6 +17,7 @@
     type="yolo_seg.py"
     name="Image_seg"
     output="screen"
+    args="$(arg laptop) $(arg depth_camera) $(arg save_data)"
   />
 
   <node
@@ -22,6 +25,7 @@
     type="HoC.py"
     name="HoC"
     output="screen"
+    args="$(arg laptop) $(arg depth_camera) $(arg save_data)"
   />
 
   <node
@@ -29,6 +33,7 @@
     type="testing_HoC.py"
     name="Operator_HoC"
     output="screen"
+    args="$(arg laptop) $(arg depth_camera) $(arg save_data)"
   />
 
 </launch>

@@ -1,21 +1,15 @@
-<!--  <arg name="laptop" default="True" />  -->
-<!--   <arg name="depth_camera" default="False" /> -->
-<!--   <arg name="save_data" default="False"/> -->
-
-<!--   <node -->
-<!--     pkg="people_tracking" -->
-<!--     type="depth_image.py" -->
-<!--     name="depth" -->
-<!--     output="screen" -->
-<!--     args="$(arg laptop) $(arg depth_camera) $(arg save_data)" -->
-<!--   /> -->
-
 <launch>
+
+  <arg name="laptop" default="True" />
+  <arg name="depth_camera" default="False" />
+  <arg name="save_data" default="False"/>
+
   <node
     pkg="cv_camera"
     type="cv_camera_node"
     name="Webcam"
     output="screen"
+    args="$(arg laptop) $(arg depth_camera) $(arg save_data)"
   />
 
   <node
@@ -23,6 +17,7 @@
     type="yolo_seg.py"
     name="Image_seg"
     output="screen"
+    args="$(arg laptop) $(arg depth_camera) $(arg save_data)"
   />
 
   <node
@@ -30,6 +25,7 @@
     type="HoC.py"
     name="HoC"
     output="screen"
+    args="$(arg laptop) $(arg depth_camera) $(arg save_data)"
   />
 
   <node
@@ -37,6 +33,7 @@
     type="pose_estimation_node.py"
     name="Pose_estimation"
     output="screen"
+    args="$(arg laptop) $(arg depth_camera) $(arg save_data)"
   />
 
   <node
@@ -44,6 +41,7 @@
     type="comparison_node.py"
     name="Comparison"
     output="screen"
+    args="$(arg laptop) $(arg depth_camera) $(arg save_data)"
   />
 
     <node
@@ -51,6 +49,7 @@
     type="decision_node.py"
     name="Decision"
     output="screen"
+    args="$(arg laptop) $(arg depth_camera) $(arg save_data)"
   />
 
   <!-- Uncomment these nodes when ready -->
