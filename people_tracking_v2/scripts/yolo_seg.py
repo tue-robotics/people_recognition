@@ -53,6 +53,14 @@ class YoloSegNode:
         self.depth_images = []
         self.batch_nr = 0
 
+        if save_data:
+            rospack = rospkg.RosPack()
+            package_path = rospack.get_path("people_tracking_v2")
+            current_time = time.strftime("%Y%m%d-%H%M%S")
+            self.save_path = os.path.join(package_path, f'data/{current_time}_test/')
+            os.makedirs(self.save_path, exist_ok=True)
+            rospy.loginfo(f"Data will be saved to: {self.save_path}")
+
     def operator_id_callback(self, msg):
         """Callback function to update the operator ID."""
         self.operator_id = msg.data
@@ -86,7 +94,7 @@ class YoloSegNode:
         if save_data:
             cv2.imwrite(f"{self.save_path}{self.batch_nr}.png", cv_image)
             if depth_camera:
-                cv2.imwrite(f"{self.save_path}self.{self.batch_nr}_depth.png", cv_depth_image)
+                cv2.imwrite(f"{self.save_path}{self.batch_nr}_depth.png", cv_depth_image)
 
         # Run the YOLOv8 model on the frame
         results = self.model(cv_image)[0]
@@ -125,9 +133,19 @@ class YoloSegNode:
             detection.y2 = float(box[3])
             detection.score = float(score)
             detection.label = int(label)
+
+            # Extract depth value
+            if depth_camera and cv_depth_image is not None:
+                x_center = int((box[0] + box[2]) / 2)
+                y_center = int((box[1] + box[3]) / 2)
+                depth_value = cv_depth_image[y_center, x_center]
+                detection.depth = float(depth_value)
+            else:
+                detection.depth = -1.0  # Use -1.0 as a placeholder if depth is not available
+
             detection_array.detections.append(detection)
 
-            rospy.loginfo(f"Detection ID: {detection.id} for box: {box}")
+            rospy.loginfo(f"Detection ID: {detection.id} for box: {box}, depth: {detection.depth}")
 
             # Draw bounding boxes and labels on the bounding_box_image
             x1, y1, x2, y2 = map(int, box)
@@ -235,18 +253,6 @@ class YoloSegNode:
         return inter_area / union_area if union_area > 0 else 0
 
 def main():
-    if save_data:
-        try:
-            rospack = rospkg.RosPack()
-            package_path = rospack.get_path("people_tracking_v2")
-            time = time.ctime(time.time())
-            save_path = os.path.join(package_path, f'data/{time}_test/')
-            os.makedirs(save_path, exist_ok=True)  # Make sure the directory exists
-            print(save_path)
-        except:
-            rospy.loginfo("Failed to make save path")
-            pass
-
     rospy.init_node('yolo_seg_node', anonymous=True)
     yolo_node = YoloSegNode()
 
