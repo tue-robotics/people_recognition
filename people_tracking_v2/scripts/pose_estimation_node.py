@@ -11,6 +11,11 @@ import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'src', 'people_tracking'))
 from people_tracking.yolo_pose_wrapper import YoloPoseWrapper
 
+laptop = sys.argv[1]
+name_subscriber_RGB = 'Webcam/image_raw' if laptop == "True" else '/hero/head_rgbd_sensor/rgb/image_raw'
+depth_camera = False if sys.argv[2] == "False" else True
+save_data = False if sys.argv[3] == "False" else True
+
 class PoseEstimationNode:
     def __init__(self, model_name="yolov8n-pose.pt", device="cuda:0"):
         rospy.init_node('pose_estimation', anonymous=True)
@@ -22,7 +27,8 @@ class PoseEstimationNode:
         self.pose_pub = rospy.Publisher("/pose_distances", BodySizeArray, queue_size=10)
         self.image_sub = rospy.Subscriber("/bounding_box_image", Image, self.image_callback)
         self.iou_threshold_sub = rospy.Subscriber('/iou_threshold', Float32, self.iou_threshold_callback)
-        self.iou_threshold = 0.9  # Default threshold value
+        self._result_image_publisher = rospy.Publisher("pose_result", Image, queue_size=10)
+        self.iou_threshold = 0.7  # Default threshold value
 
         self.current_detections = []
 
@@ -50,21 +56,18 @@ class PoseEstimationNode:
             try:
                 pose_distance_msg = BodySize()
                 pose_distance_msg.header.stamp = image_msg.header.stamp  # Use the timestamp from the incoming YOLO image
-                if "LShoulder" in pose and "LHip" in pose:
-                    pose_distance_msg.left_shoulder_hip_distance = self._wrapper.compute_distance(pose["LShoulder"], pose["LHip"])
-                    rospy.loginfo(f"Left Shoulder-Hip Distance: {pose_distance_msg.left_shoulder_hip_distance:.2f}")
-
-                if "RShoulder" in pose and "RHip" in pose:
-                    pose_distance_msg.right_shoulder_hip_distance = self._wrapper.compute_distance(pose["RShoulder"], pose["RHip"])
-                    rospy.loginfo(f"Right Shoulder-Hip Distance: {pose_distance_msg.right_shoulder_hip_distance:.2f}")
+                if "Nose" in pose and "LAnkle" in pose and "RAnkle" in pose:
+                    nose_to_left_ankle = self._wrapper.compute_distance(pose["Nose"], pose["LAnkle"])
+                    nose_to_right_ankle = self._wrapper.compute_distance(pose["Nose"], pose["RAnkle"])
+                    pose_distance_msg.head_feet_distance = (nose_to_left_ankle + nose_to_right_ankle) / 2
+                    rospy.loginfo(f"Head-Feet Distance: {pose_distance_msg.head_feet_distance:.2f}")
 
                 # Find the corresponding detection ID and use depth value to normalize the size
                 for detection in self.current_detections:
                     if self.is_pose_within_detection(pose, detection):
                         pose_distance_msg.id = detection.id
                         depth = detection.depth
-                        pose_distance_msg.left_shoulder_hip_distance = self.normalize_size(pose_distance_msg.left_shoulder_hip_distance, depth)
-                        pose_distance_msg.right_shoulder_hip_distance = self.normalize_size(pose_distance_msg.right_shoulder_hip_distance, depth)
+                        pose_distance_msg.head_feet_distance = self.normalize_size(pose_distance_msg.head_feet_distance, depth)
                         break
 
                 pose_distance_array.distances.append(pose_distance_msg)

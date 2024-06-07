@@ -26,7 +26,8 @@ class SavePoseDataNode:
         
         self.pose_data = {
             'left_shoulder_hip_distance': [],
-            'right_shoulder_hip_distance': []
+            'right_shoulder_hip_distance': [],
+            'head_feet_distance': []
         }
         
         rospy.spin()
@@ -37,8 +38,11 @@ class SavePoseDataNode:
         # Append the distances to the data dictionary
         self.pose_data['left_shoulder_hip_distance'].append(msg.left_shoulder_hip_distance)
         self.pose_data['right_shoulder_hip_distance'].append(msg.right_shoulder_hip_distance)
+        self.pose_data['head_feet_distance'].append(msg.head_feet_distance)
+        
         rospy.loginfo(f"Left Shoulder-Hip Distance: {msg.left_shoulder_hip_distance:.2f}")
         rospy.loginfo(f"Right Shoulder-Hip Distance: {msg.right_shoulder_hip_distance:.2f}")
+        rospy.loginfo(f"Head-Feet Distance: {msg.head_feet_distance:.2f}")
         
         # Save the pose data periodically or based on some condition
         if len(self.pose_data['left_shoulder_hip_distance']) >= 10:  # Save every 10 messages as an example
@@ -50,7 +54,8 @@ class SavePoseDataNode:
         rospy.loginfo(f"Saved pose data to {self.pose_data_file}")
         self.pose_data = {
             'left_shoulder_hip_distance': [],
-            'right_shoulder_hip_distance': []
+            'right_shoulder_hip_distance': [],
+            'head_feet_distance': []
         }  # Clear the data after saving
 
 if __name__ == '__main__':

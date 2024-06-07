@@ -38,8 +38,7 @@ class PoseComparisonNode:
         if os.path.exists(self.pose_data_file):
             data = np.load(self.pose_data_file)
             self.saved_pose_data = {
-                'left_shoulder_hip_distance': data['left_shoulder_hip_distance'],
-                'right_shoulder_hip_distance': data['right_shoulder_hip_distance']
+                'head_feet_distance': data['head_feet_distance']
             }
             rospy.loginfo(f"Loaded pose data from {self.pose_data_file}")
         else:
@@ -72,18 +71,14 @@ class PoseComparisonNode:
             rospy.loginfo(f"Processing Detection ID {pose_msg.id}")
 
             # Compare pose data
-            left_shoulder_hip_distance = pose_msg.left_shoulder_hip_distance
-            right_shoulder_hip_distance = pose_msg.right_shoulder_hip_distance
-            left_shoulder_hip_saved = np.mean(self.saved_pose_data['left_shoulder_hip_distance'])
-            right_shoulder_hip_saved = np.mean(self.saved_pose_data['right_shoulder_hip_distance'])
+            head_feet_distance = pose_msg.head_feet_distance
+            head_feet_saved = np.mean(self.saved_pose_data['head_feet_distance'])
 
-            left_distance = self.compute_distance(left_shoulder_hip_distance, left_shoulder_hip_saved)
-            right_distance = self.compute_distance(right_shoulder_hip_distance, right_shoulder_hip_saved)
-            pose_distance_score = (left_distance + right_distance) / 2
-            rospy.loginfo(f"Detection ID {pose_msg.id}: Pose Distance score: {pose_distance_score:.2f}")
+            distance_score = self.compute_distance(head_feet_distance, head_feet_saved)
+            rospy.loginfo(f"Detection ID {pose_msg.id}: Pose Distance score: {distance_score:.2f}")
 
             # Record each person's score and ID
-            self.save_detection_score(pose_array.header.stamp, pose_msg.id, pose_distance_score)
+            self.save_detection_score(pose_array.header.stamp, pose_msg.id, distance_score)
 
             # Create and append ComparisonScores message
             comparison_scores_msg = ComparisonScores()
@@ -91,7 +86,7 @@ class PoseComparisonNode:
             comparison_scores_msg.header.frame_id = pose_msg.header.frame_id
             comparison_scores_msg.id = pose_msg.id
             comparison_scores_msg.hoc_distance_score = 0.0  # Set to 0.0 since it's not used
-            comparison_scores_msg.pose_distance_score = pose_distance_score
+            comparison_scores_msg.pose_distance_score = distance_score
             comparison_scores_array.scores.append(comparison_scores_msg)
 
         # Publish the comparison scores as a batch

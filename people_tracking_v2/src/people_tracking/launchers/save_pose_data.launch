@@ -14,6 +14,14 @@
 
   <node
     pkg="people_tracking_v2"
+    type="yolo_seg.py"
+    name="Image_seg"
+    output="screen"
+    args="$(arg laptop) $(arg depth_camera) $(arg save_data)"
+  />
+
+  <node
+    pkg="people_tracking_v2"
     type="pose_estimation_node.py"
     name="Pose"
     output="screen"
