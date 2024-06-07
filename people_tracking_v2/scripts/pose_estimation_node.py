@@ -32,7 +32,6 @@ class PoseEstimationNode:
         rospy.loginfo(f"Updated IoU threshold to {self.iou_threshold}")
 
     def detection_callback(self, msg):
-        rospy.loginfo(f"First detection received at: {rospy.Time.now()}")  # Log first message timestamp
         self.current_detections = msg.detections
 
     def image_callback(self, image_msg):
@@ -59,10 +58,13 @@ class PoseEstimationNode:
                     pose_distance_msg.right_shoulder_hip_distance = self._wrapper.compute_distance(pose["RShoulder"], pose["RHip"])
                     rospy.loginfo(f"Right Shoulder-Hip Distance: {pose_distance_msg.right_shoulder_hip_distance:.2f}")
 
-                # Find the corresponding detection ID
+                # Find the corresponding detection ID and use depth value to normalize the size
                 for detection in self.current_detections:
                     if self.is_pose_within_detection(pose, detection):
                         pose_distance_msg.id = detection.id
+                        depth = detection.depth
+                        pose_distance_msg.left_shoulder_hip_distance = self.normalize_size(pose_distance_msg.left_shoulder_hip_distance, depth)
+                        pose_distance_msg.right_shoulder_hip_distance = self.normalize_size(pose_distance_msg.right_shoulder_hip_distance, depth)
                         break
 
                 pose_distance_array.distances.append(pose_distance_msg)
@@ -80,6 +82,15 @@ class PoseEstimationNode:
         if detection.x1 <= x_center <= detection.x2 and detection.y1 <= y_center <= detection.y2:
             return True
         return False
+
+    def normalize_size(self, size, depth):
+        """Normalize the size using the depth value."""
+        reference_depth = 1.0  # Use a reference depth (e.g., 1 meter)
+        if depth > 0:
+            normalized_size = size * (reference_depth / depth)
+        else:
+            normalized_size = size  # If depth is not available, use the original size
+        return normalized_size
 
 if __name__ == "__main__":
     try:
