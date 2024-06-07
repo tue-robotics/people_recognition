@@ -46,7 +46,7 @@ class YoloSegNode:
         self.operator_id = None  # To be set by an external node
 
         self.iou_threshold_pub = rospy.Publisher('/iou_threshold', Float32, queue_size=10)
-        self.iou_threshold = 0.9  # Default threshold value
+        self.iou_threshold = 0.7  # Default threshold value
 
         # Initialize variables for saving data and depth processing
         self.latest_image = None

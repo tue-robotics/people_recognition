@@ -31,7 +31,7 @@
   <node
     pkg="people_tracking_v2"
     type="testing_HoC.py"
-    name="Operator_HoC"
+    name="Testing_HoC"
     output="screen"
     args="$(arg laptop) $(arg depth_camera) $(arg save_data)"
   />
