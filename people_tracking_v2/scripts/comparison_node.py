@@ -47,8 +47,7 @@ class ComparisonNode:
         if os.path.exists(self.pose_data_file):
             data = np.load(self.pose_data_file)
             self.saved_pose_data = {
-                'left_shoulder_hip_distance': data['left_shoulder_hip_distance'],
-                'right_shoulder_hip_distance': data['right_shoulder_hip_distance']
+                'head_feet_distance': data['head_feet_distance']
             }
             rospy.loginfo(f"Loaded Pose data from {self.pose_data_file}")
         else:
@@ -80,15 +79,11 @@ class ComparisonNode:
             rospy.loginfo(f"Detection ID {hoc_msg.id}: HoC Distance score: {hoc_distance_score:.2f}")
 
             # Compare pose data
-            left_shoulder_hip_distance = pose_msg.left_shoulder_hip_distance
-            right_shoulder_hip_distance = pose_msg.right_shoulder_hip_distance
-            left_shoulder_hip_saved = np.mean(self.saved_pose_data['left_shoulder_hip_distance'])
-            right_shoulder_hip_saved = np.mean(self.saved_pose_data['right_shoulder_hip_distance'])
+            head_feet_distance = pose_msg.head_feet_distance
+            head_feet_saved = np.mean(self.saved_pose_data['head_feet_distance'])
 
-            left_distance = self.compute_distance(left_shoulder_hip_distance, left_shoulder_hip_saved)
-            right_distance = self.compute_distance(right_shoulder_hip_distance, right_shoulder_hip_saved)
-            pose_distance_score = (left_distance + right_distance) / 2
-            rospy.loginfo(f"Detection ID {pose_msg.id}: Pose Distance score: {pose_distance_score:.2f}")
+            distance_score = self.compute_distance(head_feet_distance, head_feet_saved)
+            rospy.loginfo(f"Detection ID {pose_msg.id}: Pose Distance score: {distance_score:.2f}")
 
             # Create and append ComparisonScores message
             comparison_scores_msg = ComparisonScores()
@@ -96,7 +91,8 @@ class ComparisonNode:
             comparison_scores_msg.header.frame_id = hoc_msg.header.frame_id
             comparison_scores_msg.id = hoc_msg.id
             comparison_scores_msg.hoc_distance_score = hoc_distance_score
-            comparison_scores_msg.pose_distance_score = pose_distance_score
+            comparison_scores_msg.pose_distance_score = distance_score
+            comparison_scores_msg.head_feet_distance = head_feet_distance  # Add head_feet_distance to message
             comparison_scores_array.scores.append(comparison_scores_msg)
 
         # Publish the comparison scores as a batch
@@ -125,5 +121,6 @@ class ComparisonNode:
 if __name__ == '__main__':
     try:
         ComparisonNode()
+        rospy.spin()
     except rospy.ROSInterruptException:
         pass
