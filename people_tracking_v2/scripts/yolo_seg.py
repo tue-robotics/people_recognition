@@ -61,6 +61,11 @@ class YoloSegNode:
             os.makedirs(self.save_path, exist_ok=True)
             rospy.loginfo(f"Data will be saved to: {self.save_path}")
 
+        # Initialize tracking variables
+        self.next_object_id = 1
+        self.objects = {}  # Object ID -> centroid (x, y)
+        self.available_ids = set()
+
     def operator_id_callback(self, msg):
         """Callback function to update the operator ID."""
         self.operator_id = msg.data
@@ -118,15 +123,39 @@ class YoloSegNode:
         segmented_images_msg.header.stamp = data.header.stamp  # Use the same timestamp as the YOLO image
         segmented_images_msg.ids = []  # Initialize the IDs list
 
-        operator_box = None
+        operator_box = None  # Initialize operator_box to None
+        current_frame_objects = {}  # To store the current frame's centroids and IDs
 
         # Process each detection and create a Detection message
         for i, (box, score, label, mask) in enumerate(zip(boxes, scores, labels, masks)):
             if int(label) != 0:  # Only process humans (class 0)
                 continue
 
+            x1, y1, x2, y2 = box
+            centroid = ((x1 + x2) / 2, (y1 + y2) / 2)
+
+            # Find the closest existing object to this centroid
+            min_distance = float('inf')
+            object_id = None
+            for oid, (cx, cy) in self.objects.items():
+                distance = np.linalg.norm([centroid[0] - cx, centroid[1] - cy])
+                if distance < min_distance:
+                    min_distance = distance
+                    object_id = oid
+
+            # If the closest distance is too far, assume it's a new object
+            if min_distance > 50:  # You can adjust this threshold
+                if self.available_ids:
+                    object_id = self.available_ids.pop()
+                else:
+                    object_id = self.next_object_id
+                    self.next_object_id += 1
+
+            # Update the current frame's objects
+            current_frame_objects[object_id] = centroid
+
             detection = Detection()
-            detection.id = i + 1  # Assign a unique ID to each detection
+            detection.id = object_id
             detection.x1 = float(box[0])
             detection.y1 = float(box[1])
             detection.x2 = float(box[2])
@@ -210,6 +239,9 @@ class YoloSegNode:
                     bounding_box_image, label_text, (x1, y1 - 10),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1
                 )
+
+        # Update the tracked objects with the current frame's objects
+        self.objects = current_frame_objects
 
         # Publish the IoU threshold
         iou_threshold_msg = Float32()
