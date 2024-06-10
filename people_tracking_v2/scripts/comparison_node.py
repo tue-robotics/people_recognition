@@ -92,6 +92,10 @@ class ComparisonNode:
             comparison_scores_msg.id = hoc_msg.id
             comparison_scores_msg.hoc_distance_score = hoc_distance_score
             comparison_scores_msg.pose_distance_score = distance_score  # Save head-feet distance as pose_distance_score
+
+            # Log the scores
+            rospy.loginfo(f"Publishing scores - Detection ID {comparison_scores_msg.id}: HoC Distance score: {comparison_scores_msg.hoc_distance_score:.2f}, Pose Distance score: {comparison_scores_msg.pose_distance_score:.2f}")
+
             comparison_scores_array.scores.append(comparison_scores_msg)
 
         # Publish the comparison scores as a batch

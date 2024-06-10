@@ -51,11 +51,36 @@ class PoseEstimationNode:
                 detection_id = pose_distance_msg.id
 
                 pose_distance_msg.header.stamp = image_msg.header.stamp  # Use the timestamp from the incoming YOLO image
-                if "Nose" in pose and "LAnkle" in pose and "RAnkle" in pose:
-                    nose_to_left_ankle = self._wrapper.compute_distance(pose["Nose"], pose["LAnkle"])
-                    nose_to_right_ankle = self._wrapper.compute_distance(pose["Nose"], pose["RAnkle"])
-                    pose_distance_msg.head_feet_distance = (nose_to_left_ankle + nose_to_right_ankle) / 2
+
+                if "LEar" in pose and "LAnkle" in pose:
+                    left_ear_to_left_ankle = self._wrapper.compute_distance(pose["LEar"], pose["LAnkle"])
+                else:
+                    left_ear_to_left_ankle = float('inf')
+
+                if "LEar" in pose and "RAnkle" in pose:
+                    left_ear_to_right_ankle = self._wrapper.compute_distance(pose["LEar"], pose["RAnkle"])
+                else:
+                    left_ear_to_right_ankle = float('inf')
+
+                if "REar" in pose and "LAnkle" in pose:
+                    right_ear_to_left_ankle = self._wrapper.compute_distance(pose["REar"], pose["LAnkle"])
+                else:
+                    right_ear_to_left_ankle = float('inf')
+
+                if "REar" in pose and "RAnkle" in pose:
+                    right_ear_to_right_ankle = self._wrapper.compute_distance(pose["REar"], pose["RAnkle"])
+                else:
+                    right_ear_to_right_ankle = float('inf')
+
+                distances = [left_ear_to_left_ankle, left_ear_to_right_ankle, right_ear_to_left_ankle, right_ear_to_right_ankle]
+                min_distance = min(distances)
+
+                if min_distance == float('inf'):
+                    rospy.logwarn("No valid ear-to-ankle distance found")
+                else:
+                    pose_distance_msg.head_feet_distance = min_distance
                     rospy.loginfo(f"For ID {detection_id} Head-Feet Distance: {pose_distance_msg.head_feet_distance:.2f}")
+
 
                 # Find the corresponding detection ID and use depth value to normalize the size
                 for detection in self.current_detections:

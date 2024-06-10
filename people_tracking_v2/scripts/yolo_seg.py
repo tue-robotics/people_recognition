@@ -68,7 +68,7 @@ class YoloSegNode:
     def operator_id_callback(self, msg):
         """Callback function to update the operator ID."""
         self.operator_id = msg.data
-        rospy.loginfo(f"Updated operator ID to: {self.operator_id}")
+        #rospy.loginfo(f"Updated operator ID to: {self.operator_id}")
 
     def set_operator(self, operator_id):
         """Set the ID of the operator to track."""

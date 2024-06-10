@@ -65,7 +65,7 @@ class HoCNode:
                 hoc_vectors.vectors.append(hoc_vector)
 
                 # Log the resulting values
-                rospy.loginfo(f"Detection ID {detection_id}: HoC Hue Vector: {hoc_vector.hue_vector[1]}, HoC Saturation Vector: {hoc_vector.sat_vector[1]}")
+                #rospy.loginfo(f"Detection ID {detection_id}: HoC Hue Vector: {hoc_vector.hue_vector[1]}, HoC Saturation Vector: {hoc_vector.sat_vector[1]}")
 
             except CvBridgeError as e:
                 rospy.logerr(f"Failed to convert segmented image: {e}") 
