@@ -12,11 +12,6 @@ import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'src', 'people_tracking'))
 from people_tracking.yolo_pose_wrapper import YoloPoseWrapper
 
-laptop = sys.argv[1]
-name_subscriber_RGB = 'Webcam/image_raw' if laptop == "True" else '/hero/head_rgbd_sensor/rgb/image_raw'
-depth_camera = False if sys.argv[2] == "False" else True
-save_data = False if sys.argv[3] == "False" else True
-
 class PoseEstimationNode:
     def __init__(self, model_name="yolov8n-pose.pt", device="cuda:0"):
         rospy.init_node('pose_estimation', anonymous=True)
@@ -27,16 +22,10 @@ class PoseEstimationNode:
         self.detection_sub = rospy.Subscriber("/detections_info", DetectionArray, self.detection_callback)
         self.pose_pub = rospy.Publisher("/pose_distances", BodySizeArray, queue_size=10)
         self.image_sub = rospy.Subscriber("/bounding_box_image", Image, self.image_callback)
-        self.iou_threshold_sub = rospy.Subscriber('/iou_threshold', Float32, self.iou_threshold_callback)
         self._result_image_publisher = rospy.Publisher("pose_result", Image, queue_size=10)
-        self.iou_threshold = 0.7  # Default threshold value
+        self.iou_threshold = 0.8  # Default threshold value
 
         self.current_detections = []
-
-    def iou_threshold_callback(self, msg):
-        """Callback function to update the IoU threshold."""
-        self.iou_threshold = msg.data
-        rospy.loginfo(f"Updated IoU threshold to {self.iou_threshold}")
 
     def detection_callback(self, msg):
         self.current_detections = msg.detections
@@ -57,12 +46,16 @@ class PoseEstimationNode:
         for pose in pose_details:
             try:
                 pose_distance_msg = BodySize()
+
+                # Extract the ID from the incoming message
+                detection_id = pose_distance_msg.id
+
                 pose_distance_msg.header.stamp = image_msg.header.stamp  # Use the timestamp from the incoming YOLO image
                 if "Nose" in pose and "LAnkle" in pose and "RAnkle" in pose:
                     nose_to_left_ankle = self._wrapper.compute_distance(pose["Nose"], pose["LAnkle"])
                     nose_to_right_ankle = self._wrapper.compute_distance(pose["Nose"], pose["RAnkle"])
                     pose_distance_msg.head_feet_distance = (nose_to_left_ankle + nose_to_right_ankle) / 2
-                    rospy.loginfo(f"Head-Feet Distance: {pose_distance_msg.head_feet_distance:.2f}")
+                    rospy.loginfo(f"For ID {detection_id} Head-Feet Distance: {pose_distance_msg.head_feet_distance:.2f}")
 
                 # Find the corresponding detection ID and use depth value to normalize the size
                 for detection in self.current_detections:

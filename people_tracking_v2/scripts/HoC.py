@@ -15,8 +15,7 @@ class HoCNode:
         self.bridge = CvBridge()
         self.segmented_images_sub = rospy.Subscriber('/segmented_images', SegmentedImages, self.segmented_images_callback)
         self.detections_sub = rospy.Subscriber('/detections_info', DetectionArray, self.detections_callback)
-        self.iou_threshold_sub = rospy.Subscriber('/iou_threshold', Float32, self.iou_threshold_callback)
-        self.iou_threshold = 0.9  # Default threshold value
+        self.iou_threshold = 0.8  # Default threshold value
         
         # Publisher for HoC vectors
         self.hoc_vector_pub = rospy.Publisher('/hoc_vectors', HoCVectorArray, queue_size=10)
@@ -25,11 +24,6 @@ class HoCNode:
 
         if initialize_node:
             rospy.spin()
-
-    def iou_threshold_callback(self, msg):
-        """Callback function to update the IoU threshold."""
-        self.iou_threshold = msg.data
-        rospy.loginfo(f"Updated IoU threshold to {self.iou_threshold}")
 
     def detections_callback(self, msg):
         """Callback function to store detections info."""
@@ -47,11 +41,11 @@ class HoCNode:
             try:
                 segmented_image = self.bridge.imgmsg_to_cv2(segmented_image_msg, "bgr8")
                 hoc_hue, hoc_sat = self.compute_hoc(segmented_image)
-                rospy.loginfo(f'Computed HoC for segmented image #{i}')
+                #rospy.loginfo(f'Computed HoC for segmented image #{i}')
 
                 # Extract the ID from the incoming message
                 detection_id = msg.ids[i]
-                rospy.loginfo(f"Received Detection ID: {detection_id} for segmented image #{i}")
+                #rospy.loginfo(f"Received Detection ID: {detection_id} for segmented image #{i}")
 
                 # Find the corresponding detection with the same ID
                 detection = next((d for d in self.detections if d.id == detection_id), None)
@@ -69,6 +63,10 @@ class HoCNode:
                 hoc_vector.hue_vector = hoc_hue.tolist()
                 hoc_vector.sat_vector = hoc_sat.tolist()
                 hoc_vectors.vectors.append(hoc_vector)
+
+                # Log the resulting values
+                rospy.loginfo(f"Detection ID {detection_id}: HoC Hue Vector: {hoc_vector.hue_vector[1]}, HoC Saturation Vector: {hoc_vector.sat_vector[1]}")
+
             except CvBridgeError as e:
                 rospy.logerr(f"Failed to convert segmented image: {e}") 
             except IndexError as e:

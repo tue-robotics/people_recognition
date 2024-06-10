@@ -91,8 +91,7 @@ class ComparisonNode:
             comparison_scores_msg.header.frame_id = hoc_msg.header.frame_id
             comparison_scores_msg.id = hoc_msg.id
             comparison_scores_msg.hoc_distance_score = hoc_distance_score
-            comparison_scores_msg.pose_distance_score = distance_score
-            comparison_scores_msg.head_feet_distance = head_feet_distance  # Add head_feet_distance to message
+            comparison_scores_msg.pose_distance_score = distance_score  # Save head-feet distance as pose_distance_score
             comparison_scores_array.scores.append(comparison_scores_msg)
 
         # Publish the comparison scores as a batch

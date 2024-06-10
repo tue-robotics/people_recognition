@@ -1,7 +1,7 @@
 <launch>
 
-  <arg name="laptop" default="False" />
-  <arg name="depth_camera" default="True" />
+  <arg name="laptop" default="True" />
+  <arg name="depth_camera" default="False" />
   <arg name="save_data" default="False"/>
 
   <node

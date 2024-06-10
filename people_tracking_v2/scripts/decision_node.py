@@ -27,7 +27,7 @@ class DecisionNode:
         """Callback function to handle synchronized comparison scores and detection info."""
         # Define thresholds
         iou_threshold = 0.9
-        hoc_threshold = 0.9
+        hoc_threshold = 2.0
 
         iou_detections = []
         best_hoc_detection = None
