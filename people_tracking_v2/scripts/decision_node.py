@@ -28,10 +28,10 @@ class DecisionNode:
         # Define thresholds
         iou_threshold = 0.9
         hoc_threshold = 2.0
+        pose_threshold = 0.5  # Example threshold for pose distance
 
         iou_detections = []
-        best_hoc_detection = None
-        best_hoc_score = float('inf')
+        valid_detections = []
 
         # Create a dictionary for quick lookup of IoU values by detection ID
         iou_dict = {detection.id: detection.iou for detection in detection_msg.detections}
@@ -47,19 +47,24 @@ class DecisionNode:
             # Check if IoU is over the threshold
             if iou > iou_threshold:
                 iou_detections.append(score.id)
-
-            # Check if HoC score is under the threshold
-            if hoc_distance_score < hoc_threshold:
-                if hoc_distance_score < best_hoc_score:
-                    best_hoc_score = hoc_distance_score
-                    best_hoc_detection = score.id
+            else:
+                # If pose distance score is negative, only consider HoC score
+                if pose_distance_score < 0:
+                    if hoc_distance_score < hoc_threshold:
+                        valid_detections.append((score.id, hoc_distance_score))
+                else:
+                    # Check if both HoC and pose scores are valid
+                    if hoc_distance_score < hoc_threshold and pose_distance_score < pose_threshold:
+                        valid_detections.append((score.id, hoc_distance_score))
 
         if len(iou_detections) == 1:
             operator_id = iou_detections[0]
             decision_source = "IoU"
-        elif best_hoc_detection is not None:
+        elif valid_detections:
+            # Find the detection with the best (lowest) HoC score among the valid detections
+            best_hoc_detection = min(valid_detections, key=lambda x: x[1])[0]
             operator_id = best_hoc_detection
-            decision_source = "HoC"
+            decision_source = "HoC + Pose"
         else:
             operator_id = -1  # Use -1 to indicate no operator found
             decision_source = "None"

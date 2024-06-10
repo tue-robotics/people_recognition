@@ -46,41 +46,24 @@ class PoseEstimationNode:
         for pose in pose_details:
             try:
                 pose_distance_msg = BodySize()
-
-                # Extract the ID from the incoming message
-                detection_id = pose_distance_msg.id
-
                 pose_distance_msg.header.stamp = image_msg.header.stamp  # Use the timestamp from the incoming YOLO image
 
-                if "LEar" in pose and "LAnkle" in pose:
-                    left_ear_to_left_ankle = self._wrapper.compute_distance(pose["LEar"], pose["LAnkle"])
-                else:
-                    left_ear_to_left_ankle = float('inf')
-
-                if "LEar" in pose and "RAnkle" in pose:
-                    left_ear_to_right_ankle = self._wrapper.compute_distance(pose["LEar"], pose["RAnkle"])
-                else:
-                    left_ear_to_right_ankle = float('inf')
-
-                if "REar" in pose and "LAnkle" in pose:
-                    right_ear_to_left_ankle = self._wrapper.compute_distance(pose["REar"], pose["LAnkle"])
-                else:
-                    right_ear_to_left_ankle = float('inf')
-
-                if "REar" in pose and "RAnkle" in pose:
-                    right_ear_to_right_ankle = self._wrapper.compute_distance(pose["REar"], pose["RAnkle"])
-                else:
-                    right_ear_to_right_ankle = float('inf')
+                # Calculate ear to ankle distances
+                left_ear_to_left_ankle = self._wrapper.compute_distance(pose["LEar"], pose["LAnkle"]) if "LEar" in pose and "LAnkle" in pose else float('inf')
+                left_ear_to_right_ankle = self._wrapper.compute_distance(pose["LEar"], pose["RAnkle"]) if "LEar" in pose and "RAnkle" in pose else float('inf')
+                right_ear_to_left_ankle = self._wrapper.compute_distance(pose["REar"], pose["LAnkle"]) if "REar" in pose and "LAnkle" in pose else float('inf')
+                right_ear_to_right_ankle = self._wrapper.compute_distance(pose["REar"], pose["RAnkle"]) if "REar" in pose and "RAnkle" in pose else float('inf')
 
                 distances = [left_ear_to_left_ankle, left_ear_to_right_ankle, right_ear_to_left_ankle, right_ear_to_right_ankle]
-                min_distance = min(distances)
+                valid_distances = [d for d in distances if d != float('inf')]
 
-                if min_distance == float('inf'):
-                    rospy.logwarn("No valid ear-to-ankle distance found")
+                if not valid_distances:
+                    pose_distance_msg.head_feet_distance = -1  # No valid ear-to-ankle distance found
+                    rospy.logwarn("No valid ear-to-ankle distance found, setting distance to -1")
                 else:
+                    min_distance = min(valid_distances)
                     pose_distance_msg.head_feet_distance = min_distance
-                    rospy.loginfo(f"For ID {detection_id} Head-Feet Distance: {pose_distance_msg.head_feet_distance:.2f}")
-
+                    rospy.loginfo(f"For ID {pose_distance_msg.id} Ear-to-Ankle Distance: {pose_distance_msg.head_feet_distance:.2f}")
 
                 # Find the corresponding detection ID and use depth value to normalize the size
                 for detection in self.current_detections:

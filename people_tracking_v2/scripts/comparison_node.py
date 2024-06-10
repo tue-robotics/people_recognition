@@ -72,26 +72,29 @@ class ComparisonNode:
         for hoc_msg, pose_msg in zip(hoc_array.vectors, pose_array.distances):
             rospy.loginfo(f"Processing Detection ID {hoc_msg.id}")
 
-            # Compare HoC data
-            hue_vector = hoc_msg.hue_vector
-            sat_vector = hoc_msg.sat_vector
-            hoc_distance_score = self.compute_hoc_distance_score(hue_vector, sat_vector)
-            rospy.loginfo(f"Detection ID {hoc_msg.id}: HoC Distance score: {hoc_distance_score:.2f}")
-
-            # Compare pose data
-            head_feet_distance = pose_msg.head_feet_distance
-            head_feet_saved = np.mean(self.saved_pose_data['head_feet_distance'])
-
-            distance_score = self.compute_distance(head_feet_distance, head_feet_saved)
-            rospy.loginfo(f"Detection ID {pose_msg.id}: Pose Distance score: {distance_score:.2f}")
-
             # Create and append ComparisonScores message
             comparison_scores_msg = ComparisonScores()
             comparison_scores_msg.header.stamp = hoc_msg.header.stamp  # Use the timestamp from the HoC message
             comparison_scores_msg.header.frame_id = hoc_msg.header.frame_id
             comparison_scores_msg.id = hoc_msg.id
+
+            # Compare HoC data
+            hue_vector = hoc_msg.hue_vector
+            sat_vector = hoc_msg.sat_vector
+            hoc_distance_score = self.compute_hoc_distance_score(hue_vector, sat_vector)
+            rospy.loginfo(f"Detection ID {hoc_msg.id}: HoC Distance score: {hoc_distance_score:.2f}")
             comparison_scores_msg.hoc_distance_score = hoc_distance_score
-            comparison_scores_msg.pose_distance_score = distance_score  # Save head-feet distance as pose_distance_score
+
+            # Compare pose data or set to -1 if pose distance is negative
+            head_feet_distance = pose_msg.head_feet_distance
+            if head_feet_distance < 0:
+                rospy.loginfo(f"Skipping comparison for Detection ID {hoc_msg.id} due to negative pose distance")
+                comparison_scores_msg.pose_distance_score = -1
+            else:
+                head_feet_saved = np.mean(self.saved_pose_data['head_feet_distance'])
+                distance_score = self.compute_distance(head_feet_distance, head_feet_saved)
+                rospy.loginfo(f"Detection ID {pose_msg.id}: Pose Distance score: {distance_score:.2f}")
+                comparison_scores_msg.pose_distance_score = distance_score  # Save head-feet distance as pose_distance_score
 
             # Log the scores
             rospy.loginfo(f"Publishing scores - Detection ID {comparison_scores_msg.id}: HoC Distance score: {comparison_scores_msg.hoc_distance_score:.2f}, Pose Distance score: {comparison_scores_msg.pose_distance_score:.2f}")
