@@ -7,7 +7,7 @@ from ultralytics import YOLO
 from sensor_msgs.msg import Image
 from people_tracking_v2.msg import Detection, DetectionArray, SegmentedImages
 from cv_bridge import CvBridge, CvBridgeError
-from std_msgs.msg import Float32, Int32  # Import the Int32 message type for operator ID
+from std_msgs.msg import Int32  # Import the Int32 message type for operator ID
 
 import sys
 import os
@@ -17,7 +17,6 @@ import time
 # Add the path to the `kalman_filter.py` module
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'src', 'people_tracking'))
 from kalman_filter import KalmanFilterCV  # Import the Kalman Filter class
-
 
 laptop = True  # sys.argv[1]
 name_subscriber_RGB = 'Webcam/image_raw'  # if laptop == "True" else '/hero/head_rgbd_sensor/rgb/image_raw'
@@ -48,6 +47,9 @@ class YoloSegNode:
         self.iou_threshold = 0.7  # Default threshold value
         self.matching_threshold = 50  # Threshold for matching the prediction with detections
 
+        # Timer to reset operator ID
+        self.reset_timer = rospy.Timer(rospy.Duration(3), self.reset_operator_id)
+
         # Initialize variables for saving data and depth processing
         self.latest_image = None
         self.depth_images = []
@@ -61,10 +63,16 @@ class YoloSegNode:
             os.makedirs(self.save_path, exist_ok=True)
             # rospy.loginfo(f"Data will be saved to: {self.save_path}")
 
+    def reset_operator_id(self, event):
+        """Reset the operator ID every 3 seconds."""
+        if self.operator_id is not None:
+            self.operator_id = -1
+            rospy.loginfo("Operator ID reset to -1")
+
     def operator_id_callback(self, msg):
         """Callback function to update the operator ID."""
         self.operator_id = msg.data
-        # rospy.loginfo(f"Updated operator ID to: {self.operator_id}")
+        rospy.loginfo(f"Updated operator ID to: {self.operator_id}")
 
     def set_operator(self, operator_id):
         """Set the ID of the operator to track."""
@@ -94,7 +102,8 @@ class YoloSegNode:
         if save_data:
             cv2.imwrite(f"{self.save_path}{self.batch_nr}.png", cv_image)
             if depth_camera:
-                cv2.imwrite(f"{self.save_path}{self.batch_nr}_depth.png", cv_depth_image)
+                cv_depth_image_path = f"{self.save_path}{self.batch_nr}_depth.png"
+                cv2.imwrite(cv_depth_image_path, cv_depth_image)
 
         # Run the YOLOv8 model on the frame
         results = self.model(cv_image)[0]
@@ -104,8 +113,6 @@ class YoloSegNode:
         scores = results.boxes.conf.cpu().numpy()
         labels = results.boxes.cls.cpu().numpy()
         masks = results.masks.data.cpu().numpy() if results.masks else None
-
-        # rospy.loginfo(f"Total Detections: {len(labels)}")  # Log the total number of detections
 
         detection_array = DetectionArray()
         detection_array.header.stamp = data.header.stamp  # Use timestamp from incoming image
@@ -148,8 +155,6 @@ class YoloSegNode:
 
             detection_array.detections.append(detection)
 
-            # rospy.loginfo(f"Detection ID: {detection.id} for box: {box}, depth: {detection.depth}")
-
             # Draw bounding boxes and labels on the bounding_box_image
             x1, y1, x2, y2 = map(int, box)
             color = (0, 255, 0)  # Set color for bounding boxes
@@ -181,7 +186,6 @@ class YoloSegNode:
                 segmented_images_msg.ids.append(detection.id)  # Append detection ID
 
                 # Publish individual segmented images
-                # rospy.loginfo(f"Publishing individual segmented image with ID: {detection.id}")
                 self.individual_segmented_image_pub.publish(segmented_image_msg)
 
         # Predict the next position of the operator
@@ -192,40 +196,40 @@ class YoloSegNode:
             box_width = operator_box[2] - operator_box[0]
             box_height = operator_box[3] - operator_box[1]
             x_pred1, y_pred1 = int(x_pred - box_width / 2), int(y_pred - box_height / 2)
-            x_pred2, y_pred2 = int(x_pred + box_width / 2), int(y_pred + box_width / 2)
+            x_pred2, y_pred2 = int(x_pred + box_width / 2), int(y_pred + box_height / 2)
 
             # Draw predicted bounding box
             cv2.rectangle(bounding_box_image, (x_pred1, y_pred1), (x_pred2, y_pred2), (255, 0, 0), 2)  # Blue box
 
             # Draw predicted position
-            cv_image = cv2.circle(bounding_box_image, (int(x_pred), int(y_pred)), 5, (255, 0, 0), -1)
+            cv2.circle(bounding_box_image, (int(x_pred), int(y_pred)), 5, (255, 0, 0), -1)
 
-            # Match the predicted position with the closest detection within the threshold
-            closest_detection_id = None
-            closest_distance = self.matching_threshold
-
+            # Calculate IoU for all detections with the operator's predicted bounding box
             for detection in detection_array.detections:
-                x_center = (detection.x1 + detection.x2) / 2
-                y_center = (detection.y1 + detection.y2) / 2
-                distance = np.linalg.norm([x_pred - x_center, y_pred - y_center])
+                x1, y1, x2, y2 = int(detection.x1), int(detection.y1), int(detection.x2), int(detection.y2)
+                iou = self.calculate_iou([x1, y1, x2, y2], [x_pred1, y_pred1, x_pred2, y_pred2])
+                detection.iou = iou  # Set the IoU value
+                rospy.loginfo(f"Detection {detection.id}: IoU with operator={iou:.2f}")
 
-                if distance < closest_distance:
-                    closest_distance = distance
-                    closest_detection_id = detection.id
+                # Update the bounding box image with IoU values
+                label_text = f'#{detection.id} {int(detection.label)}: {detection.score:.2f} IoU={iou:.2f}'
+                cv2.putText(
+                    bounding_box_image, label_text, (x1, y1 - 10),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1
+                )
 
-            if closest_detection_id is not None:
-                self.operator_id = closest_detection_id
-                rospy.loginfo(f"Updated operator ID to: {self.operator_id} based on closest detection")
+                # Determine if this detection is the operator based on IoU
+                if iou > self.iou_threshold:
+                    self.operator_id = detection.id
+                    rospy.loginfo(f"Updated operator ID to: {self.operator_id} based on IoU {iou:.2f}")
 
         # Publish segmented images as a batch
-        # rospy.loginfo(f"Publishing Segmented Images with IDs: {segmented_images_msg.ids}")
         self.segmented_images_pub.publish(segmented_images_msg)
 
         # Publish bounding box image
         try:
             bounding_box_image_msg = self.bridge.cv2_to_imgmsg(bounding_box_image, "bgr8")
             bounding_box_image_msg.header.stamp = data.header.stamp  # Use the same timestamp
-            # rospy.loginfo("Publishing bounding box image")
             self.bounding_box_image_pub.publish(bounding_box_image_msg)
         except CvBridgeError as e:
             rospy.logerr(f"CV Bridge Error while publishing: {e}")
