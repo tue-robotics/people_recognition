@@ -28,9 +28,10 @@ class SaveHoCDataNode:
         hoc_vector = msg.vectors[0]
         hoc_hue = np.array(hoc_vector.hue_vector)
         hoc_sat = np.array(hoc_vector.sat_vector)
+        hoc_val = np.array(hoc_vector.val_vector)
 
         # Save the first histograms in a single .npz file
-        np.savez(self.hoc_data_file, hue=hoc_hue, sat=hoc_sat)
+        np.savez(self.hoc_data_file, hue=hoc_hue, sat=hoc_sat, val=hoc_val)
         rospy.loginfo(f'Saved HoC data to {self.hoc_data_file}')
 
 if __name__ == '__main__':

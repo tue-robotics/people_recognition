@@ -41,11 +41,13 @@ class HoCComparisonNode:
             data = np.load(self.hoc_data_file)
             self.saved_hue = data['hue']
             self.saved_sat = data['sat']
+            self.saved_val = data['val']
             rospy.loginfo(f"Loaded HoC data from {self.hoc_data_file}")
         else:
             rospy.logerr(f"HoC data file {self.hoc_data_file} not found")
             self.saved_hue = None
             self.saved_sat = None
+            self.saved_val = None
 
     def init_operator_log_file(self):
         """Initialize the operator log file."""
@@ -58,7 +60,7 @@ class HoCComparisonNode:
         """Callback function to handle HoC data."""
         rospy.loginfo("hoc_callback invoked")
 
-        if self.saved_hue is None or self.saved_sat is None:
+        if self.saved_hue is None or self.saved_sat is None or self.saved_val is None:
             rospy.logerr("No saved HoC data available for comparison")
             return
 
@@ -78,7 +80,8 @@ class HoCComparisonNode:
             # Compare HoC data
             hue_vector = hoc_msg.hue_vector
             sat_vector = hoc_msg.sat_vector
-            hoc_distance_score = self.compute_hoc_distance_score(hue_vector, sat_vector)
+            val_vector = hoc_msg.val_vector
+            hoc_distance_score = self.compute_hoc_distance_score(hue_vector, sat_vector, val_vector)
             rospy.loginfo(f"Detection ID {hoc_msg.id}: HoC Distance score: {hoc_distance_score:.2f}")
 
             # Check if this is the best (smallest distance) operator candidate
@@ -118,15 +121,17 @@ class HoCComparisonNode:
             writer.writerow([timestamp, detection_id, score])
         rospy.loginfo(f"Saved operator detection ID {detection_id} with score {score} at timestamp {timestamp}")
 
-    def compute_hoc_distance_score(self, hue_vector, sat_vector):
+    def compute_hoc_distance_score(self, hue_vector, sat_vector, val_vector):
         """Compute the distance score between the current detection and saved data (HoC)."""
         hue_vector = np.array(hue_vector)
         sat_vector = np.array(sat_vector)
+        val_vector = np.array(val_vector)
         
         hue_distance = self.compute_distance(hue_vector, self.saved_hue)
         sat_distance = self.compute_distance(sat_vector, self.saved_sat)
+        val_distance = self.compute_distance(val_vector, self.saved_val)
         
-        return (hue_distance + sat_distance)
+        return (hue_distance + sat_distance + val_distance)
     
     def compute_distance(self, vector1, vector2):
         """Compute the Euclidean distance between two vectors (General)."""

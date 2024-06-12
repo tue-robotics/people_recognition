@@ -40,7 +40,7 @@ class HoCNode:
         for i, segmented_image_msg in enumerate(msg.images):
             try:
                 segmented_image = self.bridge.imgmsg_to_cv2(segmented_image_msg, "bgr8")
-                hoc_hue, hoc_sat = self.compute_hoc(segmented_image)
+                hoc_hue, hoc_sat, hoc_val = self.compute_hoc(segmented_image)
                 #rospy.loginfo(f'Computed HoC for segmented image #{i}')
 
                 # Extract the ID from the incoming message
@@ -62,10 +62,11 @@ class HoCNode:
                 hoc_vector.id = detection_id
                 hoc_vector.hue_vector = hoc_hue.tolist()
                 hoc_vector.sat_vector = hoc_sat.tolist()
+                hoc_vector.val_vector = hoc_val.tolist()
                 hoc_vectors.vectors.append(hoc_vector)
 
                 # Log the resulting values
-                #rospy.loginfo(f"Detection ID {detection_id}: HoC Hue Vector: {hoc_vector.hue_vector[1]}, HoC Saturation Vector: {hoc_vector.sat_vector[1]}")
+                #rospy.loginfo(f"Detection ID {detection_id}: HoC Hue Vector: {hoc_vector.hue_vector[1]}, HoC Saturation Vector: {hoc_vector.sat_vector[1]}, HoC Value Vector: {hoc_vector.val_vector[1]}")
 
             except CvBridgeError as e:
                 rospy.logerr(f"Failed to convert segmented image: {e}") 
@@ -82,18 +83,20 @@ class HoCNode:
         # Create a mask to ignore black pixels
         mask = cv2.inRange(hsv, (0, 0, 1), (180, 255, 255))
         
-        # Use the same number of bins for Hue and Saturation
+        # Use the same number of bins for Hue, Saturation, and Value
         bins = 256
         
-        # Compute histogram for Hue and Saturation using the mask
+        # Compute histogram for Hue, Saturation, and Value using the mask
         hist_hue = cv2.calcHist([hsv], [0], mask, [bins], [0, 180])
         hist_sat = cv2.calcHist([hsv], [1], mask, [bins], [0, 256])
+        hist_val = cv2.calcHist([hsv], [2], mask, [bins], [0, 256])
         
         cv2.normalize(hist_hue, hist_hue)
         cv2.normalize(hist_sat, hist_sat)
+        cv2.normalize(hist_val, hist_val)
         
         # Flatten the histograms
-        return hist_hue.flatten(), hist_sat.flatten()
+        return hist_hue.flatten(), hist_sat.flatten(), hist_val.flatten()
 
 if __name__ == '__main__':
     try:
