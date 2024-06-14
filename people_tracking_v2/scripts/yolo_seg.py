@@ -19,7 +19,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'src', 'people_tra
 from kalman_filter import KalmanFilterCV  # Import the Kalman Filter class
 
 laptop = sys.argv[1]
-name_subscriber_RGB = 'Webcam/image_raw'  if laptop == "True" else '/hero/head_rgbd_sensor/rgb/image_raw'
+name_subscriber_RGB = 'Webcam/image_raw' if laptop == "True" else '/hero/head_rgbd_sensor/rgb/image_raw'
 depth_camera = False if sys.argv[2] == "False" else True
 save_data = False if sys.argv[3] == "False" else True
 

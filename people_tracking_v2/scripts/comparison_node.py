@@ -5,7 +5,13 @@ import numpy as np
 import message_filters
 from people_tracking_v2.msg import HoCVectorArray, BodySizeArray, ComparisonScoresArray, ComparisonScores  # Import the custom message types
 from std_msgs.msg import String
+import sys
 import os
+
+laptop = sys.argv[1]
+name_subscriber_RGB = 'Webcam/image_raw' if laptop == "True" else '/hero/head_rgbd_sensor/rgb/image_raw'
+depth_camera = False if sys.argv[2] == "False" else True
+save_data = False if sys.argv[3] == "False" else True
 
 class ComparisonNode:
     def __init__(self):
