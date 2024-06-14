@@ -49,6 +49,7 @@ install(PROGRAMS
   scripts/decision_node.py
   scripts/central_node.py
   src/kalman_filter.py
+  tools/recorder.py
   tools/save_HoC_data.py
   tools/save_pose_data.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}

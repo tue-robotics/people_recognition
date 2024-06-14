@@ -44,7 +44,7 @@ class YoloSegNode:
         self.kalman_filter_operator = KalmanFilterCV()
         self.operator_id = None  # To be set by an external node
 
-        self.iou_threshold = 0.7  # Default threshold value
+        self.iou_threshold = 0.8  # Default threshold value
         self.matching_threshold = 50  # Threshold for matching the prediction with detections
 
         # Timer to reset operator ID

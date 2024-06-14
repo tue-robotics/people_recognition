@@ -26,8 +26,8 @@ class DecisionNode:
     def sync_callback(self, comparison_msg, detection_msg):
         """Callback function to handle synchronized comparison scores and detection info."""
         # Define thresholds
-        iou_threshold = 0.9
-        hoc_threshold = 1.5
+        iou_threshold = 0.8
+        hoc_threshold = 0.05
         pose_threshold = 0.5  # Example threshold for pose distance
 
         iou_detections = []
