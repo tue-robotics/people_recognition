@@ -126,13 +126,17 @@ class ComparisonNode:
         return norm_vector / norm_sum
 
     def compute_hoc_distance_score(self, hue_vector, sat_vector, val_vector):
-        """Compute the distance score between the current detection and saved data (HoC)."""
-        hue_distance = self.compute_distance(hue_vector, self.operator_hue_avg)
-        sat_distance = self.compute_distance(sat_vector, self.operator_sat_avg)
-        val_distance = self.compute_distance(val_vector, self.operator_val_avg)
+        """Compute the Chi-Squared distance score between the current detection and saved data (HoC)."""
+        hue_distance = self.compute_chi_squared_distance(hue_vector, self.operator_hue_avg)
+        sat_distance = self.compute_chi_squared_distance(sat_vector, self.operator_sat_avg)
+        val_distance = self.compute_chi_squared_distance(val_vector, self.operator_val_avg)
         
         return (hue_distance + sat_distance + val_distance)
     
+    def compute_chi_squared_distance(self, vector1, vector2):
+        """Compute the Chi-Squared distance between two vectors."""
+        return 0.5 * np.sum(((vector1 - vector2) ** 2) / (vector1 + vector2 + 1e-10))  # Adding a small value to avoid division by zero
+
     def compute_distance(self, vector1, vector2):
         """Compute the Euclidean distance between two vectors (General)."""
         return np.linalg.norm(vector1 - vector2)

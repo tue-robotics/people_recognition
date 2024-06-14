@@ -4,9 +4,10 @@ import rospy
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge, CvBridgeError
 import cv2
+import os
 
 class VideoRecorder:
-    def __init__(self):
+    def __init__(self, save_path):
         rospy.init_node('video_recorder', anonymous=True)
         
         # Subscribe to the RGB and depth image topics
@@ -22,6 +23,11 @@ class VideoRecorder:
         self.fourcc = cv2.VideoWriter_fourcc(*'XVID')
         self.fps = 30  # You can adjust this based on your requirements
 
+        # Ensure the save path exists
+        self.save_path = save_path
+        if not os.path.exists(self.save_path):
+            os.makedirs(self.save_path)
+
     def rgb_image_callback(self, data):
         try:
             # Convert the ROS Image message to an OpenCV image
@@ -30,7 +36,8 @@ class VideoRecorder:
             # Initialize the RGB video writer once we get the first image
             if self.rgb_out is None:
                 self.rgb_frame_size = (rgb_image.shape[1], rgb_image.shape[0])
-                self.rgb_out = cv2.VideoWriter('rgb_output.avi', self.fourcc, self.fps, self.rgb_frame_size)
+                rgb_filename = os.path.join(self.save_path, 'rgb_output.avi')
+                self.rgb_out = cv2.VideoWriter(rgb_filename, self.fourcc, self.fps, self.rgb_frame_size)
             
             # Write the RGB image to the video file
             self.rgb_out.write(rgb_image)
@@ -53,7 +60,8 @@ class VideoRecorder:
             # Initialize the depth video writer once we get the first image
             if self.depth_out is None:
                 self.depth_frame_size = (depth_image_colored.shape[1], depth_image_colored.shape[0])
-                self.depth_out = cv2.VideoWriter('depth_output.avi', self.fourcc, self.fps, self.depth_frame_size)
+                depth_filename = os.path.join(self.save_path, 'depth_output.avi')
+                self.depth_out = cv2.VideoWriter(depth_filename, self.fourcc, self.fps, self.depth_frame_size)
             
             # Write the depth image to the video file
             self.depth_out.write(depth_image_colored)
@@ -73,7 +81,8 @@ class VideoRecorder:
         cv2.destroyAllWindows()
 
 if __name__ == '__main__':
-    recorder = VideoRecorder()
+    save_path = '~/hero_videos'  # Replace with your desired save path
+    recorder = VideoRecorder(save_path)
     try:
         rospy.spin()
     except KeyboardInterrupt:
