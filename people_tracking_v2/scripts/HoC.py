@@ -60,9 +60,9 @@ class HoCNode:
                 # Create HoCVector message
                 hoc_vector = HoCVector()
                 hoc_vector.id = detection_id
-                hoc_vector.hue_vector = hoc_hue.tolist()
-                hoc_vector.sat_vector = hoc_sat.tolist()
-                hoc_vector.val_vector = hoc_val.tolist()
+                hoc_vector.hue_vector = self.normalize_vector(hoc_hue).tolist()
+                hoc_vector.sat_vector = self.normalize_vector(hoc_sat).tolist()
+                hoc_vector.val_vector = self.normalize_vector(hoc_val).tolist()
                 hoc_vectors.vectors.append(hoc_vector)
 
                 # Log the resulting values
@@ -91,12 +91,21 @@ class HoCNode:
         hist_sat = cv2.calcHist([hsv], [1], mask, [bins], [0, 256])
         hist_val = cv2.calcHist([hsv], [2], mask, [bins], [0, 256])
         
-        cv2.normalize(hist_hue, hist_hue)
-        cv2.normalize(hist_sat, hist_sat)
-        cv2.normalize(hist_val, hist_val)
+        # Normalize histograms
+        hist_hue = self.normalize_vector(hist_hue)
+        hist_sat = self.normalize_vector(hist_sat)
+        hist_val = self.normalize_vector(hist_val)
         
         # Flatten the histograms
         return hist_hue.flatten(), hist_sat.flatten(), hist_val.flatten()
+
+    def normalize_vector(self, vector):
+        """Normalize a vector to ensure the sum of elements is 1."""
+        norm_vector = np.array(vector)
+        norm_sum = np.sum(norm_vector)
+        if norm_sum == 0:
+            return norm_vector
+        return norm_vector / norm_sum
 
 if __name__ == '__main__':
     try:
