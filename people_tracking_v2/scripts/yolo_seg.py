@@ -204,7 +204,9 @@ class YoloSegNode:
             # Draw predicted position
             cv_image = cv2.circle(bounding_box_image, (int(x_pred), int(y_pred)), 5, (255, 0, 0), -1)
 
-            # Calculate IoU for all detections with the operator's predicted bounding box
+            # Find the detection with the highest IoU
+            highest_iou = 0
+            best_detection = None
             for detection in detection_array.detections:
                 x1, y1, x2, y2 = int(detection.x1), int(detection.y1), int(detection.x2), int(detection.y2)
                 iou = self.calculate_iou([x1, y1, x2, y2], [x_pred1, y_pred1, x_pred2, y_pred2])
@@ -217,6 +219,18 @@ class YoloSegNode:
                     bounding_box_image, label_text, (x1, y1 - 10),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1
                 )
+
+                # Update best detection based on IoU
+                if iou > highest_iou:
+                    highest_iou = iou
+                    best_detection = detection
+
+            # Use the best detection to update the Kalman Filter
+            if best_detection is not None:
+                x_center = (best_detection.x1 + best_detection.x2) / 2
+                y_center = (best_detection.y1 + best_detection.y2) / 2
+                self.kalman_filter_operator.update(np.array([[x_center], [y_center]]))
+                rospy.loginfo(f"Updated Kalman Filter with detection {best_detection.id} based on highest IoU {highest_iou:.2f}")
 
         # Publish segmented images as a batch
         self.segmented_images_pub.publish(segmented_images_msg)
