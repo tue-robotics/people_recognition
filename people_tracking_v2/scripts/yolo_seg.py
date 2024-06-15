@@ -43,9 +43,9 @@ class YoloSegNode:
         # Initialize the Kalman Filter for the operator
         self.kalman_filter_operator = KalmanFilterCV()
         self.operator_id = None  # To be set by an external node
+        self.operator_initialized = False  # Track if operator has been initialized
 
         self.iou_threshold = 0.8  # Default threshold value
-        self.matching_threshold = 50  # Threshold for matching the prediction with detections
 
         # Timer to reset operator ID
         self.reset_timer = rospy.Timer(rospy.Duration(3), self.reset_operator_id)
@@ -61,18 +61,19 @@ class YoloSegNode:
             current_time = time.strftime("%Y%m%d-%H%M%S")
             self.save_path = os.path.join(package_path, f'data/{current_time}_test/')
             os.makedirs(self.save_path, exist_ok=True)
-            # rospy.loginfo(f"Data will be saved to: {self.save_path}")
+            rospy.loginfo(f"Data will be saved to: {self.save_path}")
 
     def reset_operator_id(self, event):
         """Reset the operator ID every 3 seconds."""
         if self.operator_id is not None:
             self.operator_id = -1
+            self.operator_initialized = False  # Ensure re-initialization
             rospy.loginfo("Operator ID reset to -1")
 
     def operator_id_callback(self, msg):
         """Callback function to update the operator ID."""
         self.operator_id = msg.data
-        rospy.loginfo(f"Updated operator ID to: {self.operator_id}")
+        rospy.loginfo(f"Received operator ID: {self.operator_id}")
 
     def set_operator(self, operator_id):
         """Set the ID of the operator to track."""
@@ -167,12 +168,6 @@ class YoloSegNode:
                 cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1
             )
 
-            if self.operator_id is not None and detection.id == self.operator_id:
-                operator_box = [x1, y1, x2, y2]
-                x_center = (x1 + x2) / 2
-                y_center = (y1 + y2) / 2
-                self.kalman_filter_operator.update(np.array([[x_center], [y_center]]))
-
             # Apply segmentation mask to the cv_image
             if mask is not None:
                 # Resize mask to match the original image dimensions
@@ -188,55 +183,63 @@ class YoloSegNode:
                 # Publish individual segmented images
                 self.individual_segmented_image_pub.publish(segmented_image_msg)
 
+        # Initialize the operator using the detection with the specified operator ID
+        if not self.operator_initialized and self.operator_id is not None:
+            for detection in detection_array.detections:
+                if detection.id == self.operator_id:
+                    operator_box = [detection.x1, detection.y1, detection.x2, detection.y2]
+                    x_center = (detection.x1 + detection.x2) / 2
+                    y_center = (detection.y1 + detection.y2) / 2
+                    self.kalman_filter_operator.update(np.array([[x_center], [y_center]]))
+                    self.operator_initialized = True
+                    rospy.loginfo("Operator initialized")
+                    break
+
         # Predict the next position of the operator
-        if operator_box is not None:
+        if self.operator_initialized:
             self.kalman_filter_operator.predict()
             x_pred, y_pred = self.kalman_filter_operator.get_state()[:2]
 
-            box_width = operator_box[2] - operator_box[0]
-            box_height = operator_box[3] - operator_box[1]
-            x_pred1, y_pred1 = int(x_pred - box_width / 2), int(y_pred - box_height / 2)
-            x_pred2, y_pred2 = int(x_pred + box_width / 2), int(y_pred + box_height / 2)
+            # Ensure operator_box is not None before using it
+            if operator_box is not None:
+                # Draw predicted position and bounding box
+                box_width = operator_box[2] - operator_box[0]
+                box_height = operator_box[3] - operator_box[1]
+                x_pred1, y_pred1 = int(x_pred - box_width / 2), int(y_pred - box_height / 2)
+                x_pred2, y_pred2 = int(x_pred + box_width / 2), int(y_pred + box_height / 2)
 
-            # Ensure the predicted box is within image bounds
-            x_pred1 = max(0, min(cv_image.shape[1], x_pred1))
-            y_pred1 = max(0, min(cv_image.shape[0], y_pred1))
-            x_pred2 = max(0, min(cv_image.shape[1], x_pred2))
-            y_pred2 = max(0, min(cv_image.shape[0], y_pred2))
+                cv2.rectangle(bounding_box_image, (x_pred1, y_pred1), (x_pred2, y_pred2), (255, 0, 0), 2)  # Blue box
+                cv2.circle(bounding_box_image, (int(x_pred), int(y_pred)), 5, (255, 0, 0), -1)
 
-            # Draw predicted bounding box
-            cv2.rectangle(bounding_box_image, (x_pred1, y_pred1), (x_pred2, y_pred2), (255, 0, 0), 2)  # Blue box
+                # Calculate IoU for all detections with the operator's predicted bounding box
+                best_iou = -1
+                best_detection = None
+                for detection in detection_array.detections:
+                    x1, y1, x2, y2 = int(detection.x1), int(detection.y1), int(detection.x2), int(detection.y2)
+                    iou = self.calculate_iou([x1, y1, x2, y2], [x_pred1, y_pred1, x_pred2, y_pred2])
+                    detection.iou = iou  # Set the IoU value
+                    rospy.loginfo(f"Detection {detection.id}: IoU with operator={iou:.2f}")
 
-            # Draw predicted position
-            cv_image = cv2.circle(bounding_box_image, (int(x_pred), int(y_pred)), 5, (255, 0, 0), -1)
+                    # Update the bounding box image with IoU values
+                    label_text = f'#{detection.id} {int(detection.label)}: {detection.score:.2f} IoU={iou:.2f}'
+                    cv2.putText(
+                        bounding_box_image, label_text, (x1, y1 - 10),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1
+                    )
 
-            # Calculate IoU for all detections with the operator's predicted bounding box
-            max_iou = 0
-            best_detection = None
-            for detection in detection_array.detections:
-                x1, y1, x2, y2 = int(detection.x1), int(detection.y1), int(detection.x2), int(detection.y2)
-                iou = self.calculate_iou([x1, y1, x2, y2], [x_pred1, y_pred1, x_pred2, y_pred2])
-                detection.iou = iou  # Set the IoU value
-                rospy.loginfo(f"Detection {detection.id}: IoU with operator={iou:.2f}")
+                    # Find the best detection based on IoU
+                    if iou > best_iou:
+                        best_iou = iou
+                        best_detection = detection
 
-                # Update the bounding box image with IoU values
-                label_text = f'#{detection.id} {int(detection.label)}: {detection.score:.2f} IoU={iou:.2f}'
-                cv2.putText(
-                    bounding_box_image, label_text, (x1, y1 - 10),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1
-                )
-
-                # Determine the detection with the highest IoU
-                if iou > max_iou:
-                    max_iou = iou
-                    best_detection = detection
-
-            # Update the Kalman filter with the detection with the highest IoU
-            if best_detection is not None:
-                x_center = (best_detection.x1 + best_detection.x2) / 2
-                y_center = (best_detection.y1 + best_detection.y2) / 2
-                self.kalman_filter_operator.update(np.array([[x_center], [y_center]]))
-                rospy.loginfo(f"Updated Kalman Filter with detection {best_detection.id} based on highest IoU {max_iou:.2f}")
+                # Update the Kalman Filter with the best detection if IoU is above the threshold
+                if best_iou > self.iou_threshold and best_detection is not None:
+                    x_center = (best_detection.x1 + best_detection.x2) / 2
+                    y_center = (best_detection.y1 + best_detection.y2) / 2
+                    self.kalman_filter_operator.update(np.array([[x_center], [y_center]]))
+                    operator_box = [best_detection.x1, best_detection.y1, best_detection.x2, best_detection.y2]
+                else:
+                    rospy.logwarn("No detection with IoU above threshold")
 
         # Publish segmented images as a batch
         self.segmented_images_pub.publish(segmented_images_msg)
@@ -261,7 +264,7 @@ class YoloSegNode:
         inter_x_min = max(x1_min, x2_min)
         inter_y_min = max(y1_min, y2_min)
         inter_x_max = min(x1_max, x2_max)
-        inter_y_max = min(y1_max, y2_max)
+        inter_y_max = min y1_max)
 
         inter_area = max(0, inter_x_max - inter_x_min) * max(0, inter_y_max - inter_y_min)
 

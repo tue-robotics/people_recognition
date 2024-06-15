@@ -31,6 +31,7 @@ class DecisionNode:
         pose_threshold = 0.5  # Example threshold for pose distance
 
         valid_detections = []
+        iou_detections = []
 
         # Create a dictionary for quick lookup of IoU values by detection ID
         iou_dict = {detection.id: detection.iou for detection in detection_msg.detections}
@@ -38,7 +39,7 @@ class DecisionNode:
         # Check for detections with high IoU values
         for detection in detection_msg.detections:
             if detection.iou > iou_threshold:
-                valid_detections.append((detection.id, detection.iou))
+                iou_detections.append((detection.id, detection.iou))
         
         # Iterate over each comparison score in the array
         for score in comparison_msg.scores:
@@ -62,7 +63,12 @@ class DecisionNode:
             # Find the detection with the best (lowest) HoC score among the valid detections
             best_hoc_detection = min(valid_detections, key=lambda x: x[1])[0]
             operator_id = best_hoc_detection
-            decision_source = "HoC + Pose or IoU"
+            decision_source = "HoC + Pose"
+        elif iou_detections:
+            # If there are no valid detections but there are high IoU detections, use the highest IoU detection
+            best_iou_detection = max(iou_detections, key=lambda x: x[1])[0]
+            operator_id = best_iou_detection
+            decision_source = "IoU"
         else:
             operator_id = -1  # Use -1 to indicate no operator found
             decision_source = "None"
