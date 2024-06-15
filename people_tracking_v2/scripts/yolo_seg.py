@@ -202,7 +202,7 @@ class YoloSegNode:
             cv2.rectangle(bounding_box_image, (x_pred1, y_pred1), (x_pred2, y_pred2), (255, 0, 0), 2)  # Blue box
 
             # Draw predicted position
-            cv2.circle(bounding_box_image, (int(x_pred), int(y_pred)), 5, (255, 0, 0), -1)
+            cv_image = cv2.circle(bounding_box_image, (int(x_pred), int(y_pred)), 5, (255, 0, 0), -1)
 
             # Calculate IoU for all detections with the operator's predicted bounding box
             for detection in detection_array.detections:
@@ -217,11 +217,6 @@ class YoloSegNode:
                     bounding_box_image, label_text, (x1, y1 - 10),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1
                 )
-
-                # Determine if this detection is the operator based on IoU
-                if iou > self.iou_threshold:
-                    self.operator_id = detection.id
-                    rospy.loginfo(f"Updated operator ID to: {self.operator_id} based on IoU {iou:.2f}")
 
         # Publish segmented images as a batch
         self.segmented_images_pub.publish(segmented_images_msg)
