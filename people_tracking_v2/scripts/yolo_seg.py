@@ -198,14 +198,20 @@ class YoloSegNode:
             x_pred1, y_pred1 = int(x_pred - box_width / 2), int(y_pred - box_height / 2)
             x_pred2, y_pred2 = int(x_pred + box_width / 2), int(y_pred + box_height / 2)
 
+            # Ensure the predicted box is within image bounds
+            x_pred1 = max(0, min(cv_image.shape[1], x_pred1))
+            y_pred1 = max(0, min(cv_image.shape[0], y_pred1))
+            x_pred2 = max(0, min(cv_image.shape[1], x_pred2))
+            y_pred2 = max(0, min(cv_image.shape[0], y_pred2))
+
             # Draw predicted bounding box
             cv2.rectangle(bounding_box_image, (x_pred1, y_pred1), (x_pred2, y_pred2), (255, 0, 0), 2)  # Blue box
 
             # Draw predicted position
             cv_image = cv2.circle(bounding_box_image, (int(x_pred), int(y_pred)), 5, (255, 0, 0), -1)
 
-            # Find the detection with the highest IoU
-            highest_iou = 0
+            # Calculate IoU for all detections with the operator's predicted bounding box
+            max_iou = 0
             best_detection = None
             for detection in detection_array.detections:
                 x1, y1, x2, y2 = int(detection.x1), int(detection.y1), int(detection.x2), int(detection.y2)
@@ -220,17 +226,17 @@ class YoloSegNode:
                     cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1
                 )
 
-                # Update best detection based on IoU
-                if iou > highest_iou:
-                    highest_iou = iou
+                # Determine the detection with the highest IoU
+                if iou > max_iou:
+                    max_iou = iou
                     best_detection = detection
 
-            # Use the best detection to update the Kalman Filter
+            # Update the Kalman filter with the detection with the highest IoU
             if best_detection is not None:
                 x_center = (best_detection.x1 + best_detection.x2) / 2
                 y_center = (best_detection.y1 + best_detection.y2) / 2
                 self.kalman_filter_operator.update(np.array([[x_center], [y_center]]))
-                rospy.loginfo(f"Updated Kalman Filter with detection {best_detection.id} based on highest IoU {highest_iou:.2f}")
+                rospy.loginfo(f"Updated Kalman Filter with detection {best_detection.id} based on highest IoU {max_iou:.2f}")
 
         # Publish segmented images as a batch
         self.segmented_images_pub.publish(segmented_images_msg)
