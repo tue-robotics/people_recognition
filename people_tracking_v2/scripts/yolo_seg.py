@@ -44,6 +44,7 @@ class YoloSegNode:
         self.kalman_filter_operator = KalmanFilterCV()
         self.operator_id = None  # To be set by an external node
         self.operator_initialized = False  # Track if operator has been initialized
+        self.operator_box = None  # Initialize operator_box to None
 
         self.iou_threshold = 0.8  # Default threshold value
 
@@ -68,6 +69,7 @@ class YoloSegNode:
         if self.operator_id is not None:
             self.operator_id = -1
             self.operator_initialized = False  # Ensure re-initialization
+            self.operator_box = None
             rospy.loginfo("Operator ID reset to -1")
 
     def operator_id_callback(self, msg):
@@ -129,8 +131,6 @@ class YoloSegNode:
         segmented_images_msg = SegmentedImages()
         segmented_images_msg.header.stamp = data.header.stamp  # Use the same timestamp as the YOLO image
         segmented_images_msg.ids = []  # Initialize the IDs list
-
-        operator_box = None  # Initialize operator_box to None
 
         # Process each detection and create a Detection message
         for i, (box, score, label, mask) in enumerate(zip(boxes, scores, labels, masks)):
@@ -197,7 +197,7 @@ class YoloSegNode:
         if not self.operator_initialized and self.operator_id is not None:
             for detection in detection_array.detections:
                 if detection.id == self.operator_id:
-                    operator_box = [detection.x1, detection.y1, detection.x2, detection.y2]
+                    self.operator_box = [detection.x1, detection.y1, detection.x2, detection.y2]
                     x_center = (detection.x1 + detection.x2) / 2
                     y_center = (detection.y1 + detection.y2) / 2
                     self.kalman_filter_operator.update(np.array([[x_center], [y_center]]))
@@ -211,8 +211,8 @@ class YoloSegNode:
             x_pred, y_pred = self.kalman_filter_operator.get_state()[:2]
 
             # Use default box dimensions if operator_box is None
-            box_width = 50 if operator_box is None else operator_box[2] - operator_box[0]
-            box_height = 100 if operator_box is None else operator_box[3] - operator_box[1]
+            box_width = 50 if self.operator_box is None else self.operator_box[2] - self.operator_box[0]
+            box_height = 100 if self.operator_box is None else self.operator_box[3] - self.operator_box[1]
 
             x_pred1, y_pred1 = int(x_pred - box_width / 2), int(y_pred - box_height / 2)
             x_pred2, y_pred2 = int(x_pred + box_width / 2), int(y_pred + box_height / 2)
@@ -220,12 +220,11 @@ class YoloSegNode:
             cv2.rectangle(bounding_box_image, (x_pred1, y_pred1), (x_pred2, y_pred2), (255, 0, 0), 2)
             cv2.circle(bounding_box_image, (int(x_pred), int(y_pred)), 5, (255, 0, 0), -1)
 
-            # Use Nearest Neighbor approach to update Kalman Filter
+            # Use IoU-based Nearest Neighbor approach to update Kalman Filter
             best_iou = -1
             best_detection = None
             for detection in detection_array.detections:
                 x1, y1, x2, y2 = int(detection.x1), int(detection.y1), int(detection.x2), int(detection.y2)
-                detection_center = np.array([(x1 + x2) / 2, (y1 + y2) / 2])
                 iou = self.calculate_iou([x1, y1, x2, y2], [x_pred1, y_pred1, x_pred2, y_pred2])
                 detection.iou = iou  # Set the IoU value
                 rospy.loginfo(f"Detection {detection.id}: IoU with operator={iou:.2f}")
@@ -246,7 +245,7 @@ class YoloSegNode:
                 x_center = (best_detection.x1 + best_detection.x2) / 2
                 y_center = (best_detection.y1 + best_detection.y2) / 2
                 self.kalman_filter_operator.update(np.array([[x_center], [y_center]]))
-                operator_box = [best_detection.x1, best_detection.y1, best_detection.x2, best_detection.y2]
+                self.operator_box = [best_detection.x1, best_detection.y1, best_detection.x2, best_detection.y2]
                 cv2.circle(bounding_box_image, (int(x_center), int(y_center)), 5, (0, 0, 255), -1)
             else:
                 rospy.logwarn("No detection with IoU above threshold, using prediction")
