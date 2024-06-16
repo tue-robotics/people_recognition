@@ -95,14 +95,18 @@ class YoloSegNode:
 
         # Import Depth Image
         if depth_camera:
-            cv_depth_image = self.bridge.imgmsg_to_cv2(self.depth_images[-1], desired_encoding='passthrough')
+            try:
+                cv_depth_image = self.bridge.imgmsg_to_cv2(self.depth_images[-1], desired_encoding='passthrough')
+            except (CvBridgeError, IndexError) as e:
+                rospy.logerr(f"CV Bridge Error or Index Error: {e}")
+                cv_depth_image = None
         else:
             cv_depth_image = None
 
         # Save RGB and Depth Images if required
         if save_data:
             cv2.imwrite(f"{self.save_path}{self.batch_nr}.png", cv_image)
-            if depth_camera:
+            if depth_camera and cv_depth_image is not None:
                 cv_depth_image_path = f"{self.save_path}{self.batch_nr}_depth.png"
                 cv2.imwrite(cv_depth_image_path, cv_depth_image)
 
@@ -183,6 +187,12 @@ class YoloSegNode:
                 # Publish individual segmented images
                 self.individual_segmented_image_pub.publish(segmented_image_msg)
 
+            # Draw a red dot at the center of the detection if it's the operator
+            if detection.id == self.operator_id:
+                x_center = int((detection.x1 + detection.x2) / 2)
+                y_center = int((detection.y1 + detection.y2) / 2)
+                cv2.circle(bounding_box_image, (x_center, y_center), 5, (0, 0, 255), -1)
+
         # Initialize the operator using the detection with the specified operator ID
         if not self.operator_initialized and self.operator_id is not None:
             for detection in detection_array.detections:
@@ -200,46 +210,51 @@ class YoloSegNode:
             self.kalman_filter_operator.predict()
             x_pred, y_pred = self.kalman_filter_operator.get_state()[:2]
 
-            # Ensure operator_box is not None before using it
-            if operator_box is not None:
-                # Draw predicted position and bounding box
-                box_width = operator_box[2] - operator_box[0]
-                box_height = operator_box[3] - operator_box[1]
-                x_pred1, y_pred1 = int(x_pred - box_width / 2), int(y_pred - box_height / 2)
-                x_pred2, y_pred2 = int(x_pred + box_width / 2), int(y_pred + box_height / 2)
+            # Use default box dimensions if operator_box is None
+            box_width = 50 if operator_box is None else operator_box[2] - operator_box[0]
+            box_height = 100 if operator_box is None else operator_box[3] - operator_box[1]
 
-                cv2.rectangle(bounding_box_image, (x_pred1, y_pred1), (x_pred2, y_pred2), (255, 0, 0), 2)  # Blue box
+            x_pred1, y_pred1 = int(x_pred - box_width / 2), int(y_pred - box_height / 2)
+            x_pred2, y_pred2 = int(x_pred + box_width / 2), int(y_pred + box_height / 2)
+
+            cv2.rectangle(bounding_box_image, (x_pred1, y_pred1), (x_pred2, y_pred2), (255, 0, 0), 2)
+            cv2.circle(bounding_box_image, (int(x_pred), int(y_pred)), 5, (255, 0, 0), -1)
+
+            # Use Nearest Neighbor approach to update Kalman Filter
+            best_iou = -1
+            best_detection = None
+            for detection in detection_array.detections:
+                x1, y1, x2, y2 = int(detection.x1), int(detection.y1), int(detection.x2), int(detection.y2)
+                detection_center = np.array([(x1 + x2) / 2, (y1 + y2) / 2])
+                iou = self.calculate_iou([x1, y1, x2, y2], [x_pred1, y_pred1, x_pred2, y_pred2])
+                detection.iou = iou  # Set the IoU value
+                rospy.loginfo(f"Detection {detection.id}: IoU with operator={iou:.2f}")
+
+                # Update the bounding box image with IoU values
+                label_text = f'#{detection.id} {int(detection.label)}: {detection.score:.2f} IoU={iou:.2f}'
+                cv2.putText(
+                    bounding_box_image, label_text, (x1, y1 - 10),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1
+                )
+
+                if iou > best_iou:
+                    best_iou = iou
+                    best_detection = detection
+
+            # Update the Kalman Filter with the detection with the highest IoU
+            if best_detection is not None:
+                x_center = (best_detection.x1 + best_detection.x2) / 2
+                y_center = (best_detection.y1 + best_detection.y2) / 2
+                self.kalman_filter_operator.update(np.array([[x_center], [y_center]]))
+                operator_box = [best_detection.x1, best_detection.y1, best_detection.x2, best_detection.y2]
+                cv2.circle(bounding_box_image, (int(x_center), int(y_center)), 5, (0, 0, 255), -1)
+            else:
+                rospy.logwarn("No detection with IoU above threshold, using prediction")
                 cv2.circle(bounding_box_image, (int(x_pred), int(y_pred)), 5, (255, 0, 0), -1)
-
-                # Calculate IoU for all detections with the operator's predicted bounding box
-                best_iou = -1
-                best_detection = None
-                for detection in detection_array.detections:
-                    x1, y1, x2, y2 = int(detection.x1), int(detection.y1), int(detection.x2), int(detection.y2)
-                    iou = self.calculate_iou([x1, y1, x2, y2], [x_pred1, y_pred1, x_pred2, y_pred2])
-                    detection.iou = iou  # Set the IoU value
-                    rospy.loginfo(f"Detection {detection.id}: IoU with operator={iou:.2f}")
-
-                    # Update the bounding box image with IoU values
-                    label_text = f'#{detection.id} {int(detection.label)}: {detection.score:.2f} IoU={iou:.2f}'
-                    cv2.putText(
-                        bounding_box_image, label_text, (x1, y1 - 10),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1
-                    )
-
-                    # Find the best detection based on IoU
-                    if iou > best_iou:
-                        best_iou = iou
-                        best_detection = detection
-
-                # Update the Kalman Filter with the best detection if IoU is above the threshold
-                if best_iou > self.iou_threshold and best_detection is not None:
-                    x_center = (best_detection.x1 + best_detection.x2) / 2
-                    y_center = (best_detection.y1 + best_detection.y2) / 2
-                    self.kalman_filter_operator.update(np.array([[x_center], [y_center]]))
-                    operator_box = [best_detection.x1, best_detection.y1, best_detection.x2, best_detection.y2]
-                else:
-                    rospy.logwarn("No detection with IoU above threshold")
+                cv2.putText(
+                    bounding_box_image, 'Predicted position', (int(x_pred), int(y_pred) - 10),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 1
+                )
 
         # Publish segmented images as a batch
         self.segmented_images_pub.publish(segmented_images_msg)
@@ -247,7 +262,7 @@ class YoloSegNode:
         # Publish bounding box image
         try:
             bounding_box_image_msg = self.bridge.cv2_to_imgmsg(bounding_box_image, "bgr8")
-            bounding_box_image_msg.header.stamp = data.header.stamp  # Use the same timestamp
+            bounding_box_image_msg.header.stamp = data.header.stamp
             self.bounding_box_image_pub.publish(bounding_box_image_msg)
         except CvBridgeError as e:
             rospy.logerr(f"CV Bridge Error while publishing: {e}")
@@ -256,19 +271,16 @@ class YoloSegNode:
         self.detection_pub.publish(detection_array)
 
     def calculate_iou(self, box1, box2):
-        """Calculate the Intersection over Union (IoU) of two bounding boxes."""
         x1_min, y1_min, x1_max, y1_max = box1
         x2_min, y2_min, x2_max, y2_max = box2
 
-        # Calculate intersection
         inter_x_min = max(x1_min, x2_min)
         inter_y_min = max(y1_min, y2_min)
         inter_x_max = min(x1_max, x2_max)
-        inter_y_max = min y1_max)
+        inter_y_max = min(y1_max, y2_max)
 
         inter_area = max(0, inter_x_max - inter_x_min) * max(0, inter_y_max - inter_y_min)
 
-        # Calculate union
         box1_area = (x1_max - x1_min) * (y1_max - y1_min)
         box2_area = (x2_max - x2_min) * (y2_max - y2_min)
         union_area = box1_area + box2_area - inter_area

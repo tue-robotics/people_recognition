@@ -39,6 +39,11 @@ class PoseEstimationNode:
 
         for detection in self.current_detections:
             if detection.iou > self.iou_threshold:
+                # Set the height of the specific detection to -1 if IoU threshold is passed
+                pose_distance_msg = BodySize()
+                pose_distance_msg.id = detection.id
+                pose_distance_msg.head_feet_distance = -1  # Set to -1 for detections with high IoU
+                pose_distance_array.distances.append(pose_distance_msg)
                 rospy.loginfo(f"Skipping detection ID {detection.id} due to high IoU value with operator")
                 continue
 
