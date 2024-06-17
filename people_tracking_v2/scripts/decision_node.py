@@ -87,7 +87,7 @@ class DecisionNode:
             if hoc_pose_detections:
                 best_hoc_detection = min(hoc_pose_detections, key=lambda x: x[1])[0]
                 operator_id = best_hoc_detection
-                decision_source = "HoC + Pose"
+                decision_source = "HoC + Pose to start IoU"
             else:
                 operator_id = -1  # Use -1 to indicate no operator found
                 decision_source = "None"

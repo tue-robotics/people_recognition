@@ -5,9 +5,8 @@ import cv2
 import numpy as np
 from ultralytics import YOLO
 from sensor_msgs.msg import Image
-from people_tracking_v2.msg import Detection, DetectionArray, SegmentedImages
+from people_tracking_v2.msg import Detection, DetectionArray, SegmentedImages, DecisionResult
 from cv_bridge import CvBridge, CvBridgeError
-from std_msgs.msg import Int32  # Import the Int32 message type for operator ID
 
 import sys
 import os
@@ -37,8 +36,8 @@ class YoloSegNode:
         self.bounding_box_image_pub = rospy.Publisher("/bounding_box_image", Image, queue_size=10)
         self.detection_pub = rospy.Publisher("/detections_info", DetectionArray, queue_size=10)
 
-        # Subscriber for operator ID
-        self.operator_id_sub = rospy.Subscriber('/decision/result', Int32, self.operator_id_callback)
+        # Subscriber for operator ID and decision source
+        self.operator_id_sub = rospy.Subscriber('/decision/result', DecisionResult, self.operator_id_callback)
 
         # Initialize the Kalman Filter for the operator
         self.kalman_filter_operator = KalmanFilterCV()
@@ -74,9 +73,15 @@ class YoloSegNode:
             rospy.loginfo("Operator ID reset to -1")
 
     def operator_id_callback(self, msg):
-        """Callback function to update the operator ID."""
-        self.operator_id = msg.data
-        rospy.loginfo(f"Received operator ID: {self.operator_id}")
+        """Callback function to update the operator ID and handle the decision source."""
+        self.operator_id = msg.operator_id
+        self.decision_source = msg.decision_source
+        rospy.loginfo(f"Received operator ID: {self.operator_id} from {self.decision_source}")
+
+        if self.decision_source not in ["IoU", "HoC + Pose to start IoU"]:
+            self.operator_initialized = False
+            self.operator_box = None
+            rospy.loginfo("Kalman Filter stopped due to decision source.")
 
     def depth_image_callback(self, data):
         """Store the latest depth image. Only the most recent depth images are stored."""
@@ -191,7 +196,7 @@ class YoloSegNode:
                 cv2.circle(bounding_box_image, (x_center, y_center), 5, (0, 0, 255), -1)
 
         # Initialize the operator using the detection with the specified operator ID
-        if not self.operator_initialized and self.operator_id is not None:
+        if not self.operator_initialized and self.operator_id is not None and self.decision_source in ["IoU", "HoC + Pose to start IoU"]:
             for detection in detection_array.detections:
                 if detection.id == self.operator_id:
                     self.operator_box = [detection.x1, detection.y1, detection.x2, detection.y2]
