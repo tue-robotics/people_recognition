@@ -53,9 +53,9 @@ class HoCNode:
                     rospy.logerr(f"No matching detection found for ID: {detection_id}")
                     continue
 
-                if detection.iou > self.iou_threshold:
-                    rospy.loginfo(f"Skipping detection ID {detection_id} due to high IoU value with operator: {detection.iou:.2f}")
-                    continue
+                #if detection.iou > self.iou_threshold:
+                #    rospy.loginfo(f"Skipping detection ID {detection_id} due to high IoU value with operator: {detection.iou:.2f}")
+                #    continue
 
                 # Create HoCVector message
                 hoc_vector = HoCVector()
