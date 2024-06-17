@@ -202,7 +202,7 @@ class YoloSegNode:
                     self.operator_box = [detection.x1, detection.y1, detection.x2, detection.y2]
                     x_center = (detection.x1 + detection.x2) / 2
                     y_center = (detection.y1 + detection.y2) / 2
-                    self.kalman_filter_operator.update(np.array([[x_center], [y_center]]))
+                    self.kalman_filter_operator.reset(np.array([[x_center], [y_center]]))
                     self.operator_initialized = True
                     rospy.loginfo("Operator initialized")
                     break
@@ -244,11 +244,17 @@ class YoloSegNode:
 
             # Update the Kalman Filter with the detection with the highest IoU
             if best_detection is not None:
-                x_center = (best_detection.x1 + best_detection.x2) / 2
-                y_center = (best_detection.y1 + best_detection.y2) / 2
-                self.kalman_filter_operator.update(np.array([[x_center], [y_center]]))
-                self.operator_box = [best_detection.x1, best_detection.y1, best_detection.x2, best_detection.y2]
-                cv2.circle(bounding_box_image, (int(x_center), int(y_center)), 5, (0, 0, 255), -1)
+                if best_iou < self.iou_threshold:
+                    rospy.loginfo(f"Stopping Kalman Filter due to IoU below threshold: {best_iou:.2f}")
+                    self.operator_initialized = False
+                    self.operator_box = None
+                    self.kalman_filter_operator.reset(np.zeros((2, 1)))  # Reset the Kalman Filter
+                else:
+                    x_center = (best_detection.x1 + best_detection.x2) / 2
+                    y_center = (best_detection.y1 + best_detection.y2) / 2
+                    self.kalman_filter_operator.update(np.array([[x_center], [y_center]]))
+                    self.operator_box = [best_detection.x1, best_detection.y1, best_detection.x2, best_detection.y2]
+                    cv2.circle(bounding_box_image, (int(x_center), int(y_center)), 5, (0, 0, 255), -1)
             else:
                 rospy.logwarn("No detection with IoU above threshold, using prediction")
                 cv2.circle(bounding_box_image, (int(x_pred), int(y_pred)), 5, (255, 0, 0), -1)
