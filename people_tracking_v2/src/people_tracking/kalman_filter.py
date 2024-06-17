@@ -32,3 +32,8 @@ class KalmanFilterCV:
     def get_state(self):
         # Return the current state
         return self.x.flatten().tolist()
+
+    def reset(self, initial_state):
+        self.x = np.zeros((4, 1))
+        self.x[:2] = initial_state
+        self.P = np.eye(4)

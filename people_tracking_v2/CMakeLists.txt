@@ -24,6 +24,7 @@ add_message_files(
   BodySizeArray.msg
   ComparisonScores.msg
   ComparisonScoresArray.msg
+  DecisionResult.msg
 )
 
 generate_messages(

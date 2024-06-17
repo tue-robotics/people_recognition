@@ -2,8 +2,7 @@
 
 import rospy
 import message_filters
-from people_tracking_v2.msg import ComparisonScoresArray, DetectionArray
-from std_msgs.msg import Int32
+from people_tracking_v2.msg import ComparisonScoresArray, DetectionArray, DecisionResult
 
 class DecisionNode:
     def __init__(self):
@@ -19,7 +18,7 @@ class DecisionNode:
         ts.registerCallback(self.sync_callback)
         
         # Publisher for decision results
-        self.decision_pub = rospy.Publisher('/decision/result', Int32, queue_size=10)
+        self.decision_pub = rospy.Publisher('/decision/result', DecisionResult, queue_size=10)
         
         rospy.spin()
     
@@ -30,11 +29,12 @@ class DecisionNode:
         hoc_threshold = 0.3
         pose_threshold = 0.5  # Example threshold for pose distance
 
-        valid_detections = []
         iou_detections = []
+        hoc_pose_detections = []
 
-        # Create a dictionary for quick lookup of IoU values by detection ID
+        # Create a dictionary for quick lookup of IoU values and HoC values by detection ID
         iou_dict = {detection.id: detection.iou for detection in detection_msg.detections}
+        hoc_dict = {score.id: score.hoc_distance_score for score in comparison_msg.scores}
 
         # Check for detections with high IoU values
         for detection in detection_msg.detections:
@@ -53,28 +53,50 @@ class DecisionNode:
                 # If pose distance score is negative, only consider HoC score
                 if pose_distance_score < 0:
                     if hoc_distance_score < hoc_threshold:
-                        valid_detections.append((score.id, hoc_distance_score))
+                        hoc_pose_detections.append((score.id, hoc_distance_score))
                 else:
                     # Check if both HoC and pose scores are valid
                     if hoc_distance_score < hoc_threshold and pose_distance_score < pose_threshold:
-                        valid_detections.append((score.id, hoc_distance_score))
+                        hoc_pose_detections.append((score.id, hoc_distance_score))
 
-        if valid_detections:
-            # Find the detection with the best (lowest) HoC score among the valid detections
-            best_hoc_detection = min(valid_detections, key=lambda x: x[1])[0]
-            operator_id = best_hoc_detection
-            decision_source = "HoC + Pose"
-        elif iou_detections:
-            # If there are no valid detections but there are high IoU detections, use the highest IoU detection
+        if iou_detections:
+            # Find the detection with the highest IoU
             best_iou_detection = max(iou_detections, key=lambda x: x[1])[0]
-            operator_id = best_iou_detection
-            decision_source = "IoU"
+
+            # Check if there is any hoc/pose passing detection
+            if hoc_pose_detections:
+                # Find the detection with the smallest HoC score among the hoc_pose_detections
+                best_hoc_detection = min(hoc_pose_detections, key=lambda x: x[1])[0]
+                
+                # Extract HoC values for comparison
+                best_iou_hoc_value = hoc_dict.get(best_iou_detection, float('inf'))
+                best_hoc_value = hoc_dict.get(best_hoc_detection, float('inf'))
+
+                # Compare the HoC values of best_iou_detection and best_hoc_detection
+                if best_hoc_value < best_iou_hoc_value:
+                    operator_id = best_hoc_detection
+                    decision_source = "HoC + Pose"
+                else:
+                    operator_id = best_iou_detection
+                    decision_source = "IoU"
+            else:
+                operator_id = best_iou_detection
+                decision_source = "IoU"
         else:
-            operator_id = -1  # Use -1 to indicate no operator found
-            decision_source = "None"
+            # If there are no IoU detections, look at detections that pass HoC and pose thresholds
+            if hoc_pose_detections:
+                best_hoc_detection = min(hoc_pose_detections, key=lambda x: x[1])[0]
+                operator_id = best_hoc_detection
+                decision_source = "HoC + Pose"
+            else:
+                operator_id = -1  # Use -1 to indicate no operator found
+                decision_source = "None"
 
         # Publish the final decision
-        self.decision_pub.publish(operator_id)
+        decision_result = DecisionResult()
+        decision_result.operator_id = operator_id
+        decision_result.decision_source = decision_source
+        self.decision_pub.publish(decision_result)
 
         # Log the decision
         decision_log = f"Operator Detection ID {operator_id} determined by {decision_source}"

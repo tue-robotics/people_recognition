@@ -70,16 +70,13 @@ class YoloSegNode:
             self.operator_id = -1
             self.operator_initialized = False  # Ensure re-initialization
             self.operator_box = None
+            self.kalman_filter_operator.reset(np.zeros((2, 1)))  # Reset the Kalman Filter
             rospy.loginfo("Operator ID reset to -1")
 
     def operator_id_callback(self, msg):
         """Callback function to update the operator ID."""
         self.operator_id = msg.data
         rospy.loginfo(f"Received operator ID: {self.operator_id}")
-
-    def set_operator(self, operator_id):
-        """Set the ID of the operator to track."""
-        self.operator_id = operator_id
 
     def depth_image_callback(self, data):
         """Store the latest depth image. Only the most recent depth images are stored."""
