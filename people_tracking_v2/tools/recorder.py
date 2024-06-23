@@ -8,14 +8,24 @@ import os
 from datetime import datetime
 
 def save_image(cv_image, image_type, count):
-    # Create the directory if it doesn't exist
-    date_str = datetime.now().strftime('%Y-%m-%d')
-    output_dir = f'Frames_{date_str}'
+    # Create the base directory if it doesn't exist
+    base_dir = 'ros/noetic/system/src/people_tracking_v2/data'
+    if not os.path.exists(base_dir):
+        os.makedirs(base_dir)
+
+    # Create the directory for today's date if it doesn't exist
+    date_str = datetime.now().strftime('%a %b %d 1')
+    output_dir = os.path.join(base_dir, f'Frames {date_str}')
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
     
+    # Create subdirectories for RGB and Depth images
+    image_dir = os.path.join(output_dir, image_type)
+    if not os.path.exists(image_dir):
+        os.makedirs(image_dir)
+    
     # Save the image
-    filename = os.path.join(output_dir, f'{image_type}_{count:06d}.png')
+    filename = os.path.join(image_dir, f'{image_type}_{count:06d}.png')
     cv2.imwrite(filename, cv_image)
     rospy.loginfo(f'Saved {filename}')
 
