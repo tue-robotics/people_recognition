@@ -106,7 +106,7 @@ class ComparisonNode:
 
                 head_feet_distance = pose_msg.head_feet_distance
                 if head_feet_distance < 0:
-                    rospy.loginfo(f"Skipping comparison for Detection ID {hoc_msg.id} due to negative pose distance")
+                    rospy.loginfo(f"Skipping pose comparison for Detection ID {hoc_msg.id} due to negative pose distance")
                     comparison_scores_msg.pose_distance_score = -1
                 else:
                     distance_score = self.compute_distance(head_feet_distance, self.operator_pose_median)
