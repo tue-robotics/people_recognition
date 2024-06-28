@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 
 import rospy
+import message_filters
 from people_tracking_v2.msg import DetectionArray, BodySize, BodySizeArray
 from cv_bridge import CvBridge, CvBridgeError
 from sensor_msgs.msg import Image
-from std_msgs.msg import Float32  # Import the Float32 message type
 import numpy as np
 import cv2
 import os
@@ -19,17 +19,23 @@ class PoseEstimationNode:
         self.bridge = CvBridge()
         self._wrapper = YoloPoseWrapper(model_name, device)
 
-        self.detection_sub = rospy.Subscriber("/detections_info", DetectionArray, self.detection_callback)
+        # Synchronize detection_info and bounding_box_image messages
+        detection_sub = message_filters.Subscriber("/detections_info", DetectionArray)
+        image_sub = message_filters.Subscriber("/bounding_box_image", Image)
+
+        ts = message_filters.ApproximateTimeSynchronizer([detection_sub, image_sub], queue_size=10, slop=0.1)
+        ts.registerCallback(self.sync_callback)
+
         self.pose_pub = rospy.Publisher("/pose_distances", BodySizeArray, queue_size=10)
-        self.image_sub = rospy.Subscriber("/bounding_box_image", Image, self.image_callback)
         self._result_image_publisher = rospy.Publisher("pose_result", Image, queue_size=10)
 
         self.current_detections = []
 
-    def detection_callback(self, msg):
-        self.current_detections = msg.detections
+    def sync_callback(self, detection_msg, image_msg):
+        self.current_detections = detection_msg.detections
+        self.process_image(image_msg)
 
-    def image_callback(self, image_msg):
+    def process_image(self, image_msg):
         cv_image = self.bridge.imgmsg_to_cv2(image_msg, "bgr8")
         recognitions, result_image, pose_details = self._wrapper.detect_poses(cv_image)
 
