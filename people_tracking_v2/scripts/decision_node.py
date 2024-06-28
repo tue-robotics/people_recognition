@@ -27,7 +27,7 @@ class DecisionNode:
         # Define thresholds
         iou_threshold = 0.8
         hoc_threshold = 0.45
-        pose_threshold =0.1  # Example threshold for pose distance
+        pose_threshold = 0.1
 
         iou_detections = []
         hoc_pose_detections = []

@@ -44,11 +44,9 @@ class YoloSegNode:
         self.operator_id = None  # To be set by an external node
         self.operator_initialized = False  # Track if operator has been initialized
         self.operator_box = None  # Initialize operator_box to None
+        self.reset_timer = None  # Timer to reset operator ID
 
         self.iou_threshold = 0.8  # Default threshold value
-
-        # Timer to reset operator ID
-        self.reset_timer = rospy.Timer(rospy.Duration(3), self.reset_operator_id)
 
         # Initialize variables for saving data and depth processing
         self.latest_image = None
@@ -63,14 +61,26 @@ class YoloSegNode:
             os.makedirs(self.save_path, exist_ok=True)
             rospy.loginfo(f"Data will be saved to: {self.save_path}")
 
+    def start_reset_timer(self):
+        """Start the timer to reset the operator ID every 3 seconds."""
+        if self.reset_timer is None:
+            self.reset_timer = rospy.Timer(rospy.Duration(3), self.reset_operator_id)
+            rospy.loginfo("Reset timer started")
+
+    def stop_reset_timer(self):
+        """Stop the reset timer if it is running."""
+        if self.reset_timer is not None:
+            self.reset_timer.shutdown()
+            self.reset_timer = None
+            rospy.loginfo("Reset timer stopped")
+
     def reset_operator_id(self, event):
-        """Reset the operator ID every 3 seconds."""
-        if self.operator_id is not None:
-            self.operator_id = -1
-            self.operator_initialized = False  # Ensure re-initialization
-            self.operator_box = None
-            self.kalman_filter_operator.reset(np.zeros((2, 1)))  # Reset the Kalman Filter
-            rospy.loginfo("Operator ID reset to -1")
+        """Reset the operator ID."""
+        self.operator_id = -1
+        self.operator_initialized = False  # Ensure re-initialization
+        self.operator_box = None
+        self.kalman_filter_operator.reset(np.zeros((2, 1)))  # Reset the Kalman Filter
+        rospy.loginfo("Operator ID reset to -1")
 
     def operator_id_callback(self, msg):
         """Callback function to update the operator ID and handle the decision source."""
@@ -81,6 +91,7 @@ class YoloSegNode:
         if self.decision_source not in ["IoU", "HoC + Pose to start IoU"]:
             self.operator_initialized = False
             self.operator_box = None
+            self.stop_reset_timer()
             rospy.loginfo("Kalman Filter stopped due to decision source.")
 
     def depth_image_callback(self, data):
@@ -148,8 +159,7 @@ class YoloSegNode:
             detection.y1 = float(box[1])
             detection.x2 = float(box[2])
             detection.y2 = float(box[3])
-            detection.score = float(score)
-            detection.label = int(label)
+            detection.depth = -1.0  # Initialize depth to -1.0
 
             # Extract depth value
             if depth_camera and cv_depth_image is not None:
@@ -157,9 +167,7 @@ class YoloSegNode:
                 y_center = int((box[1] + box[3]) / 2)
                 depth_value = cv_depth_image[y_center, x_center]
                 detection.depth = float(depth_value) if depth_value > 0 else -1.0
-                rospy.loginfo(f"Detection {detection.id}: Depth value: {depth_value}") 
-            else:
-                detection.depth = -1.0  # Use -1.0 as a placeholder if depth is not available
+                rospy.loginfo(f"Detection {detection.id}: Depth value: {depth_value}")
 
             detection_array.detections.append(detection)
 
@@ -190,12 +198,6 @@ class YoloSegNode:
                 # Publish individual segmented images
                 self.individual_segmented_image_pub.publish(segmented_image_msg)
 
-            # Draw a red dot at the center of the detection if it's the operator
-            if detection.id == self.operator_id:
-                x_center = int((detection.x1 + detection.x2) / 2)
-                y_center = int((detection.y1 + detection.y2) / 2)
-                cv2.circle(bounding_box_image, (x_center, y_center), 5, (0, 0, 255), -1)
-
         # Initialize the operator using the detection with the specified operator ID
         if not self.operator_initialized and self.operator_id is not None and self.decision_source in ["IoU", "HoC + Pose to start IoU"]:
             for detection in detection_array.detections:
@@ -205,6 +207,7 @@ class YoloSegNode:
                     y_center = (detection.y1 + detection.y2) / 2
                     self.kalman_filter_operator.reset(np.array([[x_center], [y_center]]))
                     self.operator_initialized = True
+                    self.start_reset_timer()
                     rospy.loginfo("Operator initialized")
                     break
 
@@ -250,6 +253,7 @@ class YoloSegNode:
                     self.operator_initialized = False
                     self.operator_box = None
                     self.kalman_filter_operator.reset(np.zeros((2, 1)))  # Reset the Kalman Filter
+                    self.stop_reset_timer()
                 else:
                     x_center = (best_detection.x1 + best_detection.x2) / 2
                     y_center = (best_detection.y1 + best_detection.y2) / 2
