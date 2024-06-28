@@ -3,25 +3,52 @@
 import rospy
 import message_filters
 from people_tracking_v2.msg import ComparisonScoresArray, DetectionArray, DecisionResult
+import os
+import csv
+from datetime import datetime
+import rospkg
+import sys
+
+laptop = sys.argv[1]
+name_subscriber_RGB = 'Webcam/image_raw' if laptop == "True" else '/hero/head_rgbd_sensor/rgb/image_raw'
+depth_camera = False if sys.argv[2] == "False" else True
+save_data = False if sys.argv[3] == "False" else True
 
 class DecisionNode:
     def __init__(self):
         # Initialize the ROS node
         rospy.init_node('decision_node', anonymous=True)
-        
+
         # Subscribers for comparison scores array and detection info
         comparison_sub = message_filters.Subscriber('/comparison/scores_array', ComparisonScoresArray)
         detection_sub = message_filters.Subscriber('/detections_info', DetectionArray)
-        
+
         # Synchronize the subscribers
         ts = message_filters.ApproximateTimeSynchronizer([comparison_sub, detection_sub], queue_size=10, slop=0.1)
         ts.registerCallback(self.sync_callback)
-        
+
         # Publisher for decision results
         self.decision_pub = rospy.Publisher('/decision/result', DecisionResult, queue_size=10)
-        
+
+        # Initialize variables for saving data
+        self.save_data = True  # Set this to True if you want to save data
+        if self.save_data:
+            rospack = rospkg.RosPack()
+            package_path = rospack.get_path("people_tracking_v2")
+            date_str = datetime.now().strftime('%a %b %d Test case 4')
+            self.save_path = os.path.join(package_path, f'data/Excel {date_str}/')
+            os.makedirs(self.save_path, exist_ok=True)
+            self.csv_file_path = os.path.join(self.save_path, 'decision_data.csv')
+            self.init_csv_file()
+
         rospy.spin()
-    
+
+    def init_csv_file(self):
+        """Initialize the CSV file with headers."""
+        with open(self.csv_file_path, mode='w', newline='') as file:
+            writer = csv.writer(file)
+            writer.writerow(['Operator ID', 'Decision Source', 'HoC Scores', 'Pose Scores', 'IoU Values'])
+
     def sync_callback(self, comparison_msg, detection_msg):
         """Callback function to handle synchronized comparison scores and detection info."""
         # Define thresholds
@@ -35,12 +62,13 @@ class DecisionNode:
         # Create a dictionary for quick lookup of IoU values and HoC values by detection ID
         iou_dict = {detection.id: detection.iou for detection in detection_msg.detections}
         hoc_dict = {score.id: score.hoc_distance_score for score in comparison_msg.scores}
+        pose_dict = {score.id: score.pose_distance_score for score in comparison_msg.scores}
 
         # Check for detections with high IoU values
         for detection in detection_msg.detections:
             if detection.iou > iou_threshold:
                 iou_detections.append((detection.id, detection.iou))
-        
+
         # Iterate over each comparison score in the array
         for score in comparison_msg.scores:
             hoc_distance_score = score.hoc_distance_score
@@ -67,7 +95,7 @@ class DecisionNode:
             if hoc_pose_detections:
                 # Find the detection with the smallest HoC score among the hoc_pose_detections
                 best_hoc_detection = min(hoc_pose_detections, key=lambda x: x[1])[0]
-                
+
                 # Extract HoC values for comparison
                 best_iou_hoc_value = hoc_dict.get(best_iou_detection, float('inf'))
                 best_hoc_value = hoc_dict.get(best_hoc_detection, float('inf'))
@@ -101,6 +129,20 @@ class DecisionNode:
         # Log the decision
         decision_log = f"Operator Detection ID {operator_id} determined by {decision_source}"
         rospy.loginfo(decision_log)
+
+        # Save the data to CSV
+        if self.save_data:
+            self.save_to_csv(operator_id, decision_source, comparison_msg, detection_msg)
+
+    def save_to_csv(self, operator_id, decision_source, comparison_msg, detection_msg):
+        """Save the required data to CSV."""
+        hoc_scores = [score.hoc_distance_score for score in comparison_msg.scores]
+        pose_scores = [score.pose_distance_score for score in comparison_msg.scores]
+        iou_values = [detection.iou for detection in detection_msg.detections]
+
+        with open(self.csv_file_path, mode='a', newline='') as file:
+            writer = csv.writer(file)
+            writer.writerow([operator_id, decision_source, hoc_scores, pose_scores, iou_values])
 
 if __name__ == '__main__':
     try:

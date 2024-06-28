@@ -12,6 +12,7 @@ import sys
 import os
 import rospkg
 import time
+from datetime import datetime
 
 # Add the path to the `kalman_filter.py` module
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'src', 'people_tracking'))
@@ -56,8 +57,8 @@ class YoloSegNode:
         if save_data:
             rospack = rospkg.RosPack()
             package_path = rospack.get_path("people_tracking_v2")
-            current_time = time.strftime("%Y%m%d-%H%M%S")
-            self.save_path = os.path.join(package_path, f'data/{current_time}_test/')
+            date_str = datetime.now().strftime('%a %b %d Test case 4')
+            self.save_path = os.path.join(package_path, f'data/Excel {date_str}/')
             os.makedirs(self.save_path, exist_ok=True)
             rospy.loginfo(f"Data will be saved to: {self.save_path}")
 
@@ -119,11 +120,11 @@ class YoloSegNode:
             cv_depth_image = None
 
         # Save RGB and Depth Images if required
-        if save_data:
-            cv2.imwrite(f"{self.save_path}{self.batch_nr}.png", cv_image)
-            if depth_camera and cv_depth_image is not None:
-                cv_depth_image_path = f"{self.save_path}{self.batch_nr}_depth.png"
-                cv2.imwrite(cv_depth_image_path, cv_depth_image)
+        #if save_data:
+        #    cv2.imwrite(f"{self.save_path}{self.batch_nr}.png", cv_image)
+        #    if depth_camera and cv_depth_image is not None:
+        #        cv_depth_image_path = f"{self.save_path}{self.batch_nr}_depth.png"
+        #        cv2.imwrite(cv_depth_image_path, cv_depth_image)
 
         # Run the YOLOv8 model on the frame
         results = self.model(cv_image)[0]
