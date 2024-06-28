@@ -14,11 +14,7 @@ def publish_depth_images_from_folder(folder_path, topic_name, video_duration):
     image_files = sorted([f for f in os.listdir(folder_path) if f.endswith(('.png', '.jpg', '.jpeg'))])
     total_frames = len(image_files)
 
-    # Calculate frame rate
-    fps = total_frames / video_duration
-    rospy.loginfo(f"Calculated frame rate: {fps} fps")
-
-    rate = rospy.Rate(fps)
+    rate = rospy.Rate(15.4)  # Set the desired rate
 
     for image_file in image_files:
         if rospy.is_shutdown():
@@ -33,7 +29,9 @@ def publish_depth_images_from_folder(folder_path, topic_name, video_duration):
 
         try:
             if frame.dtype == np.uint16:
-                image_message = bridge.cv2_to_imgmsg(frame, "16UC1")
+                # Resize the image to 1280x720
+                frame_resized = cv2.resize(frame, (1280, 720), interpolation=cv2.INTER_NEAREST)
+                image_message = bridge.cv2_to_imgmsg(frame_resized, "16UC1")
             else:
                 rospy.logwarn(f"Unexpected image format for depth image: {image_file}")
                 continue
@@ -44,7 +42,7 @@ def publish_depth_images_from_folder(folder_path, topic_name, video_duration):
 
 if __name__ == '__main__':
     rospy.init_node('depth_publisher_node', anonymous=True)
-    folder_path = '/home/miguel/Documents/BEP-Testing/TestCase1/Frames Tue Jun 25 Test case 1/depth'
+    folder_path = '/home/miguel/Documents/BEP-Testing/data/Frames Fri Jun 28 Test case 4/depth'
     topic_name = '/hero/head_rgbd_sensor/depth_registered/image_raw'
     video_duration = 122  # Duration of the video in seconds, modify as needed
     try:

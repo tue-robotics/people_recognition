@@ -3,36 +3,43 @@ import rospy
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge, CvBridgeError
 import cv2
+import os
 
-def publish_video(video_path):
+def publish_images_from_folder(folder_path):
     pub = rospy.Publisher("/hero/head_rgbd_sensor/rgb/image_raw", Image, queue_size=10)
     bridge = CvBridge()
-    cap = cv2.VideoCapture(video_path)
 
-    if not cap.isOpened():
-        rospy.logerr(f"Error opening video file {video_path}")
+    # List all image files in the folder and sort them
+    image_files = sorted([f for f in os.listdir(folder_path) if f.endswith(('.png', '.jpg', '.jpeg'))])
+
+    if not image_files:
+        rospy.logerr(f"No image files found in {folder_path}")
         return
 
-    rate = rospy.Rate(20)  # Modify based on your video's fps
+    rate = rospy.Rate(15.4)  # Set the desired rate
 
-    while not rospy.is_shutdown() and cap.isOpened():
-        ret, frame = cap.read()
-        if ret:
-            try:
-                image_message = bridge.cv2_to_imgmsg(frame, "bgr8")
-                pub.publish(image_message)
-                rate.sleep()
-            except CvBridgeError as e:
-                rospy.logerr(e)
-        else:
+    for image_file in image_files:
+        if rospy.is_shutdown():
             break
 
-    cap.release()
+        image_path = os.path.join(folder_path, image_file)
+        frame = cv2.imread(image_path)
+
+        if frame is None:
+            rospy.logerr(f"Error reading image file {image_path}")
+            continue
+
+        try:
+            image_message = bridge.cv2_to_imgmsg(frame, "bgr8")
+            pub.publish(image_message)
+            rate.sleep()
+        except CvBridgeError as e:
+            rospy.logerr(e)
 
 if __name__ == '__main__':
-    rospy.init_node('rgb_video_publisher_node', anonymous=True)
-    video_path = '/home/miguel/Documents/BEP-Testing/TestCase1/TestCase1_rgb.mp4'
+    rospy.init_node('rgb_image_folder_publisher_node', anonymous=True)
+    folder_path = '/home/miguel/Documents/BEP-Testing/data/Frames Fri Jun 28 Test case 4/rgb'
     try:
-        publish_video(video_path)
+        publish_images_from_folder(folder_path)
     except rospy.ROSInterruptException:
         pass
