@@ -23,7 +23,6 @@ class PoseEstimationNode:
         self.pose_pub = rospy.Publisher("/pose_distances", BodySizeArray, queue_size=10)
         self.image_sub = rospy.Subscriber("/bounding_box_image", Image, self.image_callback)
         self._result_image_publisher = rospy.Publisher("pose_result", Image, queue_size=10)
-        self.iou_threshold = 0.8  # Default threshold value
 
         self.current_detections = []
 
@@ -38,50 +37,53 @@ class PoseEstimationNode:
         pose_distance_array.header.stamp = image_msg.header.stamp
 
         for detection in self.current_detections:
-            #if detection.iou > self.iou_threshold:
-            #    # Set the height of the specific detection to -1 if IoU threshold is passed
-            #    pose_distance_msg = BodySize()
-            #    pose_distance_msg.id = detection.id
-            #    pose_distance_msg.head_feet_distance = -1  # Set to -1 for detections with high IoU
-            #    pose_distance_array.distances.append(pose_distance_msg)
-            #    rospy.loginfo(f"Skipping detection ID {detection.id} due to high IoU value with operator")
-            #    continue
+            closest_pose = None
+            min_distance = float('inf')
 
             for pose in pose_details:
                 try:
-                    pose_distance_msg = BodySize()
-                    pose_distance_msg.header.stamp = image_msg.header.stamp  # Use the timestamp from the incoming YOLO image
-
-                    # Calculate ear to ankle distances
-                    left_ear_to_left_ankle = self._wrapper.compute_distance(pose["LEar"], pose["LAnkle"]) if "LEar" in pose and "LAnkle" in pose else float('inf')
-                    left_ear_to_right_ankle = self._wrapper.compute_distance(pose["LEar"], pose["RAnkle"]) if "LEar" in pose and "RAnkle" in pose else float('inf')
-                    right_ear_to_left_ankle = self._wrapper.compute_distance(pose["REar"], pose["LAnkle"]) if "REar" in pose and "LAnkle" in pose else float('inf')
-                    right_ear_to_right_ankle = self._wrapper.compute_distance(pose["REar"], pose["RAnkle"]) if "REar" in pose and "RAnkle" in pose else float('inf')
-
-                    distances = [left_ear_to_left_ankle, left_ear_to_right_ankle, right_ear_to_left_ankle, right_ear_to_right_ankle]
-                    valid_distances = [d for d in distances if d != float('inf')]
-
-                    if not valid_distances:
-                        pose_distance_msg.head_feet_distance = -1  # No valid ear-to-ankle distance found
-                        rospy.logwarn("No valid ear-to-ankle distance found, setting distance to -1")
-                    else:
-                        min_distance = min(valid_distances)
-                        pose_distance_msg.head_feet_distance = min_distance
-                        rospy.loginfo(f"For ID {pose_distance_msg.id} Ear-to-Ankle Distance: {pose_distance_msg.head_feet_distance:.2f}")
-
-                    # Find the corresponding detection ID and use depth value to normalize the size
+                    # Check if the pose is within the detection bounding box
                     if self.is_pose_within_detection(pose, detection):
-                        pose_distance_msg.id = detection.id
-                        depth = detection.depth
-                        pose_distance_msg.head_feet_distance = self.normalize_size(pose_distance_msg.head_feet_distance, depth)
-                        pose_distance_array.distances.append(pose_distance_msg)
-                        break
+                        pose_center = self.get_pose_center(pose)
+                        detection_center = self.get_detection_center(detection)
+                        distance = np.linalg.norm(np.array(detection_center) - np.array(pose_center))
 
-                    # Draw the pose on the image
-                    result_image = self.draw_pose(result_image, pose)
+                        if distance < min_distance:
+                            closest_pose = pose
+                            min_distance = distance
 
                 except Exception as e:
-                    rospy.logerr(f"Error computing distance: {e}")
+                    rospy.logerr(f"Error processing pose: {e}")
+
+            if closest_pose is not None:
+                pose_distance_msg = BodySize()
+                pose_distance_msg.header.stamp = image_msg.header.stamp  # Use the timestamp from the incoming YOLO image
+                pose_distance_msg.id = detection.id
+
+                # Calculate ear to ankle distances
+                left_ear_to_left_ankle = self._wrapper.compute_distance(closest_pose["LEar"], closest_pose["LAnkle"]) if "LEar" in closest_pose and "LAnkle" in closest_pose else float('inf')
+                left_ear_to_right_ankle = self._wrapper.compute_distance(closest_pose["LEar"], closest_pose["RAnkle"]) if "LEar" in closest_pose and "RAnkle" in closest_pose else float('inf')
+                right_ear_to_left_ankle = self._wrapper.compute_distance(closest_pose["REar"], closest_pose["LAnkle"]) if "REar" in closest_pose and "LAnkle" in closest_pose else float('inf')
+                right_ear_to_right_ankle = self._wrapper.compute_distance(closest_pose["REar"], closest_pose["RAnkle"]) if "REar" in closest_pose and "RAnkle" in closest_pose else float('inf')
+
+                distances = [left_ear_to_left_ankle, left_ear_to_right_ankle, right_ear_to_left_ankle, right_ear_to_right_ankle]
+                valid_distances = [d for d in distances if d != float('inf')]
+
+                if not valid_distances:
+                    pose_distance_msg.head_feet_distance = -1  # No valid ear-to-ankle distance found
+                    rospy.logwarn("No valid ear-to-ankle distance found, setting distance to -1")
+                else:
+                    min_distance = min(valid_distances)
+                    pose_distance_msg.head_feet_distance = min_distance
+                    rospy.loginfo(f"Ear-to-Ankle Distance: {pose_distance_msg.head_feet_distance:.2f}")
+
+                depth = detection.depth
+                pose_distance_msg.head_feet_distance = self.normalize_size(pose_distance_msg.head_feet_distance, depth)
+                pose_distance_array.distances.append(pose_distance_msg)
+                rospy.loginfo(f"Detection ID {pose_distance_msg.id} assigned with size {pose_distance_msg.head_feet_distance:.2f}")
+
+                # Draw the pose on the image
+                result_image = self.draw_pose(result_image, closest_pose)
 
         # Publish the pose distances as a batch
         self.pose_pub.publish(pose_distance_array)
@@ -95,12 +97,25 @@ class PoseEstimationNode:
 
     def is_pose_within_detection(self, pose, detection):
         """Check if the pose is within the detection bounding box."""
-        x_center = (detection.x1 + detection.x2) / 2
-        y_center = (detection.y1 + detection.y2) / 2
-
-        if detection.x1 <= x_center <= detection.x2 and detection.y1 <= y_center <= detection.y2:
-            return True
+        for part in pose.values():
+            x, y = part
+            if detection.x1 <= x <= detection.x2 and detection.y1 <= y <= detection.y2:
+                return True
         return False
+
+    def get_pose_center(self, pose):
+        """Get the center of the pose based on keypoints."""
+        x_coords = [coords[0] for coords in pose.values()]
+        y_coords = [coords[1] for coords in pose.values()]
+        center_x = np.mean(x_coords)
+        center_y = np.mean(y_coords)
+        return center_x, center_y
+
+    def get_detection_center(self, detection):
+        """Get the center of the detection bounding box."""
+        center_x = (detection.x1 + detection.x2) / 2
+        center_y = (detection.y1 + detection.y2) / 2
+        return center_x, center_y
 
     def normalize_size(self, size, depth):
         """Normalize the size using the depth value."""

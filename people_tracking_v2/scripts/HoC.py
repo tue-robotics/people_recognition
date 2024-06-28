@@ -15,7 +15,6 @@ class HoCNode:
         self.bridge = CvBridge()
         self.segmented_images_sub = rospy.Subscriber('/segmented_images', SegmentedImages, self.segmented_images_callback)
         self.detections_sub = rospy.Subscriber('/detections_info', DetectionArray, self.detections_callback)
-        self.iou_threshold = 0.8  # Default threshold value
         
         # Publisher for HoC vectors
         self.hoc_vector_pub = rospy.Publisher('/hoc_vectors', HoCVectorArray, queue_size=10)
@@ -52,10 +51,6 @@ class HoCNode:
                 if detection is None:
                     rospy.logerr(f"No matching detection found for ID: {detection_id}")
                     continue
-
-                #if detection.iou > self.iou_threshold:
-                #    rospy.loginfo(f"Skipping detection ID {detection_id} due to high IoU value with operator: {detection.iou:.2f}")
-                #    continue
 
                 # Create HoCVector message
                 hoc_vector = HoCVector()
