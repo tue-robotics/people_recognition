@@ -1,0 +1,62 @@
+<launch>
+
+  <arg name="laptop" default="False" />
+  <arg name="depth_camera" default="True" />
+  <arg name="save_data" default="False"/>
+
+<node
+    pkg="people_tracking_v2"
+    type="rgb_publisher.py"
+    name="RGB"
+    output="screen"
+    args="$(arg laptop) $(arg depth_camera) $(arg save_data)"
+  />
+
+  <node
+    pkg="people_tracking_v2"
+    type="depth_publisher.py"
+    name="depth"
+    output="screen"
+    args="$(arg laptop) $(arg depth_camera) $(arg save_data)"
+  />
+
+  <node
+    pkg="people_tracking_v2"
+    type="yolo_seg.py"
+    name="Image_seg"
+    output="screen"
+    args="$(arg laptop) $(arg depth_camera) $(arg save_data)"
+  />
+
+  <node
+    pkg="people_tracking_v2"
+    type="HoC.py"
+    name="HoC"
+    output="screen"
+    args="$(arg laptop) $(arg depth_camera) $(arg save_data)"
+  />
+
+  <node
+    pkg="people_tracking_v2"
+    type="pose_estimation_node.py"
+    name="Pose_estimation"
+    output="screen"
+    args="$(arg laptop) $(arg depth_camera) $(arg save_data)"
+  />
+
+  <node
+    pkg="people_tracking_v2"
+    type="comparison_node.py"
+    name="Comparison"
+    output="screen"
+    args="$(arg laptop) $(arg depth_camera) $(arg save_data)"
+  />
+
+    <node
+    pkg="people_tracking_v2"
+    type="decision_node.py"
+    name="Decision"
+    output="screen"
+    args="$(arg laptop) $(arg depth_camera) $(arg save_data)"
+  />
+</launch>

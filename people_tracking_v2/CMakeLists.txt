@@ -53,6 +53,8 @@ install(PROGRAMS
   tools/recorder.py
   tools/save_HoC_data.py
   tools/save_pose_data.py
+  testing/rgb_publisher.py
+  testing/depth_publisher.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 

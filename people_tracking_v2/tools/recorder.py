@@ -14,7 +14,7 @@ def save_image(cv_image, image_type, count):
         os.makedirs(base_dir)
 
     # Create the directory for today's date if it doesn't exist
-    date_str = datetime.now().strftime('%a %b %d 1')
+    date_str = datetime.now().strftime('%a %b %d Test case 4')
     output_dir = os.path.join(base_dir, f'Frames {date_str}')
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
@@ -59,8 +59,8 @@ if __name__ == '__main__':
     depth_count = 0
 
     # Define the topics
-    rgb_topic = '/hero/head_rgbd_sensor/rgb/image_raw'  # Topic for RGB images
-    depth_topic = '/hero/head_rgbd_sensor/depth_registered/image_raw' # Topic for Depth images
+    rgb_topic = '/camera/color/image_raw'  # Topic for RGB images
+    depth_topic = '/camera/depth/image_rect_raw' # Topic for Depth images
 
     # Subscribe to the topics
     rospy.Subscriber(rgb_topic, Image, rgb_callback)

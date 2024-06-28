@@ -26,7 +26,7 @@ class DecisionNode:
         """Callback function to handle synchronized comparison scores and detection info."""
         # Define thresholds
         iou_threshold = 0.8
-        hoc_threshold = 0.3
+        hoc_threshold = 0.45
         pose_threshold = 0.5  # Example threshold for pose distance
 
         iou_detections = []
