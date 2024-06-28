@@ -156,7 +156,7 @@ class YoloSegNode:
                 x_center = int((box[0] + box[2]) / 2)
                 y_center = int((box[1] + box[3]) / 2)
                 depth_value = cv_depth_image[y_center, x_center]
-                detection.depth = float(depth_value)
+                detection.depth = float(depth_value) if depth_value <= 10 else -1.0
             else:
                 detection.depth = -1.0  # Use -1.0 as a placeholder if depth is not available
 
