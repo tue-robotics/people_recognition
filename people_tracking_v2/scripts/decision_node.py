@@ -2,11 +2,14 @@
 
 import rospy
 import message_filters
+from sensor_msgs.msg import Image
 from people_tracking_v2.msg import ComparisonScoresArray, DetectionArray, DecisionResult
 import os
 import csv
 from datetime import datetime
 import rospkg
+import cv2
+from cv_bridge import CvBridge, CvBridgeError
 import sys
 
 laptop = sys.argv[1]
@@ -19,19 +22,21 @@ class DecisionNode:
         # Initialize the ROS node
         rospy.init_node('decision_node', anonymous=True)
 
-        # Subscribers for comparison scores array and detection info
+        # Subscribers for comparison scores array, detection info, and RGB image
         comparison_sub = message_filters.Subscriber('/comparison/scores_array', ComparisonScoresArray)
         detection_sub = message_filters.Subscriber('/detections_info', DetectionArray)
+        image_sub = message_filters.Subscriber(name_subscriber_RGB, Image)
 
         # Synchronize the subscribers
-        ts = message_filters.ApproximateTimeSynchronizer([comparison_sub, detection_sub], queue_size=10, slop=0.1)
+        ts = message_filters.ApproximateTimeSynchronizer([comparison_sub, detection_sub, image_sub], queue_size=10, slop=0.1)
         ts.registerCallback(self.sync_callback)
 
-        # Publisher for decision results
+        # Publisher for decision results and marked images
         self.decision_pub = rospy.Publisher('/decision/result', DecisionResult, queue_size=10)
+        self.marked_image_pub = rospy.Publisher('/marked_image', Image, queue_size=10)
 
         # Initialize variables for saving data
-        self.save_data = True  # Set this to True if you want to save data
+        self.save_data = save_data
         if self.save_data:
             rospack = rospkg.RosPack()
             package_path = rospack.get_path("people_tracking_v2")
@@ -39,7 +44,12 @@ class DecisionNode:
             self.save_path = os.path.join(package_path, f'data/Excel {date_str}/')
             os.makedirs(self.save_path, exist_ok=True)
             self.csv_file_path = os.path.join(self.save_path, 'decision_data.csv')
+            self.marked_image_save_path = os.path.join(self.save_path, 'marked_images/')
+            os.makedirs(self.marked_image_save_path, exist_ok=True)
             self.init_csv_file()
+        
+        self.bridge = CvBridge()
+        self.image_counter = 0
 
         rospy.spin()
 
@@ -49,8 +59,8 @@ class DecisionNode:
             writer = csv.writer(file)
             writer.writerow(['Operator ID', 'Decision Source', 'HoC Scores', 'Pose Scores', 'IoU Values'])
 
-    def sync_callback(self, comparison_msg, detection_msg):
-        """Callback function to handle synchronized comparison scores and detection info."""
+    def sync_callback(self, comparison_msg, detection_msg, image_msg):
+        """Callback function to handle synchronized comparison scores, detection info, and RGB image."""
         # Define thresholds
         iou_threshold = 0.8
         hoc_threshold = 0.45
@@ -134,6 +144,9 @@ class DecisionNode:
         if self.save_data:
             self.save_to_csv(operator_id, decision_source, comparison_msg, detection_msg)
 
+        # Process and publish marked image
+        self.process_and_publish_image(image_msg, detection_msg, operator_id)
+
     def save_to_csv(self, operator_id, decision_source, comparison_msg, detection_msg):
         """Save the required data to CSV."""
         hoc_scores = [score.hoc_distance_score for score in comparison_msg.scores]
@@ -143,6 +156,37 @@ class DecisionNode:
         with open(self.csv_file_path, mode='a', newline='') as file:
             writer = csv.writer(file)
             writer.writerow([operator_id, decision_source, hoc_scores, pose_scores, iou_values])
+
+    def process_and_publish_image(self, image_msg, detection_msg, operator_id):
+        """Process the RGB image to mark the operator and publish the marked image."""
+        try:
+            cv_image = self.bridge.imgmsg_to_cv2(image_msg, "bgr8")
+        except CvBridgeError as e:
+            rospy.logerr(f"CV Bridge Error: {e}")
+            return
+
+        # Mark the operator with a red dot if found
+        if operator_id > 0:
+            for detection in detection_msg.detections:
+                if detection.id == operator_id:
+                    x_center = int((detection.x1 + detection.x2) / 2)
+                    y_center = int((detection.y1 + detection.y2) / 2)
+                    cv2.circle(cv_image, (x_center, y_center), 5, (0, 0, 255), -1)
+                    break
+
+        # Convert the image back to ROS message
+        try:
+            marked_image_msg = self.bridge.cv2_to_imgmsg(cv_image, "bgr8")
+            marked_image_msg.header.stamp = image_msg.header.stamp
+            self.marked_image_pub.publish(marked_image_msg)
+
+            # Save the image with the red dot
+            if self.save_data:
+                image_save_path = os.path.join(self.marked_image_save_path, f"{self.image_counter}.png")
+                cv2.imwrite(image_save_path, cv_image)
+                self.image_counter += 1
+        except CvBridgeError as e:
+            rospy.logerr(f"CV Bridge Error while publishing: {e}")
 
 if __name__ == '__main__':
     try:
