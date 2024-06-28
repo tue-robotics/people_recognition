@@ -259,14 +259,8 @@ class YoloSegNode:
                     y_center = (best_detection.y1 + best_detection.y2) / 2
                     self.kalman_filter_operator.update(np.array([[x_center], [y_center]]))
                     self.operator_box = [best_detection.x1, best_detection.y1, best_detection.x2, best_detection.y2]
-                    cv2.circle(bounding_box_image, (int(x_center), int(y_center)), 5, (0, 0, 255), -1)
             else:
                 rospy.logwarn("No detection with IoU above threshold, using prediction")
-                cv2.circle(bounding_box_image, (int(x_pred), int(y_pred)), 5, (255, 0, 0), -1)
-                cv2.putText(
-                    bounding_box_image, 'Predicted position', (int(x_pred), int(y_pred) - 10),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 1
-                )
 
         # Publish segmented images as a batch
         self.segmented_images_pub.publish(segmented_images_msg)
