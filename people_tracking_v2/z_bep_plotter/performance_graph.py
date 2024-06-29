@@ -27,20 +27,33 @@ choices = ['True Positive', 'True Negative', 'False Positive', 'False Negative']
 # Apply the conditions to create a new column for the results
 merged_df['Result'] = np.select(conditions, choices, default='Unknown')
 
-# Print the summary of results
-summary = merged_df['Result'].value_counts()
-print(summary)
+# Map result types to y-values for the scatter plot
+result_mapping = {
+    'True Positive': 'Tp',
+    'True Negative': 'Tn',
+    'False Positive': 'Fp',
+    'False Negative': 'Fn'
+}
+merged_df['Result Type'] = merged_df['Result'].map(result_mapping)
 
 # Plot the results over time
-plt.figure(figsize=(12, 6))
-plt.plot(merged_df['Frame Number'] / 15, merged_df['Result'].eq('True Positive').cumsum(), label='True Positives', color='g')
-plt.plot(merged_df['Frame Number'] / 15, merged_df['Result'].eq('True Negative').cumsum(), label='True Negatives', color='b')
-plt.plot(merged_df['Frame Number'] / 15, merged_df['Result'].eq('False Positive').cumsum(), label='False Positives', color='r')
-plt.plot(merged_df['Frame Number'] / 15, merged_df['Result'].eq('False Negative').cumsum(), label='False Negatives', color='m')
+plt.figure(figsize=(16, 3))  # Reduce the height
 
-plt.xlabel('Time (seconds)')
-plt.ylabel('Cumulative Count')
-plt.title('Detection Results Over Time')
-plt.legend()
+# Scatter plot for each result type
+colors = {'Tp': 'g', 'Tn': 'b', 'Fp': 'r', 'Fn': 'orange'}
+y_ticks = ['Tp', 'Tn', 'Fp', 'Fn']
+y_tick_labels = ['Tp', 'Tn', 'Fp', 'Fn']
+y_positions = np.arange(len(y_ticks))
+
+for result_type, color in colors.items():
+    subset = merged_df[merged_df['Result Type'] == result_type]
+    plt.scatter(subset['Frame Number'] / 15, [result_type] * len(subset), c=color, s=40)  # Increased dot size
+
+plt.xlabel('Time [s]', fontsize=20)
+plt.ylabel('Type', fontsize=20)
+plt.xticks(fontsize=18)
+plt.yticks(y_positions, y_tick_labels, fontsize=18)
+plt.title('Association Type over Time', fontsize=24)
 plt.grid(True)
+plt.tight_layout()  # Adjust the layout to ensure everything fits
 plt.show()
