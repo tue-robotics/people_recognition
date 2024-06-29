@@ -59,12 +59,10 @@ class ComparisonNode:
             directory = os.path.dirname(path)
             if not os.path.exists(directory):
                 os.makedirs(directory)
-                #rospy.loginfo(f"Created directory: {directory}")
+                rospy.loginfo(f"Created directory: {directory}")
 
     def sync_callback(self, hoc_array, pose_array):
         """Callback function to handle synchronized HoC and pose data."""
-        #rospy.loginfo("sync_callback invoked")
-
         current_time = rospy.get_time()
         if self.init_phase:
             # Accumulate data during initialization phase
@@ -79,16 +77,9 @@ class ComparisonNode:
             # Check if initialization phase is over
             if current_time - self.start_time > self.init_duration:
                 self.init_phase = False
-                # Calculate the median for pose data and normalized average for HoC data
-                self.operator_pose_median = np.median(self.pose_data)
-                self.operator_hue_avg = self.normalize_vector(np.mean(self.hue_vectors, axis=0))
-                self.operator_sat_avg = self.normalize_vector(np.mean(self.sat_vectors, axis=0))
-                self.operator_val_avg = self.normalize_vector(np.mean(self.val_vectors, axis=0))
-                self.operator_data_set = True
-                rospy.loginfo("Operator data initialized with median pose and normalized average HoC values.")
-                
-                # Save the accumulated operator data to file
+                self.calculate_operator_data()
                 self.save_operator_data()
+                rospy.loginfo("Operator data initialized with median pose and normalized average HoC values.")
         else:
             if not self.operator_data_set:
                 rospy.logerr("Operator data not yet set, waiting for initialization to complete")
@@ -102,7 +93,6 @@ class ComparisonNode:
             comparison_scores_array.header.stamp = hoc_array.header.stamp
 
             for hoc_msg, pose_msg in zip(hoc_array.vectors, pose_array.distances):
-
                 comparison_scores_msg = ComparisonScores()
                 comparison_scores_msg.header.stamp = hoc_msg.header.stamp
                 comparison_scores_msg.header.frame_id = hoc_msg.header.frame_id
@@ -131,6 +121,14 @@ class ComparisonNode:
                     self.save_latest_detection_data(hue_vector, sat_vector, val_vector, head_feet_distance)
 
             self.comparison_pub.publish(comparison_scores_array)
+
+    def calculate_operator_data(self):
+        """Calculate the operator's median pose and normalized average HoC values."""
+        self.operator_pose_median = np.median(self.pose_data)
+        self.operator_hue_avg = self.normalize_vector(np.mean(self.hue_vectors, axis=0))
+        self.operator_sat_avg = self.normalize_vector(np.mean(self.sat_vectors, axis=0))
+        self.operator_val_avg = self.normalize_vector(np.mean(self.val_vectors, axis=0))
+        self.operator_data_set = True
 
     def normalize_vector(self, vector):
         """Normalize a vector to ensure the sum of elements is 1."""
