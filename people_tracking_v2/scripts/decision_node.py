@@ -40,7 +40,7 @@ class DecisionNode:
         if self.save_data:
             rospack = rospkg.RosPack()
             package_path = rospack.get_path("people_tracking_v2")
-            date_str = datetime.now().strftime('%a %b %d Test case 4')
+            date_str = datetime.now().strftime('%a %b %d Test case 2 full tracker')
             self.save_path = os.path.join(package_path, f'data/Excel {date_str}/')
             os.makedirs(self.save_path, exist_ok=True)
             self.csv_file_path = os.path.join(self.save_path, 'decision_data.csv')
@@ -57,7 +57,7 @@ class DecisionNode:
         """Initialize the CSV file with headers."""
         with open(self.csv_file_path, mode='w', newline='') as file:
             writer = csv.writer(file)
-            writer.writerow(['Timestamp', 'Operator ID', 'Decision Source', 'HoC Scores', 'Pose Scores', 'IoU Values', 'Operator HoC Value'])
+            writer.writerow(['Frame Number', 'Operator ID', 'Decision Source', 'HoC Scores', 'IoU Values', 'HoC Validity', 'IoU Validity', 'Operator HoC Value'])
 
     def sync_callback(self, comparison_msg, detection_msg, image_msg):
         """Callback function to handle synchronized comparison scores, detection info, and RGB image."""
@@ -142,22 +142,23 @@ class DecisionNode:
 
         # Save the data to CSV
         if self.save_data:
-            self.save_to_csv(operator_id, decision_source, comparison_msg, detection_msg)
+            self.save_to_csv(operator_id, decision_source, comparison_msg, detection_msg, image_msg.header.seq)
 
         # Process and publish marked image
         self.process_and_publish_image(image_msg, detection_msg, operator_id)
 
-    def save_to_csv(self, operator_id, decision_source, comparison_msg, detection_msg):
+    def save_to_csv(self, operator_id, decision_source, comparison_msg, detection_msg, frame_number):
         """Save the required data to CSV."""
-        hoc_scores = [score.hoc_distance_score for score in comparison_msg.scores]
-        pose_scores = [score.pose_distance_score for score in comparison_msg.scores]
-        iou_values = [detection.iou for detection in detection_msg.detections]
-        operator_hoc_value = next((score.hoc_distance_score for score in comparison_msg.scores if score.id == operator_id), float('inf'))
-        timestamp = rospy.get_time()
+        hoc_scores = [f'[ID {score.id}: {score.hoc_distance_score:.2f}]' for score in comparison_msg.scores]
+        iou_values = [f'[ID {detection.id}: {detection.iou:.2f}]' for detection in detection_msg.detections]
+        
+        hoc_validity = 'yes' if any(score.hoc_distance_score < 0.3 for score in comparison_msg.scores) else 'no'
+        iou_validity = 'yes' if any(detection.iou > 0.8 for detection in detection_msg.detections) else 'no'
+        operator_hoc_value = next((score.hoc_distance_score for score in comparison_msg.scores if score.id == operator_id), 'N/A')
 
         with open(self.csv_file_path, mode='a', newline='') as file:
             writer = csv.writer(file)
-            writer.writerow([timestamp, operator_id, decision_source, hoc_scores, pose_scores, iou_values, operator_hoc_value])
+            writer.writerow([frame_number, operator_id, decision_source, hoc_scores, iou_values, hoc_validity, iou_validity, operator_hoc_value])
 
     def process_and_publish_image(self, image_msg, detection_msg, operator_id):
         """Process the RGB image to mark the operator and publish the marked image."""
@@ -167,14 +168,14 @@ class DecisionNode:
             rospy.logerr(f"CV Bridge Error: {e}")
             return
 
-        # Mark the operator with a red dot if found
-        if operator_id > 0:
-            for detection in detection_msg.detections:
-                if detection.id == operator_id:
-                    x_center = int((detection.x1 + detection.x2) / 2)
-                    y_center = int((detection.y1 + detection.y2) / 2)
-                    cv2.circle(cv_image, (x_center, y_center), 5, (0, 0, 255), -1)
-                    break
+        # Draw bounding boxes around each detection and label them with their ID
+        for detection in detection_msg.detections:
+            x1, y1, x2, y2 = int(detection.x1), int(detection.y1), int(detection.x2), int(detection.y2)
+            color = (0, 255, 0) if detection.id == operator_id else (0, 0, 255)  # Green for operator, red for others
+            label_text = f'ID: {detection.id}'
+
+            cv_image = cv2.rectangle(cv_image, (x1, y1), (x2, y2), color, 2)
+            cv_image = cv2.putText(cv_image, label_text, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
 
         # Convert the image back to ROS message
         try:
@@ -182,7 +183,7 @@ class DecisionNode:
             marked_image_msg.header.stamp = image_msg.header.stamp
             self.marked_image_pub.publish(marked_image_msg)
 
-            # Save the image with the red dot
+            # Save the image with the bounding boxes
             if self.save_data:
                 image_save_path = os.path.join(self.marked_image_save_path, f"{self.image_counter}.png")
                 cv2.imwrite(image_save_path, cv_image)

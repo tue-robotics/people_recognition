@@ -22,5 +22,5 @@ def plot_hoc_values(csv_file_path):
     plt.show()
 
 if __name__ == '__main__':
-    csv_file_path = '/home/miguel/ros/noetic/system/src/people_tracking_v2/data/Excel Sat Jun 29 Test case 4/decision_data.csv'  # Update this path
+    csv_file_path = '/home/miguel/Documents/BEP-Testing/Test Case 2/Excel Sat Jun 29 Test case 2 full tracker/decision_data.csv'  # Update this path
     plot_hoc_values(csv_file_path)
