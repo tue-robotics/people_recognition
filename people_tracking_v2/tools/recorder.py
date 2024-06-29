@@ -15,7 +15,7 @@ def save_image(cv_image, image_type, count, subfolder=None):
         os.makedirs(base_dir)
 
     # Create the directory for today's date if it doesn't exist
-    date_str = datetime.now().strftime('%a %b %d Test case 4')
+    date_str = datetime.now().strftime('%a %b %d Test Case 2')
     output_dir = os.path.join(base_dir, f'Frames {date_str}')
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
@@ -49,9 +49,9 @@ def callback(rgb_msg, depth_msg):
         
         # Save the depth image in original format and PNG format
         save_image(depth_image, 'depth', depth_count)
-        depth_image_normalized = cv2.normalize(depth_image, None, 0, 255, cv2.NORM_MINMAX)
-        depth_image_8bit = cv2.convertScaleAbs(depth_image_normalized)
-        save_image(depth_image_8bit, 'depth', depth_count, subfolder='depth_png')
+        #depth_image_normalized = cv2.normalize(depth_image, None, 0, 255, cv2.NORM_MINMAX)
+        #depth_image_8bit = cv2.convertScaleAbs(depth_image_normalized)
+        #save_image(depth_image_8bit, 'depth', depth_count, subfolder='depth_png')
         
         rgb_count += 1
         depth_count += 1

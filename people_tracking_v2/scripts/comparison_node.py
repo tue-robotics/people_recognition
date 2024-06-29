@@ -147,17 +147,17 @@ class ComparisonNode:
         """Compute the Euclidean distance between two vectors (General)."""
         return np.linalg.norm(vector1 - vector2)
 
-    def save_operator_data(self):
+    #def save_operator_data(self):
         """Save the accumulated operator data to an .npz file."""
         np.savez(self.operator_npz_file_path, hue=self.operator_hue_avg, sat=self.operator_sat_avg, val=self.operator_val_avg, pose=self.operator_pose_median)
         rospy.loginfo(f"Saved accumulated operator data to {self.operator_npz_file_path}")
 
-    def save_latest_detection_data(self, hue_vector, sat_vector, val_vector, head_feet_distance):
+    #def save_latest_detection_data(self, hue_vector, sat_vector, val_vector, head_feet_distance):
         """Save the latest data for detection ID 1 to an .npz file."""
         np.savez(self.detection_npz_file_path, hue=hue_vector, sat=sat_vector, val=val_vector, pose=head_feet_distance)
         rospy.loginfo(f"Saved latest detection 1 data to {self.detection_npz_file_path}")
 
-    def publish_debug_info(self, hoc_distance_score, pose_distance_score, detection_id):
+    #def publish_debug_info(self, hoc_distance_score, pose_distance_score, detection_id):
         """Publish debug information about the current comparison (General)."""
         debug_msg = String()
         debug_msg.data = f"Detection ID {detection_id}: HoC Distance score: {hoc_distance_score:.2f}, Pose Distance score: {pose_distance_score:.2f}"
