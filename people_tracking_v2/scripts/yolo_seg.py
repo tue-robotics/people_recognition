@@ -7,6 +7,7 @@ from ultralytics import YOLO
 from sensor_msgs.msg import Image
 from people_tracking_v2.msg import Detection, DetectionArray, SegmentedImages, DecisionResult
 from cv_bridge import CvBridge, CvBridgeError
+from scipy.optimize import linear_sum_assignment
 
 import sys
 import os
@@ -52,6 +53,12 @@ class YoloSegNode:
         self.latest_image = None
         self.depth_images = []
         self.batch_nr = 0
+
+        # Tracking-related variables
+        self.previous_detections = []
+        self.next_id = 1
+        self.max_id = 100  # Maximum ID value to keep numbers manageable
+        self.inactive_ids = []
 
         if save_data:
             rospack = rospkg.RosPack()
@@ -118,13 +125,6 @@ class YoloSegNode:
         else:
             cv_depth_image = None
 
-        # Save RGB and Depth Images if required
-        #if save_data:
-        #    cv2.imwrite(f"{self.save_path}{self.batch_nr}.png", cv_image)
-        #    if depth_camera and cv_depth_image is not None:
-        #        cv_depth_image_path = f"{self.save_path}{self.batch_nr}_depth.png"
-        #        cv2.imwrite(cv_depth_image_path, cv_depth_image)
-
         # Run the YOLOv8 model on the frame
         results = self.model(cv_image)[0]
 
@@ -145,8 +145,45 @@ class YoloSegNode:
         segmented_images_msg.header.stamp = data.header.stamp  # Use the same timestamp as the YOLO image
         segmented_images_msg.ids = []  # Initialize the IDs list
 
-        # Process each detection and create a Detection message
-        for i, (box, score, label, mask) in enumerate(zip(boxes, scores, labels, masks)):
+        # Tracking: Match detections between frames using the Hungarian Algorithm
+        if self.previous_detections:
+            cost_matrix = self.compute_cost_matrix(boxes, self.previous_detections)
+            row_indices, col_indices = linear_sum_assignment(cost_matrix)
+
+            # Initialize current frame detections
+            current_detections = [-1] * len(boxes)
+            matched_prev_detections = set()
+            for row, col in zip(row_indices, col_indices):
+                if cost_matrix[row, col] < 100:  # Only consider reasonable matches
+                    current_detections[row] = self.previous_detections[col].id
+                    matched_prev_detections.add(col)
+
+            # Recycle IDs of unmatched detections
+            unmatched_prev_detections = set(range(len(self.previous_detections))) - matched_prev_detections
+            for index in unmatched_prev_detections:
+                self.inactive_ids.append(self.previous_detections[index].id)
+
+            # Assign new IDs to unmatched detections
+            for i in range(len(current_detections)):
+                if current_detections[i] == -1:
+                    if self.inactive_ids:
+                        current_detections[i] = self.inactive_ids.pop(0)
+                    else:
+                        current_detections[i] = self.next_id
+                        self.next_id += 1
+                    if self.next_id > self.max_id:
+                        self.next_id = 1
+
+        else:
+            # First frame, assign new IDs to all detections
+            current_detections = list(range(self.next_id, self.next_id + len(boxes)))
+            self.next_id += len(boxes)
+            if self.next_id > self.max_id:
+                self.next_id = 1
+
+        # Create and publish Detection messages
+        self.previous_detections = []
+        for i, (box, score, label, mask, det_id) in enumerate(zip(boxes, scores, labels, masks, current_detections)):
             if int(label) != 0:  # Only process humans (class 0)
                 continue
 
@@ -154,7 +191,7 @@ class YoloSegNode:
             centroid = ((x1 + x2) / 2, (y1 + y2) / 2)
 
             detection = Detection()
-            detection.id = i + 1  # Assign a unique ID to each detection
+            detection.id = det_id  # Use the matched or newly assigned ID
             detection.x1 = float(box[0])
             detection.y1 = float(box[1])
             detection.x2 = float(box[2])
@@ -170,6 +207,7 @@ class YoloSegNode:
                 rospy.loginfo(f"Detection {detection.id}: Depth value: {depth_value}")
 
             detection_array.detections.append(detection)
+            self.previous_detections.append(detection)  # Store the current detection for the next frame
 
             # Draw bounding boxes and labels on the bounding_box_image
             x1, y1, x2, y2 = map(int, box)
@@ -275,6 +313,16 @@ class YoloSegNode:
 
         # Publish predicted detections
         self.detection_pub.publish(detection_array)
+
+    def compute_cost_matrix(self, boxes, previous_detections):
+        cost_matrix = np.zeros((len(boxes), len(previous_detections)))
+        for i, box in enumerate(boxes):
+            x1, y1, x2, y2 = box
+            centroid = ((x1 + x2) / 2, (y1 + y2) / 2)
+            for j, prev_det in enumerate(previous_detections):
+                prev_centroid = ((prev_det.x1 + prev_det.x2) / 2, (prev_det.y1 + prev_det.y2) / 2)
+                cost_matrix[i, j] = np.linalg.norm(np.array(centroid) - np.array(prev_centroid))
+        return cost_matrix
 
     def calculate_iou(self, box1, box2):
         x1_min, y1_min, x1_max, y1_max = box1

@@ -94,7 +94,7 @@ class DecisionNode:
                         hoc_pose_detections.append((score.id, hoc_distance_score))
                 else:
                     # Check if both HoC and pose scores are valid
-                    if hoc_distance_score < hoc_threshold and pose_distance_score < pose_threshold:
+                    if hoc_distance_score < hoc_threshold: #and pose_distance_score < pose_threshold:
                         hoc_pose_detections.append((score.id, hoc_distance_score))
 
         if iou_detections:

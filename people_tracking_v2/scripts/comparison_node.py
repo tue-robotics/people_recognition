@@ -59,11 +59,11 @@ class ComparisonNode:
             directory = os.path.dirname(path)
             if not os.path.exists(directory):
                 os.makedirs(directory)
-                rospy.loginfo(f"Created directory: {directory}")
+                #rospy.loginfo(f"Created directory: {directory}")
 
     def sync_callback(self, hoc_array, pose_array):
         """Callback function to handle synchronized HoC and pose data."""
-        rospy.loginfo("sync_callback invoked")
+        #rospy.loginfo("sync_callback invoked")
 
         current_time = rospy.get_time()
         if self.init_phase:
@@ -102,7 +102,6 @@ class ComparisonNode:
             comparison_scores_array.header.stamp = hoc_array.header.stamp
 
             for hoc_msg, pose_msg in zip(hoc_array.vectors, pose_array.distances):
-                rospy.loginfo(f"Processing Detection ID {hoc_msg.id}")
 
                 comparison_scores_msg = ComparisonScores()
                 comparison_scores_msg.header.stamp = hoc_msg.header.stamp
@@ -113,7 +112,6 @@ class ComparisonNode:
                 sat_vector = np.array(hoc_msg.sat_vector)
                 val_vector = np.array(hoc_msg.val_vector)
                 hoc_distance_score = self.compute_hoc_distance_score(hue_vector, sat_vector, val_vector)
-                rospy.loginfo(f"Detection ID {hoc_msg.id}: HoC Distance score: {hoc_distance_score:.2f}")
                 comparison_scores_msg.hoc_distance_score = hoc_distance_score
 
                 head_feet_distance = pose_msg.head_feet_distance
@@ -122,7 +120,6 @@ class ComparisonNode:
                     comparison_scores_msg.pose_distance_score = -1
                 else:
                     distance_score = self.compute_distance(head_feet_distance, self.operator_pose_median)
-                    rospy.loginfo(f"Detection ID {pose_msg.id}: Pose Distance score: {distance_score:.2f}")
                     comparison_scores_msg.pose_distance_score = distance_score
 
                 rospy.loginfo(f"Publishing scores - Detection ID {comparison_scores_msg.id}: HoC Distance score: {comparison_scores_msg.hoc_distance_score:.2f}, Pose Distance score: {comparison_scores_msg.pose_distance_score:.2f}")
