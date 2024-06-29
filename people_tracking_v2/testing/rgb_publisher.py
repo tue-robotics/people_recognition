@@ -38,7 +38,7 @@ def publish_images_from_folder(folder_path):
 
 if __name__ == '__main__':
     rospy.init_node('rgb_image_folder_publisher_node', anonymous=True)
-    folder_path = '/home/miguel/Documents/BEP-Testing/Tuning/Frames Sat Jun 29 Tuning/rgb' #/home/miguel/Documents/BEP-Testing/Test Case 1/Frames Sat Jun 29 Test Case 1/rgb
+    folder_path = '/home/miguel/Documents/BEP-Testing/Test Case 2/Frames Sat Jun 29 Test Case 2/rgb' #/home/miguel/Documents/BEP-Testing/Test Case 1/Frames Sat Jun 29 Test Case 1/rgb
     try:
         publish_images_from_folder(folder_path)
     except rospy.ROSInterruptException:

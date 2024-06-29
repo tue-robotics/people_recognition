@@ -2,7 +2,7 @@
 
   <arg name="laptop" default="False" />
   <arg name="depth_camera" default="False" />
-  <arg name="save_data" default="False"/>
+  <arg name="save_data" default="True"/>
 
 <node
     pkg="people_tracking_v2"

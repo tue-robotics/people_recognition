@@ -57,13 +57,13 @@ class DecisionNode:
         """Initialize the CSV file with headers."""
         with open(self.csv_file_path, mode='w', newline='') as file:
             writer = csv.writer(file)
-            writer.writerow(['Operator ID', 'Decision Source', 'HoC Scores', 'Pose Scores', 'IoU Values'])
+            writer.writerow(['Timestamp', 'Operator ID', 'Decision Source', 'HoC Scores', 'Pose Scores', 'IoU Values', 'Operator HoC Value'])
 
     def sync_callback(self, comparison_msg, detection_msg, image_msg):
         """Callback function to handle synchronized comparison scores, detection info, and RGB image."""
         # Define thresholds
         iou_threshold = 0.8
-        hoc_threshold = 0.45
+        hoc_threshold = 0.3
         pose_threshold = 0.1
 
         iou_detections = []
@@ -152,10 +152,12 @@ class DecisionNode:
         hoc_scores = [score.hoc_distance_score for score in comparison_msg.scores]
         pose_scores = [score.pose_distance_score for score in comparison_msg.scores]
         iou_values = [detection.iou for detection in detection_msg.detections]
+        operator_hoc_value = next((score.hoc_distance_score for score in comparison_msg.scores if score.id == operator_id), float('inf'))
+        timestamp = rospy.get_time()
 
         with open(self.csv_file_path, mode='a', newline='') as file:
             writer = csv.writer(file)
-            writer.writerow([operator_id, decision_source, hoc_scores, pose_scores, iou_values])
+            writer.writerow([timestamp, operator_id, decision_source, hoc_scores, pose_scores, iou_values, operator_hoc_value])
 
     def process_and_publish_image(self, image_msg, detection_msg, operator_id):
         """Process the RGB image to mark the operator and publish the marked image."""

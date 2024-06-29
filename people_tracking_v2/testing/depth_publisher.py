@@ -42,7 +42,7 @@ def publish_depth_images_from_folder(folder_path, topic_name):
 
 if __name__ == '__main__':
     rospy.init_node('depth_publisher_node', anonymous=True)
-    folder_path = '/home/miguel/Documents/BEP-Testing/Tuning/Frames Sat Jun 29 Tuning/depth' #/home/miguel/Documents/BEP-Testing/Test Case 1/Frames Sat Jun 29 Test Case 1/depth
+    folder_path = '/home/miguel/Documents/BEP-Testing/Test Case 2/Frames Sat Jun 29 Test Case 2/depth' #/home/miguel/Documents/BEP-Testing/Test Case 1/Frames Sat Jun 29 Test Case 1/depth
     topic_name = '/hero/head_rgbd_sensor/depth_registered/image_raw'
     try:
         publish_depth_images_from_folder(folder_path, topic_name)
