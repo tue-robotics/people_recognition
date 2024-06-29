@@ -16,7 +16,7 @@ def publish_images_from_folder(folder_path):
         rospy.logerr(f"No image files found in {folder_path}")
         return
 
-    rate = rospy.Rate(15.4)  # Set the desired rate
+    rate = rospy.Rate(18.7)  # Set the desired rate
 
     for image_file in image_files:
         if rospy.is_shutdown():
@@ -38,7 +38,7 @@ def publish_images_from_folder(folder_path):
 
 if __name__ == '__main__':
     rospy.init_node('rgb_image_folder_publisher_node', anonymous=True)
-    folder_path = '/home/miguel/Documents/BEP-Testing/Test Case 1/Frames Sat Jun 29 Test Case 1/rgb'
+    folder_path = '/home/miguel/Documents/BEP-Testing/Old/Aboud/Frames Fri Jun 28 Test case 4/rgb' #/home/miguel/Documents/BEP-Testing/Test Case 1/Frames Sat Jun 29 Test Case 1/rgb
     try:
         publish_images_from_folder(folder_path)
     except rospy.ROSInterruptException:

@@ -11,7 +11,6 @@ from cv_bridge import CvBridge, CvBridgeError
 import sys
 import os
 import rospkg
-import time
 from datetime import datetime
 
 # Add the path to the `kalman_filter.py` module
@@ -20,8 +19,8 @@ from kalman_filter import KalmanFilterCV  # Import the Kalman Filter class
 
 laptop = sys.argv[1]
 name_subscriber_RGB = 'Webcam/image_raw' if laptop == "True" else '/hero/head_rgbd_sensor/rgb/image_raw'
-depth_camera = False if sys.argv[2] == "False" else True
-save_data = False if sys.argv[3] == "False" else True
+depth_camera = False #if sys.argv[2] == "False" else True
+save_data = False #if sys.argv[3] == "False" else True
 
 class YoloSegNode:
     def __init__(self):

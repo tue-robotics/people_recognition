@@ -33,7 +33,7 @@ class DecisionNode:
 
         # Publisher for decision results and marked images
         self.decision_pub = rospy.Publisher('/decision/result', DecisionResult, queue_size=10)
-        self.marked_image_pub = rospy.Publisher('/marked_image', Image, queue_size=10)
+        #self.marked_image_pub = rospy.Publisher('/marked_image', Image, queue_size=10)
 
         # Initialize variables for saving data
         self.save_data = save_data

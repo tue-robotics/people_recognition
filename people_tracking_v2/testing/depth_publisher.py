@@ -6,7 +6,7 @@ import cv2
 import os
 import numpy as np
 
-def publish_depth_images_from_folder(folder_path, topic_name, video_duration):
+def publish_depth_images_from_folder(folder_path, topic_name):
     pub = rospy.Publisher(topic_name, Image, queue_size=10)
     bridge = CvBridge()
 
@@ -14,7 +14,7 @@ def publish_depth_images_from_folder(folder_path, topic_name, video_duration):
     image_files = sorted([f for f in os.listdir(folder_path) if f.endswith(('.png', '.jpg', '.jpeg'))])
     total_frames = len(image_files)
 
-    rate = rospy.Rate(15.4)  # Set the desired rate
+    rate = rospy.Rate(18.7)  # Set the desired rate
 
     for image_file in image_files:
         if rospy.is_shutdown():
@@ -42,10 +42,9 @@ def publish_depth_images_from_folder(folder_path, topic_name, video_duration):
 
 if __name__ == '__main__':
     rospy.init_node('depth_publisher_node', anonymous=True)
-    folder_path = '/home/miguel/Documents/BEP-Testing/Test Case 1/Frames Sat Jun 29 Test Case 1/depth'
+    folder_path = '/home/miguel/Documents/BEP-Testing/Old/Aboud/Frames Fri Jun 28 Test case 4/depth' #/home/miguel/Documents/BEP-Testing/Test Case 1/Frames Sat Jun 29 Test Case 1/depth
     topic_name = '/hero/head_rgbd_sensor/depth_registered/image_raw'
-    video_duration = 122  # Duration of the video in seconds, modify as needed
     try:
-        publish_depth_images_from_folder(folder_path, topic_name, video_duration)
+        publish_depth_images_from_folder(folder_path, topic_name)
     except rospy.ROSInterruptException:
         pass
