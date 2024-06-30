@@ -1,8 +1,8 @@
 <launch>
 
   <arg name="laptop" default="False" />
-  <arg name="depth_camera" default="False" />
-  <arg name="save_data" default="True"/>
+  <arg name="depth_camera" default="True" />
+  <arg name="save_data" default="False"/>
 
 <node
     pkg="people_tracking_v2"
@@ -58,5 +58,16 @@
     name="Decision"
     output="screen"
     args="$(arg laptop) $(arg depth_camera) $(arg save_data)"
+    />
+
+  <node
+    pkg="people_tracking_v2"
+    type="frequency_measure.py"
+    name="Freq_measurer"
+    output="screen"
+    args="$(arg laptop) $(arg depth_camera) $(arg save_data)"
   />
+
+  
 </launch>
+

@@ -55,6 +55,7 @@ install(PROGRAMS
   tools/save_pose_data.py
   testing/rgb_publisher.py
   testing/depth_publisher.py
+  testing/frequency_measure.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
