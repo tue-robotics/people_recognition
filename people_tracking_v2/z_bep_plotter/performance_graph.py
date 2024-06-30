@@ -3,8 +3,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 # Load the CSV files
-decision_data_path = '/home/miguel/Documents/BEP-Testing/Test Case 1/all together data/decision_data_all.csv'
-ground_truth_data_path = '/home/miguel/Documents/BEP-Testing/Test Case 1/all together data/Ground truth_all.ods'
+decision_data_path = '/home/miguel/Documents/BEP-Testing/Test Case 2/Two stage tracker data/decision_data_twostage2.csv'
+ground_truth_data_path = '/home/miguel/Documents/BEP-Testing/Test Case 2/Two stage tracker data/Ground truth twostage2.ods'
 
 # Read the CSV and ODS files
 decision_df = pd.read_csv(decision_data_path)
@@ -26,6 +26,10 @@ choices = ['True Positive', 'True Negative', 'False Positive', 'False Negative']
 
 # Apply the conditions to create a new column for the results
 merged_df['Result'] = np.select(conditions, choices, default='Unknown')
+
+# Verify if there are any mismatches
+mismatches = merged_df[(merged_df['Result'] == 'False Positive') | (merged_df['Result'] == 'False Negative')]
+print("Mismatches:\n", mismatches[['Frame Number', 'Operator ID', 'Real operator', 'Result']])
 
 # Count the number of each result type
 result_counts = merged_df['Result'].value_counts()
