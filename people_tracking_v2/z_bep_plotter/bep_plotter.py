@@ -7,7 +7,7 @@ import numpy as np
 folder_path = '/home/miguel/Documents/BEP-Testing/Test Case 1/Frames Sat Jun 29 Test Case 1/rgb'
 
 # Frame rate of the video
-frame_rate = 18.7
+frame_rate = 15
 
 # Get list of all frames
 frames = sorted([os.path.join(folder_path, f) for f in os.listdir(folder_path) if f.endswith('.png')])
@@ -32,10 +32,12 @@ for i in selected_frame_indices:
     # Put timestamp on frame
     font = cv2.FONT_HERSHEY_SIMPLEX
     text = f'{timestamp:.1f}'
-    text_size = cv2.getTextSize(text, font, 1.5, 2)[0]
+    font_scale = 2  # Increase the font scale for larger text
+    thickness = 3  # Increase the thickness for better visibility
+    text_size = cv2.getTextSize(text, font, font_scale, thickness)[0]
     text_x = frame_rgb.shape[1] - text_size[0] - 10
-    text_y = 40
-    cv2.putText(frame_rgb, text, (text_x, text_y), font, 1.5, (0, 0, 0), 3, cv2.LINE_AA)
+    text_y = text_size[1] + 10
+    cv2.putText(frame_rgb, text, (text_x, text_y), font, font_scale, (0, 0, 0), thickness, cv2.LINE_AA)
     
     # Append frame to the list
     selected_frames.append(frame_rgb)

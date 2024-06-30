@@ -2,7 +2,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 
-# Load the CSV files
+# Load the CSV and ODS files
 decision_data_path = '/home/miguel/Documents/BEP-Testing/Test Case 2/Two stage tracker data/decision_data_twostage2.csv'
 ground_truth_data_path = '/home/miguel/Documents/BEP-Testing/Test Case 2/Two stage tracker data/Ground truth twostage2.ods'
 
@@ -49,8 +49,8 @@ print(f"Total Frames: {total_frames}")
 # Map result types to y-values for the scatter plot
 result_mapping = {
     'True Positive': 'Tp',
-    'True Negative': 'Tn',
     'False Positive': 'Fp',
+    'True Negative': 'Tn',
     'False Negative': 'Fn'
 }
 merged_df['Result Type'] = merged_df['Result'].map(result_mapping)
