@@ -43,19 +43,21 @@ class DecisionNode:
             date_str = datetime.now().strftime('%a %b %d Test case 2 full tracker')
             self.save_path = os.path.join(package_path, f'data/Excel {date_str}/')
             os.makedirs(self.save_path, exist_ok=True)
-            self.csv_file_path = os.path.join(self.save_path, 'decision_data.csv')
+            self.csv_file_path_hoc = os.path.join(self.save_path, 'decision_data_hoc.csv')
+            self.csv_file_path_hoc_iou = os.path.join(self.save_path, 'decision_data_hoc_iou.csv')
             self.marked_image_save_path = os.path.join(self.save_path, 'marked_images/')
             os.makedirs(self.marked_image_save_path, exist_ok=True)
-            self.init_csv_file()
+            self.init_csv_file(self.csv_file_path_hoc)
+            self.init_csv_file(self.csv_file_path_hoc_iou)
         
         self.bridge = CvBridge()
         self.image_counter = 0
 
         rospy.spin()
 
-    def init_csv_file(self):
+    def init_csv_file(self, csv_file_path):
         """Initialize the CSV file with headers."""
-        with open(self.csv_file_path, mode='w', newline='') as file:
+        with open(csv_file_path, mode='w', newline='') as file:
             writer = csv.writer(file)
             writer.writerow(['Frame Number', 'Operator ID', 'Decision Source', 'HoC Scores', 'IoU Values', 'HoC Validity', 'IoU Validity', 'Operator HoC Value'])
 
@@ -140,15 +142,16 @@ class DecisionNode:
         decision_log = f"Operator Detection ID {operator_id} determined by {decision_source}"
         rospy.loginfo(decision_log)
 
-        # Save the data to CSV
+        # Save the data to CSV for both scenarios
         if self.save_data:
-            self.save_to_csv(operator_id, decision_source, comparison_msg, detection_msg, image_msg.header.seq)
+            self.save_to_csv_hoc(operator_id, decision_source, comparison_msg, detection_msg, image_msg.header.seq)
+            self.save_to_csv_hoc_iou(operator_id, decision_source, comparison_msg, detection_msg, image_msg.header.seq)
 
         # Process and publish marked image
         self.process_and_publish_image(image_msg, detection_msg, operator_id)
 
-    def save_to_csv(self, operator_id, decision_source, comparison_msg, detection_msg, frame_number):
-        """Save the required data to CSV."""
+    def save_to_csv_hoc(self, operator_id, decision_source, comparison_msg, detection_msg, frame_number):
+        """Save the required data to CSV for the HoC only scenario."""
         hoc_scores = [f'[ID {score.id}: {score.hoc_distance_score:.2f}]' for score in comparison_msg.scores]
         iou_values = [f'[ID {detection.id}: {detection.iou:.2f}]' for detection in detection_msg.detections]
         
@@ -156,9 +159,42 @@ class DecisionNode:
         iou_validity = 'yes' if any(detection.iou > 0.8 for detection in detection_msg.detections) else 'no'
         operator_hoc_value = next((score.hoc_distance_score for score in comparison_msg.scores if score.id == operator_id), 'N/A')
 
-        with open(self.csv_file_path, mode='a', newline='') as file:
+        # Decision based only on HoC (keep this logic commented out in real implementation)
+        if hoc_validity == 'yes':
+            best_hoc_score = min(score.hoc_distance_score for score in comparison_msg.scores if score.hoc_distance_score < 0.3)
+            hypothetical_operator_id = next(score.id for score in comparison_msg.scores if score.hoc_distance_score == best_hoc_score)
+            hypothetical_decision_source = "HoC Only"
+        else:
+            hypothetical_operator_id = -1
+            hypothetical_decision_source = "None"
+
+        with open(self.csv_file_path_hoc, mode='a', newline='') as file:
             writer = csv.writer(file)
-            writer.writerow([frame_number, operator_id, decision_source, hoc_scores, iou_values, hoc_validity, iou_validity, operator_hoc_value])
+            writer.writerow([frame_number, hypothetical_operator_id, hypothetical_decision_source, hoc_scores, iou_values, hoc_validity, iou_validity, operator_hoc_value])
+
+    def save_to_csv_hoc_iou(self, operator_id, decision_source, comparison_msg, detection_msg, frame_number):
+        """Save the required data to CSV for the HoC and IoU scenario."""
+        hoc_scores = [f'[ID {score.id}: {score.hoc_distance_score:.2f}]' for score in comparison_msg.scores]
+        iou_values = [f'[ID {detection.id}: {detection.iou:.2f}]' for detection in detection_msg.detections]
+        
+        hoc_validity = 'yes' if any(score.hoc_distance_score < 0.3 for score in comparison_msg.scores) else 'no'
+        iou_validity = 'yes' if any(detection.iou > 0.8 for detection in detection_msg.detections) else 'no'
+        operator_hoc_value = next((score.hoc_distance_score for score in comparison_msg.scores if score.id == operator_id), 'N/A')
+
+        # Decision based on both HoC and IoU (keep this logic commented out in real implementation)
+        if hoc_validity == 'yes' and iou_validity == 'yes':
+            best_combined_score = min(
+                score.hoc_distance_score for score in comparison_msg.scores if score.hoc_distance_score < 0.3
+            )
+            hypothetical_operator_id = next(score.id for score in comparison_msg.scores if score.hoc_distance_score == best_combined_score)
+            hypothetical_decision_source = "HoC and IoU"
+        else:
+            hypothetical_operator_id = -1
+            hypothetical_decision_source = "None"
+
+        with open(self.csv_file_path_hoc_iou, mode='a', newline='') as file:
+            writer = csv.writer(file)
+            writer.writerow([frame_number, hypothetical_operator_id, hypothetical_decision_source, hoc_scores, iou_values, hoc_validity, iou_validity, operator_hoc_value])
 
     def process_and_publish_image(self, image_msg, detection_msg, operator_id):
         """Process the RGB image to mark the operator and publish the marked image."""

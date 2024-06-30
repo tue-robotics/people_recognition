@@ -3,8 +3,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 # Load the CSV files
-decision_data_path = '/home/miguel/Documents/BEP-Testing/Test Case 1/Case 1 Data/decision_data.csv'
-ground_truth_data_path = '/home/miguel/Documents/BEP-Testing/Test Case 1/Case 1 Data/Ground truth.ods'
+decision_data_path = '/home/miguel/Documents/BEP-Testing/Test Case 1/all together data/decision_data_all.csv'
+ground_truth_data_path = '/home/miguel/Documents/BEP-Testing/Test Case 1/all together data/Ground truth_all.ods'
 
 # Read the CSV and ODS files
 decision_df = pd.read_csv(decision_data_path)
@@ -26,6 +26,21 @@ choices = ['True Positive', 'True Negative', 'False Positive', 'False Negative']
 
 # Apply the conditions to create a new column for the results
 merged_df['Result'] = np.select(conditions, choices, default='Unknown')
+
+# Count the number of each result type
+result_counts = merged_df['Result'].value_counts()
+true_positives = result_counts.get('True Positive', 0)
+true_negatives = result_counts.get('True Negative', 0)
+false_positives = result_counts.get('False Positive', 0)
+false_negatives = result_counts.get('False Negative', 0)
+total_frames = len(merged_df)
+
+# Print the results
+print(f"True Positives: {true_positives}")
+print(f"True Negatives: {true_negatives}")
+print(f"False Positives: {false_positives}")
+print(f"False Negatives: {false_negatives}")
+print(f"Total Frames: {total_frames}")
 
 # Map result types to y-values for the scatter plot
 result_mapping = {
