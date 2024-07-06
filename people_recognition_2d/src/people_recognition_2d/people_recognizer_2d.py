@@ -251,7 +251,7 @@ class PeopleRecognizer2D(object):
         hair_roi.height = max(int(face_roi.height/6), 5)
         hair_roi.width = max(face_roi.width, 5)
         hair_roi.y_offset = min(hair_roi.y_offset, image_shape[0] - hair_roi.height)
-        rospy.logdebug("face_roi: {}, hair_roi: {}, img.shape: {}".format(face_roi, hair_roi, image_shape))
+        rospy.logdebug(f"{face_roi=}, {hair_roi=}, {image_shape=}")
         return hair_roi
 
     def recognize(self, image_msg):
