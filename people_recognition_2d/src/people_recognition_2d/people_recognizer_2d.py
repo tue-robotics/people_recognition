@@ -216,7 +216,7 @@ class PeopleRecognizer2D(object):
         """
         label = f" {object_name}  colors:"
         for color in object_colors:
-            label += " {}".format(color)
+            label += f" {color}"
         return label
 
     @staticmethod
