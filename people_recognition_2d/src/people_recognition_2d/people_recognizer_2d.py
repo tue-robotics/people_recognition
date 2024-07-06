@@ -15,8 +15,6 @@ from people_recognition_msgs.msg import Person2D
 from rospy import ServiceException
 from sensor_msgs.msg import Image, RegionOfInterest
 
-import cv2
-
 
 def _get_and_wait_for_service(srv_name, srv_class):
     """
