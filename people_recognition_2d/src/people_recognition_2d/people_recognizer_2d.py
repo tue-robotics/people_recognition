@@ -207,16 +207,16 @@ class PeopleRecognizer2D(object):
                                        face_properties.age)
 
     @staticmethod
-    def _shirt_colors_to_label(shirt_colors):
+    def _object_colors_to_label(object_colors, object_name):
         """
-        Convert shirt colors array to label string
+        Convert object colors array to label string
 
-        :param: shirt_colors: Array to colors
+        :param: object_colors: Array to colors
         :return: string label
         """
-        label = " shirt colors:"
-        for color in shirt_colors:
-            label += " {}".format(color)
+        label = f" {object_name}  colors:"
+        for color in object_colors:
+            label += f" {color}"
         return label
 
     @staticmethod
@@ -235,6 +235,22 @@ class PeopleRecognizer2D(object):
         shirt_roi.y_offset = min(shirt_roi.y_offset, image_shape[0] - shirt_roi.height)
         rospy.logdebug("face_roi: {}, shirt_roi: {}, img.shape: {}".format(face_roi, shirt_roi, image_shape))
         return shirt_roi
+
+    @staticmethod
+    def _hair_roi_from_face_roi(face_roi, image_shape):
+        """
+        Given a ROI for a face, shift the ROI to the person's hair. Assuming the person is upright :/
+
+        :param face_roi: RegionOfInterest
+        :param image_shape: tuple of the image shape
+        :return: RegionOfInterest
+        """
+        hair_roi = copy.deepcopy(face_roi)
+        hair_roi.height = max(int(face_roi.height/6), 5)
+        hair_roi.width = max(face_roi.width, 5)
+        hair_roi.y_offset = min(hair_roi.y_offset, image_shape[0] - hair_roi.height)
+        rospy.logdebug(f"{face_roi=}, {hair_roi=}, {image_shape=}")
+        return hair_roi
 
     def recognize(self, image_msg):
         assert isinstance(image_msg, Image)
@@ -282,30 +298,44 @@ class PeopleRecognizer2D(object):
         if self._enable_shirt_color_extraction:
             rospy.loginfo("_get_color_extractor...")
             shirt_colors_array = []
+            hair_color_array = []
             for r in face_recognitions:
                 shirt_roi = PeopleRecognizer2D._shirt_roi_from_face_roi(r.roi, image.shape)
+                hair_roi = PeopleRecognizer2D._hair_roi_from_face_roi(r.roi, image.shape)
+
                 shirt_image_msg = self._bridge.cv2_to_imgmsg(PeopleRecognizer2D._image_from_roi(image, shirt_roi))
+                hair_image_msg = self._bridge.cv2_to_imgmsg(PeopleRecognizer2D._image_from_roi(image, hair_roi))
                 try:
-                    color_extractor_response = _get_service_response(self._color_extractor_srv, shirt_image_msg)
+                    color_shirt_extractor_response = _get_service_response(self._color_extractor_srv, shirt_image_msg)
+                    color_hair_extractor_response = _get_service_response(self._color_extractor_srv, hair_image_msg)
                 except ServiceException as e:
                     rospy.logerr("Color extractor service request failed: {}".format(e))
                     shirt_colors = []
+                    hair_colors = []
                 else:
                     shirt_colors = [p.label for p in
-                                    color_extractor_response.recognitions[0].categorical_distribution.probabilities]
+                                    color_shirt_extractor_response.recognitions[0].categorical_distribution.probabilities]
+                    hair_colors = [p.label for p in
+                                    color_hair_extractor_response.recognitions[0].categorical_distribution.probabilities]
+                    hair_color = hair_colors[0] if hair_colors else ""
+
                 shirt_colors_array.append(shirt_colors)
+                hair_color_array.append(hair_color)
         else:
             shirt_colors_array = [[]] * len(face_recognitions)
+            hair_color_array = [""] * len(face_recognitions)
 
         # Prepare image annotation labels and People message
-        for face_label, face_properties, shirt_colors, body_parts, face_recognition in zip(face_labels,
-                                                                                           face_properties_array,
-                                                                                           shirt_colors_array,
-                                                                                           body_parts_array,
-                                                                                           face_recognitions):
+        for face_label, face_properties, shirt_colors, hair_color, body_parts, face_recognition in zip(face_labels,
+                                                                                                        face_properties_array,
+                                                                                                        shirt_colors_array,
+                                                                                                        hair_color_array,
+                                                                                                        body_parts_array,
+                                                                                                        face_recognitions):
 
             temp_label = PeopleRecognizer2D._face_properties_to_label(face_properties) + \
-                         PeopleRecognizer2D._shirt_colors_to_label(shirt_colors)
+                         PeopleRecognizer2D._object_colors_to_label(shirt_colors, "shirt") + \
+                         f" hair color: {hair_color}"
 
             if face_label:
                 image_annotations.append(face_label + " " + temp_label)
@@ -317,6 +347,7 @@ class PeopleRecognizer2D(object):
                                    gender=face_properties.gender,
                                    gender_confidence=face_properties.gender_confidence,
                                    shirt_colors=shirt_colors,
+                                   hair_color=hair_color,
                                    body_parts=body_parts,
                                    face=face_recognition))
 

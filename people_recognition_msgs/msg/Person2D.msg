@@ -5,5 +5,6 @@ float64 gender_confidence
 string posture
 string emotion
 string[] shirt_colors
+string hair_color
 image_recognition_msgs/Recognition[] body_parts
 image_recognition_msgs/Recognition face
