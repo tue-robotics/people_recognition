@@ -1,0 +1,58 @@
+<!--
+    On HERO run the following command: (Sets correct camera source and turns on depth data)
+    $ roslaunch people_tracking people_tracking.launch laptop:=False depth_camera:=True save_data:=False
+-->
+<launch>
+  <arg name="laptop" default="True" />
+  <arg name="depth_camera" default="False" />
+  <arg name="save_data" default="False"/>
+
+<!--   <node -->
+<!--     pkg="people_tracking" -->
+<!--     type="depth_image.py" -->
+<!--     name="depth" -->
+<!--     output="screen" -->
+<!--     args="$(arg laptop) $(arg depth_camera) $(arg save_data)" -->
+<!--   /> -->
+
+  <node
+    pkg="people_tracking"
+    type="person_detection.py"
+    name="person_detection"
+    output="screen"
+    args="$(arg laptop) $(arg depth_camera) $(arg save_data)"
+  />
+
+  <node
+    pkg="people_tracking"
+    type="colour_check.py"
+    name="HoC"
+    output="screen"
+    args="$(arg laptop) $(arg depth_camera) $(arg save_data)"
+  />
+
+  <node
+    pkg="people_tracking"
+    type="face_detection.py"
+    name="Face"
+    output="screen"
+    args="$(arg laptop) $(arg depth_camera) $(arg save_data)"
+  />
+
+ <node
+    pkg="people_tracking"
+    type="people_tracker.py"
+    name="people_tracker"
+    output="screen"
+    args="$(arg laptop) $(arg depth_camera) $(arg save_data)"
+  />
+
+  <node
+    pkg="people_tracking"
+    type="webcam.py"
+    name="webcam_pub"
+    output="screen"
+    args="$(arg laptop) $(arg depth_camera) $(arg save_data)"
+  />
+
+</launch>
